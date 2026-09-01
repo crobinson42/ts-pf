@@ -46,14 +46,22 @@ export interface TypeBoxLike {
   readonly [key: string]: unknown
 }
 
-export type InferSchemaOutput<S> = S extends StandardSchemaV1<infer _I, infer O>
-  ? O
-  : S extends { static: infer T }
-    ? T
+type InferStandardIO<S, Kind extends 'input' | 'output'> = S extends {
+  '~standard': { types?: infer T }
+}
+  ? NonNullable<T> extends { [K in Kind]: infer V }
+    ? V
     : unknown
+  : unknown
 
-export type InferSchemaInput<S> = S extends StandardSchemaV1<infer I, infer _O>
-  ? I
+export type InferSchemaOutput<S> = S extends { _zod: { output: infer Z } }
+  ? Z
   : S extends { static: infer T }
     ? T
-    : unknown
+    : InferStandardIO<S, 'output'>
+
+export type InferSchemaInput<S> = S extends { _zod: { input: infer Z } }
+  ? Z
+  : S extends { static: infer T }
+    ? T
+    : InferStandardIO<S, 'input'>
