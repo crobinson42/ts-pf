@@ -33,6 +33,7 @@ type ProtocolErrorCode =
   | 'NOT_FOUND'
   | 'INTERNAL'
   | 'METHOD_NOT_ALLOWED'
+  | 'PAYLOAD_TOO_LARGE'
 
 export type ClientError<E extends ErrorMap> = {
   code: (keyof E & string) | ProtocolErrorCode

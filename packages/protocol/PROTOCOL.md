@@ -46,6 +46,7 @@ x-ts-pf-protocol: 1
 | `VALIDATION` | 422 | Input schema failed. `error.data.issues` is `{ message, path }[]` |
 | `NOT_FOUND` | 404 | Prefix matched, procedure missing |
 | `METHOD_NOT_ALLOWED` | 405 | Non-POST |
+| `PAYLOAD_TOO_LARGE` | 413 | Request body larger than the configured handler limit |
 | `INTERNAL` | 500 | Unknown throw. Output schema failures also use 500 (server bug). |
 
 Contract-declared error codes use the status on the error definition.

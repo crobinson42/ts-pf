@@ -88,6 +88,37 @@ export default {
 
 `.use()` runs before input validation. `.useAfter()` runs after, with typed input.
 
+## HTTP plugins
+
+`FetchHandler` accepts opt-in `HandlerPlugin`s for origin concerns. Procedure middleware cannot see `Request` / `Response`.
+
+```ts
+import {
+  CORSPlugin,
+  FetchHandler,
+  RequestHeadersPlugin,
+  RequestLimitPlugin,
+  ResponseHeadersPlugin,
+  type RequestHeadersPluginContext,
+  type ResponseHeadersPluginContext,
+} from '@ts-pf/server'
+
+const impl = createImplementer(contract).$context<
+  { db: Db } & RequestHeadersPluginContext & ResponseHeadersPluginContext
+>()
+
+const handler = new FetchHandler(app, {
+  plugins: [
+    new CORSPlugin({ origin: ['https://app.example.com'] }),
+    new RequestLimitPlugin({ maxBodySize: 1024 * 1024 }),
+    new RequestHeadersPlugin(),
+    new ResponseHeadersPlugin(),
+  ],
+})
+```
+
+`CORSPlugin` answers `OPTIONS` preflight (browsers will preflight: JSON + `x-ts-pf-protocol` are not CORS-safelisted). `RequestLimitPlugin` caps the HTTP body; multipart file caps stay on `MultipartCodec`. Header plugins inject optional `context.reqHeaders` / `context.resHeaders`.
+
 ## Client
 
 ```ts

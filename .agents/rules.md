@@ -22,7 +22,7 @@ Contract-first TypeScript RPC library (`@ts-pf/*`). oRPC-like DX is the bar; oRP
 |---|---|
 | `contract` | `procedure`, `router`, schema adapters, typed errors, infer types |
 | `protocol` | `PFError`, JSON envelope, `RpcCodec`, path helpers. No HTTP server. No schemas. |
-| `server` | `createImplementer`, middleware, `FetchHandler`, `createLocalClient` |
+| `server` | `createImplementer`, middleware, `FetchHandler`, `createLocalClient`, `HandlerPlugin` (`CORSPlugin`, `RequestLimitPlugin`, `RequestHeadersPlugin`, `ResponseHeadersPlugin`) |
 | `client` | `createClient`, `FetchLink`, interceptors, `asResult` |
 | `file` | `MultipartCodec` only. Do not add `PFFile`, `file()`, or export walk helpers. Not imported by contract/server/client. |
 | `stream` | `StreamCodec` + `stream()`. Root `AsyncIterable` as JSONL envelopes. Not imported by contract/server/client. |
@@ -37,6 +37,7 @@ Do not resurrect oRPC names in code, docs, or examples.
 | `procedure` / `router` | `oc` |
 | `createImplementer` / local `impl` | `implement` / `os` |
 | `FetchHandler` | `RPCHandler` |
+| `CORSPlugin` / `RequestLimitPlugin` / `RequestHeadersPlugin` / `ResponseHeadersPlugin` | `*HandlerPlugin` |
 | `createLocalClient` | `createRouterClient` |
 | `asResult` | `safe` |
 | `FetchLink` | `RPCLink` |
@@ -62,7 +63,7 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 | `registerSchemaAdapter` | contract |
 | `.meta()` / `.$meta()` | contract |
 | `.use()` / `.useAfter()` | server |
-| `HandlerPlugin` | server (interface only in v1) |
+| `HandlerPlugin` | server (`CORSPlugin`, `RequestLimitPlugin`, `RequestHeadersPlugin`, `ResponseHeadersPlugin`) |
 | `RpcCodec` | protocol (`JSONCodec` is the v1 impl) |
 | `Link` / interceptors | client |
 

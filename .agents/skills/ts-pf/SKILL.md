@@ -31,6 +31,10 @@ packages/server/src/
   caller.ts           createLocalClient
   middleware.ts       MiddlewareFn types
   plugins.ts          HandlerPlugin
+  cors-plugin.ts      CORSPlugin / CORSPluginOptions
+  request-limit-plugin.ts RequestLimitPlugin / RequestLimitPluginOptions
+  request-headers-plugin.ts RequestHeadersPlugin / RequestHeadersPluginContext
+  response-headers-plugin.ts ResponseHeadersPlugin / ResponseHeadersPluginContext
 packages/client/src/
   client.ts           createClient proxy
   fetch-link.ts       FetchLink (signal, duplex: 'half', rethrows PFError from decodeResponse)
@@ -134,17 +138,21 @@ new FetchLink({ url: '/rpc', codec: sseCodec })
 
 ## Call pipeline
 
+0. `HandlerPlugin.onRequest` — optional `Request` wrap or `Response` short-circuit (CORS preflight). Prefix miss skips plugins.
 1. Decode body (`RpcCodec`; JSONCodec is JSON, MultipartCodec may be multipart, StreamCodec may be JSONL, SseCodec may be JSONL input / SSE output)
-2. `.use()` middleware — `input` is unvalidated
-3. Input schema (422 `VALIDATION` on fail)
-4. `.useAfter()` middleware — typed `input`
-5. Handler
-6. Output schema (500 `VALIDATION` — server bug)
-7. Encode body (`RpcCodec`)
+2. `HandlerPlugin.onContext` — replace context (header bags)
+3. `.use()` middleware — `input` is unvalidated
+4. Input schema (422 `VALIDATION` on fail)
+5. `.useAfter()` middleware — typed `input`
+6. Handler
+7. Output schema (500 `VALIDATION` — server bug)
+8. Encode body (`RpcCodec`)
+9. On throw: `HandlerPlugin.onError` (side-effect only), then encode failure
+10. `HandlerPlugin.onResponse` — every matched `Response` (success, 405, errors, short-circuit)
 
 `createImplementer(contract).use(mw).router({...})` prepends `mw` onto every procedure in that tree, even if leaves were built from a builder without `mw`.
 
-`createLocalClient(app, { context })` runs the same pipeline in-process (tests, SSR).
+`createLocalClient(app, { context })` runs procedure middleware → validate → handler in-process. No `HandlerPlugin`, no `RpcCodec` / HTTP.
 
 ## Schemas
 
@@ -161,7 +169,7 @@ Runtime `validateSchema`: user `registerSchemaAdapter` (first `accept` match) �
 | Want | Do |
 |---|---|
 | Another validator | `registerSchemaAdapter` or `packages/contract/src/adapters/<vendor>.ts` |
-| CORS / headers / request limits | `HandlerPlugin` on `FetchHandler` — new file, not inside `handler.ts`. File size limits are `MultipartCodec` options, not a plugin. |
+| CORS / headers / request limits | `CORSPlugin` / `RequestHeadersPlugin` / `ResponseHeadersPlugin` / `RequestLimitPlugin` on `FetchHandler`. New plugin = new file implementing `HandlerPlugin`. File size limits are `MultipartCodec` options, not a plugin. Do not add `order`/`before`/`after`. `CORSPlugin` defaults `origin: '*'`, `allowMethods: ['POST']`; constructor throws if `credentials` is true with origin `'*'`. `RequestLimitPlugin` throws `PAYLOAD_TOO_LARGE` 413. |
 | Extra wire types | new `RpcCodec` (or wrap `JSONCodec`). Encode is `{ contentType, body }`, not a raw string. Do not special-case Date/Map in core. |
 | File/Blob | `@ts-pf/file` `MultipartCodec` on `FetchHandler` / `FetchLink` `{ codec }`. Limits are codec options (`maxFiles` / `maxFileSize`), not a HandlerPlugin. Do not export placeholders or a `file()` helper. Do not fold into contract/server/client. |
 | AsyncIterable streams | `@ts-pf/stream` `StreamCodec` + `stream()` on `.input()` / `.output()`. Root only. JSONL envelopes, lazy `body()`. Nested streams and File/Blob in items are `BAD_REQUEST`. Custom fetch Links must set `duplex: 'half'`. |
@@ -185,14 +193,17 @@ New packages: same `exports` (source for workspace, `publishConfig` → `dist`),
 - Serving REST and RPC from the same handler
 - Middleware-index vs validation-index configuration (named `.use` / `.useAfter` only)
 - A catch-all plugin manager
+- CORS / body limits inside `handler.ts` instead of a plugin
+- oRPC `*HandlerPlugin` names (`CORSHandlerPlugin`, `RequestLimitHandlerPlugin`, …)
+- Folding multipart `maxFiles` / `maxFileSize` into `RequestLimitPlugin`
 
 ## Review checklist
 
 - Names match the table in `.agents/rules.md`
 - DAG still acyclic; client never depends on server; `@ts-pf/file` protocol-only; `@ts-pf/stream` protocol + contract; `@ts-pf/sse` stream + protocol; none imported by contract/server/client (prod)
-- Public exports: file = `MultipartCodec`; stream = `StreamCodec` + `stream()`; sse = `SseCodec` + `SSE_CONTENT_TYPE`. `RpcBodySource.body()` and `FetchLink` `duplex: 'half'` still present. `CallOptions.signal` forwarded; typed handlers include `signal`; middleware still has no `signal`. Streamed `ReadableStream` responses get anti-buffering headers. `FetchLink` rethrows `PFError` from `decodeResponse`
+- Public exports: file = `MultipartCodec`; stream = `StreamCodec` + `stream()`; sse = `SseCodec` + `SSE_CONTENT_TYPE`. Server plugins = `HandlerPlugin`, `CORSPlugin`, `RequestLimitPlugin`, `RequestHeadersPlugin`, `ResponseHeadersPlugin`, `RequestHeadersPluginContext`, `ResponseHeadersPluginContext`, `CORSPluginOptions`, `RequestLimitPluginOptions`. `RpcBodySource.body()` and `FetchLink` `duplex: 'half'` still present. `CallOptions.signal` forwarded; typed handlers include `signal`; middleware still has no `signal`. Streamed `ReadableStream` responses get anti-buffering headers. `FetchLink` rethrows `PFError` from `decodeResponse`. `HandlerPlugin.onResponse` runs on errors and 405. `OPTIONS` without `CORSPlugin` is still 405
 - Separation of concern for long term maintainability of all packages and their dependencies
 - Procedure completeness: `impl.router()` rejects missing/extra keys (types + runtime)
 - Errors: unknown throws → `INTERNAL` 500, no stack in JSON
-- Protocol edits update `PROTOCOL.md`
+- Protocol edits update `PROTOCOL.md`, `ProtocolErrorCode` in `packages/protocol/src/error.ts`, and the duplicated `ProtocolErrorCode` union in `packages/contract/src/infer.ts`
 - `pnpm lint && pnpm type-check && pnpm test && pnpm build`

@@ -45,25 +45,41 @@ export class FetchHandler<TCtx = unknown> {
       return { matched: false }
     }
 
+    let inbound = request
+    let context: TCtx | undefined
+
     try {
       for (const plugin of this.plugins) {
-        await plugin.onRequest?.({ request })
+        const result = await plugin.onRequest?.({ request: inbound })
+        if (result instanceof Response) {
+          return {
+            matched: true,
+            response: await this.applyOnResponse(inbound, result, context),
+          }
+        }
+        if (result instanceof Request) {
+          inbound = result
+        }
       }
 
-      if (request.method !== 'POST') {
+      if (inbound.method !== 'POST') {
         return {
           matched: true,
-          response: await this.errorResponse(
-            new PFError({
-              code: 'METHOD_NOT_ALLOWED',
-              status: 405,
-              message: 'Method not allowed',
-            }),
+          response: await this.applyOnResponse(
+            inbound,
+            await this.errorResponse(
+              new PFError({
+                code: 'METHOD_NOT_ALLOWED',
+                status: 405,
+                message: 'Method not allowed',
+              }),
+            ),
+            context,
           ),
         }
       }
 
-      const decoded = await this.codec.decodeRequest(bodySource(request))
+      const decoded = await this.codec.decodeRequest(bodySource(inbound))
       const procedure = lookupProcedure(this.router, path)
       if (!procedure) {
         throw new PFError({
@@ -73,45 +89,77 @@ export class FetchHandler<TCtx = unknown> {
         })
       }
 
-      const context =
+      context =
         typeof opts.context === 'function'
           ? await (opts.context as (req: Request) => TCtx | Promise<TCtx>)(
-              request,
+              inbound,
             )
           : opts.context
+
+      for (const plugin of this.plugins) {
+        const next = await plugin.onContext?.({
+          request: inbound,
+          context,
+        })
+        if (next !== undefined) {
+          context = next as TCtx
+        }
+      }
 
       const output = await runProcedure(
         procedure,
         decoded.input,
         context,
-        request.signal,
+        inbound.signal,
       )
-      let response = await this.successResponse(output)
-      for (const plugin of this.plugins) {
-        const next = await plugin.onResponse?.({ request, response })
-        if (next) {
-          response = next
-        }
-      }
-      return { matched: true, response }
-    } catch (error) {
-      for (const plugin of this.plugins) {
-        await plugin.onError?.({ request, error })
-      }
-      if (isPFError(error)) {
-        return { matched: true, response: await this.errorResponse(error) }
-      }
+      const response = await this.successResponse(output)
       return {
         matched: true,
-        response: await this.errorResponse(
-          new PFError({
+        response: await this.applyOnResponse(inbound, response, context),
+      }
+    } catch (error) {
+      for (const plugin of this.plugins) {
+        await plugin.onError?.(
+          context === undefined
+            ? { request: inbound, error }
+            : { request: inbound, error, context },
+        )
+      }
+      const failure = isPFError(error)
+        ? error
+        : new PFError({
             code: 'INTERNAL',
             status: 500,
             message: 'Internal server error',
-          }),
+          })
+      return {
+        matched: true,
+        response: await this.applyOnResponse(
+          inbound,
+          await this.errorResponse(failure),
+          context,
         ),
       }
     }
+  }
+
+  private async applyOnResponse(
+    request: Request,
+    response: Response,
+    context: TCtx | undefined,
+  ): Promise<Response> {
+    let current = response
+    for (const plugin of this.plugins) {
+      const next = await plugin.onResponse?.(
+        context === undefined
+          ? { request, response: current }
+          : { request, response: current, context },
+      )
+      if (next) {
+        current = next
+      }
+    }
+    return current
   }
 
   private async successResponse(output: unknown): Promise<Response> {
