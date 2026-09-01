@@ -195,6 +195,7 @@ export type ProcedureBuilder<
       context: TCtx
       errors: import('./middleware.js').ErrorFactory<TErrors>
       path: string[]
+      signal?: AbortSignal
     }) => TOutput | Promise<TOutput>,
   ) => ImplementedProcedure
 }

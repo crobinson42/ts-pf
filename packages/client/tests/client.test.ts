@@ -1,6 +1,6 @@
 import { asResult, createClient, FetchLink } from '@ts-pf/client'
 import { procedure, router } from '@ts-pf/contract'
-import { isPFError } from '@ts-pf/protocol'
+import { isPFError, JSONCodec, PFError } from '@ts-pf/protocol'
 import { createImplementer, FetchHandler } from '@ts-pf/server'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
@@ -57,8 +57,56 @@ describe('createClient', () => {
     expect(await client.planet.list()).toEqual([{ id: 1, name: 'Earth' }])
   })
 
+  it('passes AbortSignal on the request', async () => {
+    const controller = new AbortController()
+    let seen: AbortSignal | undefined
+    const withSignal = createClient<typeof contract>(
+      new FetchLink({
+        url: 'http://localhost/rpc',
+        fetch: async (input, init) => {
+          const req =
+            input instanceof Request ? input : new Request(input, init)
+          seen = req.signal
+          return fetchImpl(req)
+        },
+      }),
+    )
+    await withSignal.planet.find({ id: 1 }, { signal: controller.signal })
+    expect(seen).toBeDefined()
+    controller.abort()
+    expect(seen?.aborted).toBe(true)
+  })
+
   it('rejects with PFError', async () => {
     await expect(client.planet.find({ id: -1 })).rejects.toSatisfy(isPFError)
+  })
+
+  it('rethrows PFError from decodeResponse', async () => {
+    const inner = new JSONCodec()
+    const clientWithCodec = createClient<typeof contract>(
+      new FetchLink({
+        url: 'http://localhost/rpc',
+        fetch: fetchImpl,
+        codec: {
+          encodeRequest: (req) => inner.encodeRequest(req),
+          decodeRequest: (source) => inner.decodeRequest(source),
+          encodeSuccess: (output) => inner.encodeSuccess(output),
+          encodeFailure: (error) => inner.encodeFailure(error),
+          decodeResponse: async () => {
+            throw new PFError({
+              code: 'BAD_REQUEST',
+              status: 400,
+              message: 'malformed stream',
+            })
+          },
+        },
+      }),
+    )
+    await expect(clientWithCodec.planet.list()).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+      status: 400,
+      message: 'malformed stream',
+    })
   })
 
   it('asResult() returns a result union', async () => {

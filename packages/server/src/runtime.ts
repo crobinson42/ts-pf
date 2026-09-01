@@ -12,6 +12,7 @@ export type HandlerFn = (opts: {
   context: unknown
   errors: ReturnType<typeof createErrorFactory>
   path: string[]
+  signal?: AbortSignal
 }) => unknown | Promise<unknown>
 
 export type ImplementedProcedure = {
@@ -46,6 +47,7 @@ export async function runProcedure(
   proc: ImplementedProcedure,
   rawInput: unknown,
   context: unknown,
+  signal?: AbortSignal,
 ): Promise<unknown> {
   const def = proc['~pf']
   const errors = createErrorFactory(def.contract['~pf'].errors)
@@ -60,6 +62,7 @@ export async function runProcedure(
         context: ctx,
         errors,
         path: def.path,
+        ...(signal ? { signal } : {}),
       })
       const outputSchema = def.contract['~pf'].output
       if (outputSchema) {

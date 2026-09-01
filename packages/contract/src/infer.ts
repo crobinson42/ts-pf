@@ -45,9 +45,11 @@ export interface ContractResultPromise<T, E> extends Promise<T> {
   readonly '~pfError'?: E
 }
 
+export type CallOptions = { signal?: AbortSignal }
+
 export type ProcedureClient<I, O, E extends ErrorMap> = I extends void
-  ? () => ContractResultPromise<O, ClientError<E>>
-  : (input: I) => ContractResultPromise<O, ClientError<E>>
+  ? (opts?: CallOptions) => ContractResultPromise<O, ClientError<E>>
+  : (input: I, opts?: CallOptions) => ContractResultPromise<O, ClientError<E>>
 
 export type ContractClient<T> = {
   [K in keyof T as K extends '~pf' ? never : K]: InferProc<T[K]> extends never

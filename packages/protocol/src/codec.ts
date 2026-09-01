@@ -1,4 +1,10 @@
-import type { RpcCodec, RpcRequest, RpcResponse } from './envelope.js'
+import type {
+  RpcBodySource,
+  RpcCodec,
+  RpcEncodedBody,
+  RpcRequest,
+  RpcResponse,
+} from './envelope.js'
 import { PFError } from './error.js'
 
 function parseJson(body: string): unknown {
@@ -13,16 +19,21 @@ function parseJson(body: string): unknown {
   }
 }
 
+function jsonBody(body: string): RpcEncodedBody {
+  return { contentType: 'application/json', body }
+}
+
 export class JSONCodec implements RpcCodec {
-  encodeRequest(req: RpcRequest): string {
+  encodeRequest(req: RpcRequest): RpcEncodedBody {
     if (req.input === undefined) {
-      return '{}'
+      return jsonBody('{}')
     }
-    return JSON.stringify({ input: req.input })
+    return jsonBody(JSON.stringify({ input: req.input }))
   }
 
-  decodeRequest(body: string): RpcRequest {
-    const parsed = parseJson(body)
+  async decodeRequest(source: RpcBodySource): Promise<RpcRequest> {
+    const text = await source.text()
+    const parsed = parseJson(text.length > 0 ? text : '{}')
     if (
       parsed === null ||
       typeof parsed !== 'object' ||
@@ -41,15 +52,15 @@ export class JSONCodec implements RpcCodec {
     return { input }
   }
 
-  encodeSuccess<T>(output: T): string {
-    return JSON.stringify({ ok: true, output })
+  encodeSuccess<T>(output: T): RpcEncodedBody {
+    return jsonBody(JSON.stringify({ ok: true, output }))
   }
 
   encodeFailure(error: {
     code: string
     message: string
     data?: unknown
-  }): string {
+  }): RpcEncodedBody {
     const payload: { code: string; message: string; data?: unknown } = {
       code: error.code,
       message: error.message,
@@ -57,11 +68,13 @@ export class JSONCodec implements RpcCodec {
     if (error.data !== undefined) {
       payload.data = error.data
     }
-    return JSON.stringify({ ok: false, error: payload })
+    return jsonBody(JSON.stringify({ ok: false, error: payload }))
   }
 
-  decodeResponse<T = unknown>(body: string): RpcResponse<T> {
-    const parsed = parseJson(body)
+  async decodeResponse<T = unknown>(
+    source: RpcBodySource,
+  ): Promise<RpcResponse<T>> {
+    const parsed = parseJson(await source.text())
     if (
       parsed === null ||
       typeof parsed !== 'object' ||

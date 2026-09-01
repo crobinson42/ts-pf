@@ -1,6 +1,6 @@
 import { procedure, router } from '@ts-pf/contract'
 import { createImplementer, createLocalClient } from '@ts-pf/server'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, expectTypeOf, it } from 'vitest'
 import { z } from 'zod'
 
 const contract = router({
@@ -20,6 +20,14 @@ describe('createImplementer', () => {
     const client = createLocalClient(app, { context: {} })
     expect(await client.ping()).toBe('pong')
     expect(await client.echo({ n: 1 })).toEqual({ n: 1 })
+  })
+
+  it('types handler signal as an optional AbortSignal', () => {
+    const impl = createImplementer(contract)
+    impl.ping.handler(async ({ signal }) => {
+      expectTypeOf(signal).toEqualTypeOf<AbortSignal | undefined>()
+      return 'pong'
+    })
   })
 
   it('throws PFError VALIDATION on bad input', async () => {

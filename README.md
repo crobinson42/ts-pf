@@ -14,6 +14,9 @@ Requires Node.js 18+.
 | [`@ts-pf/protocol`](packages/protocol) | Portable JSON RPC envelope, `PFError`, codec |
 | [`@ts-pf/server`](packages/server) | `createImplementer()`, middleware, `FetchHandler`, `createLocalClient()` |
 | [`@ts-pf/client`](packages/client) | `createClient()`, `FetchLink`, `asResult()` |
+| [`@ts-pf/file`](packages/file) | Opt-in `MultipartCodec` for `File`/`Blob` attachments |
+| [`@ts-pf/stream`](packages/stream) | Opt-in `StreamCodec` for root `AsyncIterable` (JSONL) |
+| [`@ts-pf/sse`](packages/sse) | Opt-in `SseCodec` for SSE output framing of the same envelopes |
 
 Wire spec: [packages/protocol/PROTOCOL.md](packages/protocol/PROTOCOL.md).
 
@@ -98,6 +101,7 @@ export const client: ContractClient<typeof contract> = createClient(
 
 const planet = await client.planet.find({ id: 1 })
 const listed = await client.planet.list()
+// optional second arg: { signal?: AbortSignal } (also on handler opts)
 
 const result = await asResult(client.planet.find({ id: 1 }))
 if (!result.ok) {
@@ -113,7 +117,5 @@ oRPC is a dual RPC + OpenAPI platform with many adapters, serializers, and integ
 
 ```sh
 pnpm install
-pnpm test
-pnpm type-check
-pnpm build
+pnpm lint && pnpm type-check && pnpm test && pnpm build
 ```

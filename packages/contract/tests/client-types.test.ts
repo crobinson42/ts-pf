@@ -15,8 +15,10 @@ describe('ContractClient', () => {
 
     type Client = ContractClient<typeof contract>
     expectTypeOf<Client['planet']['find']>().parameters.toEqualTypeOf<
-      [{ id: number }]
+      [{ id: number }, { signal?: AbortSignal }?]
     >()
-    expectTypeOf<Client['planet']['list']>().parameters.toEqualTypeOf<[]>()
+    expectTypeOf<Client['planet']['list']>().parameters.toEqualTypeOf<
+      [{ signal?: AbortSignal }?]
+    >()
   })
 })

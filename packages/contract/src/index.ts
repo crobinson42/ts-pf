@@ -1,6 +1,7 @@
 export { ContractBuilder, procedure, router } from './builder.js'
 export type { ErrorDef, ErrorMap } from './errors.js'
 export type {
+  CallOptions,
   ClientError,
   ContractClient,
   ContractResultPromise,

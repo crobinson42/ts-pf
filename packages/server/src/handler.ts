@@ -5,7 +5,9 @@ import {
   PROTOCOL_HEADER,
   PROTOCOL_VERSION,
   parseProcedurePath,
+  type RpcBodySource,
   type RpcCodec,
+  type RpcEncodedBody,
 } from '@ts-pf/protocol'
 import type { HandlerPlugin } from './plugins.js'
 import {
@@ -51,7 +53,7 @@ export class FetchHandler<TCtx = unknown> {
       if (request.method !== 'POST') {
         return {
           matched: true,
-          response: this.errorResponse(
+          response: await this.errorResponse(
             new PFError({
               code: 'METHOD_NOT_ALLOWED',
               status: 405,
@@ -61,8 +63,7 @@ export class FetchHandler<TCtx = unknown> {
         }
       }
 
-      const body = await request.text()
-      const decoded = this.codec.decodeRequest(body.length > 0 ? body : '{}')
+      const decoded = await this.codec.decodeRequest(bodySource(request))
       const procedure = lookupProcedure(this.router, path)
       if (!procedure) {
         throw new PFError({
@@ -79,8 +80,13 @@ export class FetchHandler<TCtx = unknown> {
             )
           : opts.context
 
-      const output = await runProcedure(procedure, decoded.input, context)
-      let response = this.successResponse(output)
+      const output = await runProcedure(
+        procedure,
+        decoded.input,
+        context,
+        request.signal,
+      )
+      let response = await this.successResponse(output)
       for (const plugin of this.plugins) {
         const next = await plugin.onResponse?.({ request, response })
         if (next) {
@@ -93,11 +99,11 @@ export class FetchHandler<TCtx = unknown> {
         await plugin.onError?.({ request, error })
       }
       if (isPFError(error)) {
-        return { matched: true, response: this.errorResponse(error) }
+        return { matched: true, response: await this.errorResponse(error) }
       }
       return {
         matched: true,
-        response: this.errorResponse(
+        response: await this.errorResponse(
           new PFError({
             code: 'INTERNAL',
             status: 500,
@@ -108,23 +114,36 @@ export class FetchHandler<TCtx = unknown> {
     }
   }
 
-  private successResponse(output: unknown): Response {
-    return new Response(this.codec.encodeSuccess(output), {
-      status: 200,
-      headers: {
-        'content-type': 'application/json',
-        [PROTOCOL_HEADER]: PROTOCOL_VERSION,
-      },
-    })
+  private async successResponse(output: unknown): Promise<Response> {
+    return encodedResponse(await this.codec.encodeSuccess(output), 200)
   }
 
-  private errorResponse(error: PFError): Response {
-    return new Response(this.codec.encodeFailure(error.toJSON()), {
-      status: error.status,
-      headers: {
-        'content-type': 'application/json',
-        [PROTOCOL_HEADER]: PROTOCOL_VERSION,
-      },
-    })
+  private async errorResponse(error: PFError): Promise<Response> {
+    return encodedResponse(
+      await this.codec.encodeFailure(error.toJSON()),
+      error.status,
+    )
   }
+}
+
+function bodySource(request: Request): RpcBodySource {
+  return {
+    contentType: request.headers.get('content-type'),
+    text: () => request.text(),
+    formData: () => request.formData(),
+    body: () => request.body,
+  }
+}
+
+function encodedResponse(encoded: RpcEncodedBody, status: number): Response {
+  const headers = new Headers()
+  headers.set(PROTOCOL_HEADER, PROTOCOL_VERSION)
+  if (!(encoded.body instanceof FormData)) {
+    headers.set('content-type', encoded.contentType)
+  }
+  if (encoded.body instanceof ReadableStream) {
+    headers.set('cache-control', 'no-cache, no-transform')
+    headers.set('x-accel-buffering', 'no')
+  }
+  return new Response(encoded.body, { status, headers })
 }

@@ -1,0 +1,38 @@
+{
+  "name": "@ts-pf/file",
+  "version": "0.0.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "type-check": "tsc --noEmit",
+    "lint": "biome check src tests"
+  },
+  "dependencies": {
+    "@ts-pf/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "@ts-pf/client": "workspace:*",
+    "@ts-pf/contract": "workspace:*",
+    "@ts-pf/server": "workspace:*",
+    "zod": "^4.0.0"
+  }
+}

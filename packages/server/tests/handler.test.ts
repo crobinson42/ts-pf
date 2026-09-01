@@ -72,6 +72,111 @@ describe('FetchHandler', () => {
     })
   })
 
+  it('uses the codec content-type on success', async () => {
+    const handlerWithCodec = new FetchHandler(app, {
+      codec: {
+        encodeRequest: (req) => ({
+          contentType: 'application/json',
+          body: JSON.stringify(req),
+        }),
+        decodeRequest: async (source) =>
+          JSON.parse(await source.text()) as { input?: unknown },
+        encodeSuccess: (output) => ({
+          contentType: 'application/x-test+json',
+          body: JSON.stringify({ ok: true, output }),
+        }),
+        encodeFailure: (error) => ({
+          contentType: 'application/json',
+          body: JSON.stringify({ ok: false, error }),
+        }),
+        decodeResponse: async (source) => JSON.parse(await source.text()),
+      },
+    })
+    const result = await handlerWithCodec.handle(
+      new Request('http://localhost/rpc/planet/find', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ input: { id: 1 } }),
+      }),
+      { prefix: '/rpc', context: {} },
+    )
+    expect(result.matched).toBe(true)
+    if (!result.matched) {
+      throw new Error('expected match')
+    }
+    expect(result.response.headers.get('content-type')).toBe(
+      'application/x-test+json',
+    )
+  })
+
+  it('forwards a ReadableStream codec body', async () => {
+    const line = `${JSON.stringify({ ok: true, output: { id: 1 } })}\n`
+    const handlerWithCodec = new FetchHandler(app, {
+      codec: {
+        encodeRequest: (req) => ({
+          contentType: 'application/json',
+          body: JSON.stringify(req),
+        }),
+        decodeRequest: async (source) =>
+          JSON.parse(await source.text()) as { input?: unknown },
+        encodeSuccess: () => ({
+          contentType: 'application/jsonl',
+          body: new ReadableStream({
+            start(controller) {
+              controller.enqueue(new TextEncoder().encode(line))
+              controller.close()
+            },
+          }),
+        }),
+        encodeFailure: (error) => ({
+          contentType: 'application/json',
+          body: JSON.stringify({ ok: false, error }),
+        }),
+        decodeResponse: async (source) => JSON.parse(await source.text()),
+      },
+    })
+    const result = await handlerWithCodec.handle(
+      new Request('http://localhost/rpc/planet/find', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ input: { id: 1 } }),
+      }),
+      { prefix: '/rpc', context: {} },
+    )
+    expect(result.matched).toBe(true)
+    if (!result.matched) {
+      throw new Error('expected match')
+    }
+    expect(result.response.headers.get('content-type')).toBe(
+      'application/jsonl',
+    )
+    expect(result.response.headers.get('cache-control')).toBe(
+      'no-cache, no-transform',
+    )
+    expect(result.response.headers.get('x-accel-buffering')).toBe('no')
+    expect(await result.response.text()).toBe(line)
+  })
+
+  it('does not set anti-buffering headers on JSON string bodies', async () => {
+    const result = await handler.handle(
+      new Request('http://localhost/rpc/planet/find', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-ts-pf-protocol': '1',
+        },
+        body: JSON.stringify({ input: { id: 1 } }),
+      }),
+      { prefix: '/rpc', context: {} },
+    )
+    expect(result.matched).toBe(true)
+    if (!result.matched) {
+      throw new Error('expected match')
+    }
+    expect(result.response.headers.get('cache-control')).toBeNull()
+    expect(result.response.headers.get('x-accel-buffering')).toBeNull()
+  })
+
   it('rejects non-POST with 405 METHOD_NOT_ALLOWED', async () => {
     const result = await handler.handle(
       new Request('http://localhost/rpc/planet/find', { method: 'GET' }),

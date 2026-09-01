@@ -1,10 +1,13 @@
 import {
+  isPFError,
   JSONCodec,
   PFError,
   type PFResultPromise,
   PROTOCOL_HEADER,
   PROTOCOL_VERSION,
+  type RpcBodySource,
   type RpcCodec,
+  type RpcEncodedBody,
   type RpcResponse,
 } from '@ts-pf/protocol'
 import { type Interceptor, runInterceptors } from './interceptors.js'
@@ -61,16 +64,21 @@ export class FetchLink implements Link {
     const headers = new Headers(
       typeof this.headers === 'function' ? await this.headers() : this.headers,
     )
-    headers.set('content-type', 'application/json')
     headers.set(PROTOCOL_HEADER, PROTOCOL_VERSION)
 
-    const init: RequestInit = {
+    const encoded = await this.codec.encodeRequest({ input })
+    applyEncodedHeaders(headers, encoded)
+
+    const init: RequestInit & { duplex?: 'half' } = {
       method: 'POST',
       headers,
-      body: this.codec.encodeRequest({ input }),
+      body: encoded.body,
     }
     if (signal) {
       init.signal = signal
+    }
+    if (encoded.body instanceof ReadableStream) {
+      init.duplex = 'half'
     }
     const request = new Request(url, init)
 
@@ -90,11 +98,13 @@ export class FetchLink implements Link {
       })
     }
 
-    const text = await response.text()
     let decoded: RpcResponse
     try {
-      decoded = this.codec.decodeResponse(text)
-    } catch {
+      decoded = await this.codec.decodeResponse(bodySource(response))
+    } catch (error) {
+      if (isPFError(error)) {
+        throw error
+      }
       throw new PFError({
         code: 'INTERNAL',
         status: response.status,
@@ -122,4 +132,21 @@ function joinUrl(base: string, segments: string[]): string {
     return trimmed
   }
   return `${trimmed}/${segments.join('/')}`
+}
+
+function bodySource(response: Response): RpcBodySource {
+  return {
+    contentType: response.headers.get('content-type'),
+    text: () => response.text(),
+    formData: () => response.formData(),
+    body: () => response.body,
+  }
+}
+
+function applyEncodedHeaders(headers: Headers, encoded: RpcEncodedBody): void {
+  if (encoded.body instanceof FormData) {
+    headers.delete('content-type')
+    return
+  }
+  headers.set('content-type', encoded.contentType)
 }
