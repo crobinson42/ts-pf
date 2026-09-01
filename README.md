@@ -22,7 +22,7 @@ Wire spec: [packages/protocol/PROTOCOL.md](packages/protocol/PROTOCOL.md).
 ```ts
 import { procedure, router } from '@ts-pf/contract'
 import { z } from 'zod'
-import { Type } from '@sinclair/typebox'
+import Type from 'typebox'
 
 export const contract = router({
   planet: {

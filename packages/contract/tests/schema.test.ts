@@ -1,5 +1,5 @@
-import { Type } from '@sinclair/typebox'
 import { registerSchemaAdapter, validateSchema } from '@ts-pf/contract'
+import Type from 'typebox'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 
@@ -34,6 +34,9 @@ describe('validateSchema', () => {
     expect(result.success).toBe(false)
     if (!result.success) {
       expect(result.issues.length).toBeGreaterThan(0)
+      expect(result.issues.some((issue) => issue.path.includes('name'))).toBe(
+        true,
+      )
     }
   })
 

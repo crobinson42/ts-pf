@@ -30,15 +30,15 @@
     "@standard-schema/spec": "^1.0.0"
   },
   "peerDependencies": {
-    "@sinclair/typebox": "^0.34.0"
+    "typebox": "^1.0.0"
   },
   "peerDependenciesMeta": {
-    "@sinclair/typebox": {
+    "typebox": {
       "optional": true
     }
   },
   "devDependencies": {
-    "@sinclair/typebox": "^0.34.41",
+    "typebox": "^1.3.24",
     "zod": "^4.0.0"
   }
 }

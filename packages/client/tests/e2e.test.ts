@@ -1,7 +1,7 @@
-import { Type } from '@sinclair/typebox'
 import { createClient, FetchLink } from '@ts-pf/client'
 import { procedure, router } from '@ts-pf/contract'
 import { createImplementer, FetchHandler } from '@ts-pf/server'
+import Type from 'typebox'
 import { describe, expect, expectTypeOf, it } from 'vitest'
 import { z } from 'zod'
 

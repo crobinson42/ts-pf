@@ -1,4 +1,5 @@
 import type { StandardSchemaV1 } from '@standard-schema/spec'
+import type { Static, TSchema } from 'typebox'
 import { standardSchemaAdapter } from './adapters/standard-schema.js'
 import { typeboxAdapter } from './adapters/typebox.js'
 import type { SchemaAdapter, SchemaResult } from './schema-types.js'
@@ -43,7 +44,7 @@ export async function validateSchema<T = unknown>(
 export type AnySchema = StandardSchemaV1 | TypeBoxLike
 
 export interface TypeBoxLike {
-  readonly [key: string]: unknown
+  readonly '~kind': string
 }
 
 type InferStandardIO<S, Kind extends 'input' | 'output'> = S extends {
@@ -54,14 +55,18 @@ type InferStandardIO<S, Kind extends 'input' | 'output'> = S extends {
     : unknown
   : unknown
 
+type InferTypeBox<S> = S extends { readonly '~kind': string }
+  ? Static<Extract<S, TSchema>>
+  : unknown
+
 export type InferSchemaOutput<S> = S extends { _zod: { output: infer Z } }
   ? Z
-  : S extends { static: infer T }
-    ? T
+  : S extends { readonly '~kind': string }
+    ? InferTypeBox<S>
     : InferStandardIO<S, 'output'>
 
 export type InferSchemaInput<S> = S extends { _zod: { input: infer Z } }
   ? Z
-  : S extends { static: infer T }
-    ? T
+  : S extends { readonly '~kind': string }
+    ? InferTypeBox<S>
     : InferStandardIO<S, 'input'>
