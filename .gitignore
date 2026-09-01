@@ -1,6 +1,7 @@
 node_modules
 dist
 .turbo
+.idea
 *.tsbuildinfo
 .DS_Store
 coverage
