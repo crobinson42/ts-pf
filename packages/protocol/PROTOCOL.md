@@ -49,9 +49,17 @@ x-ts-pf-protocol: 1
 | `PAYLOAD_TOO_LARGE` | 413 | Request body larger than the configured handler limit |
 | `INTERNAL` | 500 | Unknown throw. Output schema failures also use 500 (server bug). |
 
-Contract-declared error codes use the status on the error definition.
+The discriminator is `error.code`. HTTP status is unary transport only; it is not in the JSON body.
 
-Network failures on the TypeScript client are surfaced as `INTERNAL` with `status: 0`.
+The table above is a **closed** set. Procedure-declared codes are application-defined strings with optional `data`. `VALIDATION` is the only protocol code with a specified `data` shape: `{ issues: { message, path }[] }` where `path` is `(string | number)[]`. Other protocol codes omit `data`. `INTERNAL` never includes a stack or output-schema issues.
+
+Unknown `code` values are valid JSON; clients must catch-all. A procedure may reuse `NOT_FOUND` for a missing entity. Do not redeclare `VALIDATION`, `INTERNAL`, `BAD_REQUEST`, `METHOD_NOT_ALLOWED`, or `PAYLOAD_TOO_LARGE`.
+
+After a stream starts, HTTP status stays 200; the same `{ ok: false, error }` object appears as a JSONL line or SSE `event: error`. Switch on `code`, not HTTP status.
+
+TypeScript `PFError`, `instanceof`, and `asResult` are JS conveniences. They are not required to consume the API. Any HTTP client parses this envelope.
+
+Contract-declared error codes use the status on the error definition. The TypeScript FetchLink maps **local** network failures to `INTERNAL` with `status: 0`; that status is not on the wire and is not a protocol status.
 
 ## Versioning
 

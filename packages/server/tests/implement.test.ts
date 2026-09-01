@@ -65,4 +65,24 @@ describe('createImplementer', () => {
       data: { id: 9 },
     })
   })
+
+  it('errors.NOT_FOUND requires declared data', () => {
+    const c = router({
+      find: procedure
+        .input(z.object({ id: z.number() }))
+        .output(z.object({ id: z.number() }))
+        .errors({
+          NOT_FOUND: { status: 404, data: z.object({ id: z.number() }) },
+          EMPTY: { status: 410 },
+        }),
+    })
+    const impl = createImplementer(c)
+    impl.find.handler(async ({ errors, input }) => {
+      expectTypeOf(errors.NOT_FOUND).parameters.toEqualTypeOf<
+        [{ id: number }]
+      >()
+      expectTypeOf(errors.EMPTY).parameters.toEqualTypeOf<[]>()
+      throw errors.NOT_FOUND({ id: input.id })
+    })
+  })
 })

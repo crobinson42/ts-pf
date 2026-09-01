@@ -1,10 +1,11 @@
 import {
   type ContractProcedure,
+  type ErrorMap,
   isContractProcedure,
   validateSchema,
 } from '@ts-pf/contract'
 import { PFError } from '@ts-pf/protocol'
-import { createErrorFactory } from './error-factory.js'
+import { createErrorFactory, finalizeDeclaredError } from './error-factory.js'
 import type { MiddlewareFn } from './middleware.js'
 
 export type HandlerFn = (opts: {
@@ -69,10 +70,9 @@ export async function runProcedure(
         const result = await validateSchema(outputSchema, output)
         if (!result.success) {
           throw new PFError({
-            code: 'VALIDATION',
+            code: 'INTERNAL',
             status: 500,
-            message: 'Output validation failed',
-            data: { issues: result.issues },
+            message: 'Internal server error',
           })
         }
         return result.value
@@ -131,7 +131,51 @@ export async function runProcedure(
     })
   }
 
-  return runUse(0)
+  const map = def.contract['~pf'].errors
+  try {
+    const output = await runUse(0)
+    return wrapIfAsyncIterable(output, map)
+  } catch (error) {
+    return await finalizeDeclaredError(error, map)
+  }
+}
+
+function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
+  return (
+    typeof value === 'object' && value !== null && Symbol.asyncIterator in value
+  )
+}
+
+function wrapIfAsyncIterable(value: unknown, map: ErrorMap): unknown {
+  if (!isAsyncIterable(value)) {
+    return value
+  }
+  return wrapAsyncIterable(value, map)
+}
+
+function wrapAsyncIterable(
+  value: AsyncIterable<unknown>,
+  map: ErrorMap,
+): AsyncIterable<unknown> {
+  return {
+    [Symbol.asyncIterator]() {
+      const it = value[Symbol.asyncIterator]()
+      return {
+        async next() {
+          try {
+            return await it.next()
+          } catch (error) {
+            return await finalizeDeclaredError(error, map)
+          }
+        },
+        async return() {
+          return it.return
+            ? it.return()
+            : { done: true as const, value: undefined }
+        },
+      }
+    },
+  }
 }
 
 export function lookupProcedure(

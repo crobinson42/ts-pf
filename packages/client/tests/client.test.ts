@@ -2,7 +2,7 @@ import { asResult, createClient, FetchLink } from '@ts-pf/client'
 import { procedure, router } from '@ts-pf/contract'
 import { isPFError, JSONCodec, PFError } from '@ts-pf/protocol'
 import { createImplementer, FetchHandler } from '@ts-pf/server'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, expectTypeOf, it } from 'vitest'
 import { z } from 'zod'
 
 const contract = router({
@@ -13,7 +13,9 @@ const contract = router({
     find: procedure
       .input(z.object({ id: z.number() }))
       .output(z.object({ id: z.number(), name: z.string() }))
-      .errors({ NOT_FOUND: { status: 404 } }),
+      .errors({
+        NOT_FOUND: { status: 404, data: z.object({ id: z.number() }) },
+      }),
   },
 })
 
@@ -23,7 +25,7 @@ const app = impl.router({
     list: impl.planet.list.handler(async () => [{ id: 1, name: 'Earth' }]),
     find: impl.planet.find.handler(async ({ input, errors }) => {
       if (input.id < 0) {
-        throw errors.NOT_FOUND()
+        throw errors.NOT_FOUND({ id: input.id })
       }
       return { id: input.id, name: 'Earth' }
     }),
@@ -114,6 +116,15 @@ describe('createClient', () => {
     expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.error.code).toBe('NOT_FOUND')
+    }
+  })
+
+  it('asResult preserves ClientError narrowing', async () => {
+    const result = await asResult(client.planet.find({ id: -1 }))
+    expect(result.ok).toBe(false)
+    if (!result.ok && result.error.code === 'NOT_FOUND') {
+      expectTypeOf(result.error.data).toEqualTypeOf<{ id: number }>()
+      expect(result.error.data).toEqual({ id: -1 })
     }
   })
 

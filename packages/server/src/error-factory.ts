@@ -1,5 +1,5 @@
-import type { ErrorMap } from '@ts-pf/contract'
-import { PFError } from '@ts-pf/protocol'
+import { type ErrorMap, validateSchema } from '@ts-pf/contract'
+import { isPFError, PFError } from '@ts-pf/protocol'
 import type { ErrorFactory } from './middleware.js'
 
 export function createErrorFactory(map: ErrorMap): ErrorFactory<ErrorMap> {
@@ -15,4 +15,31 @@ export function createErrorFactory(map: ErrorMap): ErrorFactory<ErrorMap> {
     }) as ErrorFactory[string]
   }
   return factory
+}
+
+export async function finalizeDeclaredError(
+  error: unknown,
+  map: ErrorMap,
+): Promise<never> {
+  if (!isPFError(error)) {
+    throw error
+  }
+  const def = map[error.code]
+  if (def?.data === undefined) {
+    throw error
+  }
+  const result = await validateSchema(def.data, error.data)
+  if (!result.success) {
+    throw new PFError({
+      code: 'INTERNAL',
+      status: 500,
+      message: 'Internal server error',
+    })
+  }
+  throw new PFError({
+    code: error.code,
+    status: error.status,
+    message: error.message,
+    ...(result.value !== undefined ? { data: result.value } : {}),
+  })
 }

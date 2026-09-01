@@ -33,7 +33,7 @@ export const contract = router({
     find: procedure
       .input(z.object({ id: z.number() }))
       .output(z.object({ id: z.number(), name: z.string() }))
-      .errors({ NOT_FOUND: { status: 404 } }),
+      .errors({ NOT_FOUND: { status: 404, data: z.object({ id: z.number() }) } }),
     create: procedure
       .input(Type.Object({ name: Type.String() }))
       .output(Type.Object({ id: Type.Number(), name: Type.String() })),
@@ -63,7 +63,7 @@ export const app = impl.use(requireUser).router({
     list: impl.planet.list.handler(async ({ context }) => context.db.planets.all()),
     find: impl.planet.find.handler(async ({ input, context, errors }) => {
       const row = await context.db.planets.get(input.id)
-      if (!row) throw errors.NOT_FOUND()
+      if (!row) throw errors.NOT_FOUND({ id: input.id })
       return row
     }),
     create: impl.planet.create.handler(async ({ input, context }) =>
@@ -135,10 +135,12 @@ const listed = await client.planet.list()
 // optional second arg: { signal?: AbortSignal } (also on handler opts)
 
 const result = await asResult(client.planet.find({ id: 1 }))
-if (!result.ok) {
-  result.error.code
+if (!result.ok && result.error.code === 'NOT_FOUND') {
+  result.error.data.id
 }
 ```
+
+Any HTTP client parses the same `{ ok: false, error: { code, message, data? } }` envelope and switches on `error.code`. `asResult` is optional TypeScript DX.
 
 ## Why not oRPC?
 

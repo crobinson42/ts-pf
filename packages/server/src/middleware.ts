@@ -1,3 +1,5 @@
+import type { ErrorDef, InferErrorData } from '@ts-pf/contract'
+
 export type NextFn<TCtx, TInput, TOutput> = (opts?: {
   context?: Partial<TCtx>
   input?: TInput
@@ -17,6 +19,10 @@ export type MiddlewareFn<
 
 export type ErrorFactory<
   E extends Record<string, unknown> = Record<string, unknown>,
-> = {
-  [K in keyof E]: (data?: unknown) => never
-}
+> = string extends keyof E
+  ? { [K in keyof E]: (data?: unknown) => never }
+  : {
+      [K in keyof E]: [InferErrorData<Extract<E[K], ErrorDef>>] extends [never]
+        ? () => never
+        : (data: InferErrorData<Extract<E[K], ErrorDef>>) => never
+    }

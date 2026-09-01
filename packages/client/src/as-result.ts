@@ -6,7 +6,7 @@ export type CallResult<T, E> =
 
 export async function asResult<T, E = PFError>(
   promise: Promise<T> & { readonly '~pfError'?: E },
-): Promise<CallResult<T, E | PFError>> {
+): Promise<CallResult<T, E>> {
   try {
     return { ok: true, data: await promise }
   } catch (error) {

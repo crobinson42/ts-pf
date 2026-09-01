@@ -1,7 +1,10 @@
 import {
+  type ClientError,
+  type InferContractErrors,
   type InferContractInputs,
   type InferContractOutputs,
   procedure,
+  router,
 } from '@ts-pf/contract'
 import { describe, expectTypeOf, it } from 'vitest'
 import { z } from 'zod'
@@ -32,5 +35,60 @@ describe('contract infer types', () => {
     expectTypeOf<
       InferContractInputs<{ x: typeof noIn }>['x']
     >().toEqualTypeOf<void>()
+  })
+
+  it('ClientError narrows data from code', () => {
+    const find = procedure
+      .input(z.object({ id: z.number() }))
+      .output(z.object({ name: z.string() }))
+      .errors({
+        NOT_FOUND: { status: 404, data: z.object({ id: z.number() }) },
+        GONE: { status: 410 },
+      })
+
+    type Err = ClientError<(typeof find)['~pf']['errors']>
+
+    const notFound = {
+      code: 'NOT_FOUND' as const,
+      status: 404,
+      message: 'x',
+      data: { id: 1 },
+    }
+    const gone = { code: 'GONE' as const, status: 410, message: 'x' }
+    expectTypeOf(notFound).toExtend<Err>()
+    expectTypeOf(gone).toExtend<Err>()
+
+    function take(err: Err) {
+      if (err.code === 'NOT_FOUND') {
+        expectTypeOf(err.data).toEqualTypeOf<{ id: number }>()
+      }
+      if (err.code === 'GONE') {
+        expectTypeOf(err.data).toEqualTypeOf<undefined>()
+      }
+      if (err.code === 'VALIDATION') {
+        expectTypeOf(err.data).toEqualTypeOf<{
+          issues: { message: string; path: Array<string | number> }[]
+        }>()
+      }
+    }
+    take(notFound)
+  })
+
+  it('InferContractErrors walks the router', () => {
+    const contract = router({
+      planet: {
+        find: procedure
+          .input(z.object({ id: z.number() }))
+          .output(z.object({ name: z.string() }))
+          .errors({
+            NOT_FOUND: { status: 404, data: z.object({ id: z.number() }) },
+          }),
+      },
+    })
+    type Errors = InferContractErrors<typeof contract>
+    expectTypeOf<Errors['planet']['find']>().toMatchTypeOf<{
+      code: 'NOT_FOUND'
+      data: { id: number }
+    }>()
   })
 })
