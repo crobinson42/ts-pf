@@ -114,7 +114,6 @@ New packages: same `exports` (source for workspace, `publishConfig` → `dist`),
 
 ## Anti-patterns
 
-- Public APIs named `oc`, `os`, `implement`, `RPCHandler`, `createRouterClient`, `safe`, `RPCLink`
 - Client importing `@ts-pf/server` (tests may, as a **devDependency**)
 - HTTP routing or `Request` types in `contract`
 - Schema validation in `protocol`
@@ -127,6 +126,7 @@ New packages: same `exports` (source for workspace, `publishConfig` → `dist`),
 
 - Names match the table in `.agents/rules.md`
 - DAG still acyclic; client still schema-free of server
+- Separation of concern for long term maintainability of all packages and their dependencies
 - Procedure completeness: `impl.router()` rejects missing/extra keys (types + runtime)
 - Errors: unknown throws → `INTERNAL` 500, no stack in JSON
 - Protocol edits update `PROTOCOL.md`
