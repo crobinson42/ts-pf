@@ -29,6 +29,7 @@
     "@ts-pf/protocol": "workspace:*"
   },
   "devDependencies": {
+    "@sinclair/typebox": "^0.34.41",
     "@ts-pf/server": "workspace:*",
     "zod": "^4.0.0"
   }

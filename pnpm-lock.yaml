@@ -39,6 +39,9 @@ importers:
         specifier: workspace:*
         version: link:../protocol
     devDependencies:
+      '@sinclair/typebox':
+        specifier: ^0.34.41
+        version: 0.34.52
       '@ts-pf/server':
         specifier: workspace:*
         version: link:../server
