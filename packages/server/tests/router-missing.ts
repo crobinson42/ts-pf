@@ -1,22 +1,22 @@
-import { oc } from '@ts-pf/contract'
-import { implement } from '@ts-pf/server'
+import { procedure, router } from '@ts-pf/contract'
+import { createImplementer } from '@ts-pf/server'
 import { z } from 'zod'
 
-const contract = oc.router({
+const contract = router({
   planet: {
-    find: oc
+    find: procedure
       .input(z.object({ id: z.number() }))
       .output(z.object({ id: z.number() })),
-    create: oc
+    create: procedure
       .input(z.object({ name: z.string() }))
       .output(z.object({ id: z.number() })),
   },
 })
-const os = implement(contract)
+const impl = createImplementer(contract)
 
-os.router({
+impl.router({
   // @ts-expect-error create is required by the contract
   planet: {
-    find: os.planet.find.handler(async ({ input }) => input),
+    find: impl.planet.find.handler(async ({ input }) => input),
   },
 })

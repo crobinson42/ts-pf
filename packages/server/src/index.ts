@@ -1,8 +1,8 @@
-export { createRouterClient } from './caller.js'
-export { type HandleResult, RPCHandler } from './handler.js'
+export { createLocalClient } from './caller.js'
+export { FetchHandler, type HandleResult } from './handler.js'
 export {
+  createImplementer,
   type Implementer,
-  implement,
   type ProcedureBuilder,
   type RouterImpl,
 } from './implement.js'

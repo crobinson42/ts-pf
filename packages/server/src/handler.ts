@@ -18,7 +18,7 @@ export type HandleResult =
   | { matched: false; response?: undefined }
   | { matched: true; response: Response }
 
-export class RPCHandler<TCtx = unknown> {
+export class FetchHandler<TCtx = unknown> {
   private readonly codec: RpcCodec
   private readonly plugins: HandlerPlugin[]
 

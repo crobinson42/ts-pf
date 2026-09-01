@@ -1,14 +1,14 @@
 import {
   type InferContractInputs,
   type InferContractOutputs,
-  oc,
+  procedure,
 } from '@ts-pf/contract'
 import { describe, expectTypeOf, it } from 'vitest'
 import { z } from 'zod'
 
 describe('contract infer types', () => {
   it('infers input and output from schemas', () => {
-    const find = oc
+    const find = procedure
       .input(z.object({ id: z.number() }))
       .output(z.object({ name: z.string() }))
       .errors({
@@ -23,12 +23,12 @@ describe('contract infer types', () => {
   })
 
   it('defaults omitted output to unknown and omitted input to void', () => {
-    const noOut = oc.input(z.object({ id: z.number() }))
+    const noOut = procedure.input(z.object({ id: z.number() }))
     expectTypeOf<
       InferContractOutputs<{ x: typeof noOut }>['x']
     >().toEqualTypeOf<unknown>()
 
-    const noIn = oc.output(z.string())
+    const noIn = procedure.output(z.string())
     expectTypeOf<
       InferContractInputs<{ x: typeof noIn }>['x']
     >().toEqualTypeOf<void>()

@@ -169,7 +169,7 @@ function createNode(contract: unknown, inherited: Inherited): object {
   })
 }
 
-export function implement<T>(contract: T) {
+export function createImplementer<T>(contract: T) {
   return createNode(contract, {
     use: [],
     useAfter: [],

@@ -25,7 +25,7 @@ function createNode(
   return nested
 }
 
-export function createRouterClient<T>(
+export function createLocalClient<T>(
   router: ImplementedRouter<T>,
   opts: { context: unknown },
 ): ContractClient<T> {

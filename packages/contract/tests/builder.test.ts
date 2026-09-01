@@ -1,10 +1,15 @@
-import { isContractProcedure, isContractRouter, oc } from '@ts-pf/contract'
+import {
+  isContractProcedure,
+  isContractRouter,
+  procedure,
+  router,
+} from '@ts-pf/contract'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 
-describe('oc builder', () => {
+describe('procedure builder', () => {
   it('builds a procedure with input, output, errors, meta', () => {
-    const proc = oc
+    const proc = procedure
       .meta({ auth: true })
       .input(z.object({ id: z.number() }))
       .output(z.object({ id: z.number(), name: z.string() }))
@@ -18,17 +23,21 @@ describe('oc builder', () => {
   })
 
   it('throws when input is set twice', () => {
-    expect(() => oc.input(z.string()).input(z.number())).toThrow(/input/i)
+    expect(() => procedure.input(z.string()).input(z.number())).toThrow(
+      /input/i,
+    )
   })
 
   it('throws when output is set twice', () => {
-    expect(() => oc.output(z.string()).output(z.number())).toThrow(/output/i)
+    expect(() => procedure.output(z.string()).output(z.number())).toThrow(
+      /output/i,
+    )
   })
 
-  it('oc.router brands a nested object', () => {
-    const contract = oc.router({
+  it('router() brands a nested object', () => {
+    const contract = router({
       planet: {
-        find: oc
+        find: procedure
           .input(z.object({ id: z.number() }))
           .output(z.object({ id: z.number() })),
       },
@@ -37,9 +46,9 @@ describe('oc builder', () => {
     expect(isContractProcedure(contract.planet.find)).toBe(true)
   })
 
-  it('oc.router throws on a non-procedure leaf', () => {
+  it('router() throws on a non-procedure leaf', () => {
     expect(() =>
-      oc.router({
+      router({
         bad: { not: 'a procedure' },
       }),
     ).toThrow(/procedure/i)

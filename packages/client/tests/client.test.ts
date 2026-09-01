@@ -1,25 +1,27 @@
-import { createClient, FetchLink, safe } from '@ts-pf/client'
-import { oc } from '@ts-pf/contract'
+import { asResult, createClient, FetchLink } from '@ts-pf/client'
+import { procedure, router } from '@ts-pf/contract'
 import { isPFError } from '@ts-pf/protocol'
-import { implement, RPCHandler } from '@ts-pf/server'
+import { createImplementer, FetchHandler } from '@ts-pf/server'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 
-const contract = oc.router({
+const contract = router({
   planet: {
-    list: oc.output(z.array(z.object({ id: z.number(), name: z.string() }))),
-    find: oc
+    list: procedure.output(
+      z.array(z.object({ id: z.number(), name: z.string() })),
+    ),
+    find: procedure
       .input(z.object({ id: z.number() }))
       .output(z.object({ id: z.number(), name: z.string() }))
       .errors({ NOT_FOUND: { status: 404 } }),
   },
 })
 
-const os = implement(contract)
-const router = os.router({
+const impl = createImplementer(contract)
+const app = impl.router({
   planet: {
-    list: os.planet.list.handler(async () => [{ id: 1, name: 'Earth' }]),
-    find: os.planet.find.handler(async ({ input, errors }) => {
+    list: impl.planet.list.handler(async () => [{ id: 1, name: 'Earth' }]),
+    find: impl.planet.find.handler(async ({ input, errors }) => {
       if (input.id < 0) {
         throw errors.NOT_FOUND()
       }
@@ -28,7 +30,7 @@ const router = os.router({
   },
 })
 
-const handler = new RPCHandler(router)
+const handler = new FetchHandler(app)
 
 const fetchImpl: typeof fetch = async (input, init) => {
   const req = input instanceof Request ? input : new Request(input, init)
@@ -59,8 +61,8 @@ describe('createClient', () => {
     await expect(client.planet.find({ id: -1 })).rejects.toSatisfy(isPFError)
   })
 
-  it('safe() returns a result union', async () => {
-    const result = await safe(client.planet.find({ id: -1 }))
+  it('asResult() returns a result union', async () => {
+    const result = await asResult(client.planet.find({ id: -1 }))
     expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.error.code).toBe('NOT_FOUND')

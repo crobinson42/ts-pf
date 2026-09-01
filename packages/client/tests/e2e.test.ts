@@ -1,36 +1,36 @@
 import { Type } from '@sinclair/typebox'
 import { createClient, FetchLink } from '@ts-pf/client'
-import { oc } from '@ts-pf/contract'
-import { implement, RPCHandler } from '@ts-pf/server'
+import { procedure, router } from '@ts-pf/contract'
+import { createImplementer, FetchHandler } from '@ts-pf/server'
 import { describe, expect, expectTypeOf, it } from 'vitest'
 import { z } from 'zod'
 
-const contract = oc.router({
+const contract = router({
   planet: {
-    find: oc
+    find: procedure
       .input(z.object({ id: z.number() }))
       .output(z.object({ id: z.number(), name: z.string() })),
-    create: oc
+    create: procedure
       .input(Type.Object({ name: Type.String() }))
       .output(Type.Object({ id: Type.Number(), name: Type.String() })),
   },
 })
 
-const os = implement(contract)
-const router = os.router({
+const impl = createImplementer(contract)
+const app = impl.router({
   planet: {
-    find: os.planet.find.handler(async ({ input }) => ({
+    find: impl.planet.find.handler(async ({ input }) => ({
       id: input.id,
       name: 'Earth',
     })),
-    create: os.planet.create.handler(async ({ input }) => ({
+    create: impl.planet.create.handler(async ({ input }) => ({
       id: 3,
       name: input.name,
     })),
   },
 })
 
-const handler = new RPCHandler(router)
+const handler = new FetchHandler(app)
 const fetchImpl: typeof fetch = async (input, init) => {
   const req = input instanceof Request ? input : new Request(input, init)
   const result = await handler.handle(req, { prefix: '/rpc', context: {} })

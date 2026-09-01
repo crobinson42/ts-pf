@@ -1,15 +1,15 @@
-import { type ContractClient, oc } from '@ts-pf/contract'
+import { type ContractClient, procedure, router } from '@ts-pf/contract'
 import { describe, expectTypeOf, it } from 'vitest'
 import { z } from 'zod'
 
 describe('ContractClient', () => {
   it('is assignable from the contract shape', () => {
-    const contract = oc.router({
+    const contract = router({
       planet: {
-        find: oc
+        find: procedure
           .input(z.object({ id: z.number() }))
           .output(z.object({ name: z.string() })),
-        list: oc.output(z.array(z.string())),
+        list: procedure.output(z.array(z.string())),
       },
     })
 

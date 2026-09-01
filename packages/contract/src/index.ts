@@ -1,4 +1,4 @@
-export { ContractBuilder, oc } from './builder.js'
+export { ContractBuilder, procedure, router } from './builder.js'
 export type { ErrorDef, ErrorMap } from './errors.js'
 export type {
   ClientError,

@@ -90,6 +90,12 @@ export class ContractBuilder<
   }
 }
 
-export const oc = new ContractBuilder()
+export const procedure = new ContractBuilder()
+
+export function router<T extends Record<string, unknown>>(
+  def: T,
+): T & import('./router.js').ContractRouterBrand {
+  return procedure.router(def)
+}
 
 export { isContractProcedure }

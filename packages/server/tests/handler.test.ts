@@ -1,28 +1,28 @@
-import { oc } from '@ts-pf/contract'
-import { implement, RPCHandler } from '@ts-pf/server'
+import { procedure, router } from '@ts-pf/contract'
+import { createImplementer, FetchHandler } from '@ts-pf/server'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 
-const contract = oc.router({
+const contract = router({
   planet: {
-    find: oc
+    find: procedure
       .input(z.object({ id: z.number() }))
       .output(z.object({ id: z.number(), name: z.string() })),
   },
 })
 
-const os = implement(contract)
-const router = os.router({
+const impl = createImplementer(contract)
+const app = impl.router({
   planet: {
-    find: os.planet.find.handler(async ({ input }) => ({
+    find: impl.planet.find.handler(async ({ input }) => ({
       id: input.id,
       name: 'Earth',
     })),
   },
 })
 
-describe('RPCHandler', () => {
-  const handler = new RPCHandler(router)
+describe('FetchHandler', () => {
+  const handler = new FetchHandler(app)
 
   it('handles POST /rpc/planet/find', async () => {
     const req = new Request('http://localhost/rpc/planet/find', {
