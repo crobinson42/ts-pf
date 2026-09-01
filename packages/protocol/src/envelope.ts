@@ -20,6 +20,10 @@ export interface RpcCodec {
   encodeRequest(req: RpcRequest): string
   decodeRequest(body: string): RpcRequest
   encodeSuccess<T>(output: T): string
-  encodeFailure(error: { code: string; message: string; data?: unknown }): string
+  encodeFailure(error: {
+    code: string
+    message: string
+    data?: unknown
+  }): string
   decodeResponse<T = unknown>(body: string): RpcResponse<T>
 }

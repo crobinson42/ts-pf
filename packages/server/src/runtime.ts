@@ -1,4 +1,8 @@
-import { isContractProcedure, validateSchema, type ContractProcedure } from '@ts-pf/contract'
+import {
+  type ContractProcedure,
+  isContractProcedure,
+  validateSchema,
+} from '@ts-pf/contract'
 import { PFError } from '@ts-pf/protocol'
 import { createErrorFactory } from './error-factory.js'
 import type { MiddlewareFn } from './middleware.js'
@@ -27,7 +31,9 @@ export type ImplementedRouter<T = unknown> = {
   readonly [key: string]: ImplementedProcedure | ImplementedRouter | undefined
 } & { readonly [contractBrand]?: T }
 
-export function isImplementedProcedure(value: unknown): value is ImplementedProcedure {
+export function isImplementedProcedure(
+  value: unknown,
+): value is ImplementedProcedure {
   return (
     typeof value === 'object' &&
     value !== null &&
@@ -139,7 +145,9 @@ export function lookupProcedure(
   return current && isImplementedProcedure(current) ? current : undefined
 }
 
-export function assertContractProcedure(value: unknown): asserts value is ContractProcedure {
+export function assertContractProcedure(
+  value: unknown,
+): asserts value is ContractProcedure {
   if (!isContractProcedure(value)) {
     throw new Error('Expected a contract procedure')
   }

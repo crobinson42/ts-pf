@@ -1,11 +1,13 @@
 import { oc } from '@ts-pf/contract'
+import { createRouterClient, implement } from '@ts-pf/server'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
-import { createRouterClient, implement } from '@ts-pf/server'
 
 const contract = oc.router({
   ping: oc.output(z.string()),
-  echo: oc.input(z.object({ n: z.number() })).output(z.object({ n: z.number() })),
+  echo: oc
+    .input(z.object({ n: z.number() }))
+    .output(z.object({ n: z.number() })),
 })
 
 describe('implement', () => {
@@ -38,7 +40,9 @@ describe('implement', () => {
       find: oc
         .input(z.object({ id: z.number() }))
         .output(z.object({ id: z.number() }))
-        .errors({ NOT_FOUND: { status: 404, data: z.object({ id: z.number() }) } }),
+        .errors({
+          NOT_FOUND: { status: 404, data: z.object({ id: z.number() }) },
+        }),
     })
     const os = implement(c)
     const router = os.router({

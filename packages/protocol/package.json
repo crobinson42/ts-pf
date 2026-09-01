@@ -17,7 +17,10 @@
       }
     }
   },
-  "files": ["dist", "PROTOCOL.md"],
+  "files": [
+    "dist",
+    "PROTOCOL.md"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run",

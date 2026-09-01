@@ -6,9 +6,11 @@ export interface ContractRouterBrand {
   readonly '~pf': { type: 'router' }
 }
 
-export type ContractRouter = ContractRouterBrand | {
-  [key: string]: ContractRouter | import('./procedure.js').ContractProcedure
-}
+export type ContractRouter =
+  | ContractRouterBrand
+  | {
+      [key: string]: ContractRouter | import('./procedure.js').ContractProcedure
+    }
 
 export function isContractRouter(value: unknown): value is ContractRouterBrand {
   return (
@@ -19,7 +21,10 @@ export function isContractRouter(value: unknown): value is ContractRouterBrand {
   )
 }
 
-export function assertContractRouter(value: unknown, path: string[] = []): void {
+export function assertContractRouter(
+  value: unknown,
+  path: string[] = [],
+): void {
   if (isContractProcedure(value)) {
     return
   }

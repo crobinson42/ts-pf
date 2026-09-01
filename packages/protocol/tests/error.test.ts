@@ -1,5 +1,5 @@
+import { isPFError, PFError } from '@ts-pf/protocol'
 import { describe, expect, it } from 'vitest'
-import { PFError, isPFError } from '@ts-pf/protocol'
 
 describe('PFError', () => {
   it('is an Error with code, status, data', () => {

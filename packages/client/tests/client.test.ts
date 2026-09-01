@@ -1,9 +1,9 @@
+import { createClient, FetchLink, safe } from '@ts-pf/client'
 import { oc } from '@ts-pf/contract'
 import { isPFError } from '@ts-pf/protocol'
 import { implement, RPCHandler } from '@ts-pf/server'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
-import { createClient, FetchLink, safe } from '@ts-pf/client'
 
 const contract = oc.router({
   planet: {
@@ -45,7 +45,10 @@ describe('createClient', () => {
   )
 
   it('calls a procedure over Fetch', async () => {
-    expect(await client.planet.find({ id: 1 })).toEqual({ id: 1, name: 'Earth' })
+    expect(await client.planet.find({ id: 1 })).toEqual({
+      id: 1,
+      name: 'Earth',
+    })
   })
 
   it('calls a no-input procedure', async () => {
@@ -70,7 +73,8 @@ describe('createClient', () => {
       new FetchLink({
         url: 'http://localhost/rpc/',
         fetch: async (input, init) => {
-          const req = input instanceof Request ? input : new Request(input, init)
+          const req =
+            input instanceof Request ? input : new Request(input, init)
           seen.push(req.headers.get('x-test') ?? '')
           return fetchImpl(req)
         },

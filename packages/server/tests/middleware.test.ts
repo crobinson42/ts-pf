@@ -1,11 +1,13 @@
 import { oc } from '@ts-pf/contract'
+import { createRouterClient, implement } from '@ts-pf/server'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
-import { createRouterClient, implement } from '@ts-pf/server'
 
 const contract = oc.router({
   ping: oc.output(z.string()),
-  echo: oc.input(z.object({ n: z.number() })).output(z.object({ n: z.number() })),
+  echo: oc
+    .input(z.object({ n: z.number() }))
+    .output(z.object({ n: z.number() })),
 })
 
 describe('middleware', () => {
@@ -22,7 +24,9 @@ describe('middleware', () => {
       echo: os.echo.handler(async ({ input }) => input),
     })
     const client = createRouterClient(router, { context: { seen: [] } })
-    await expect(client.echo({ n: 'x' } as never)).rejects.toMatchObject({ code: 'VALIDATION' })
+    await expect(client.echo({ n: 'x' } as never)).rejects.toMatchObject({
+      code: 'VALIDATION',
+    })
     expect(order).toEqual(['use'])
   })
 
@@ -45,7 +49,9 @@ describe('middleware', () => {
 
   it('middleware can inject context', async () => {
     const os = implement(contract).$context<{ user?: { id: number } }>()
-    const auth = os.middleware(async ({ next }) => next({ context: { user: { id: 1 } } }))
+    const auth = os.middleware(async ({ next }) =>
+      next({ context: { user: { id: 1 } } }),
+    )
     const router = os.use(auth).router({
       ping: os.ping.handler(async ({ context }) => `user-${context.user?.id}`),
       echo: os.echo.handler(async ({ input }) => input),

@@ -1,7 +1,7 @@
 import { oc } from '@ts-pf/contract'
+import { implement, RPCHandler } from '@ts-pf/server'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
-import { implement, RPCHandler } from '@ts-pf/server'
 
 const contract = oc.router({
   planet: {
@@ -46,10 +46,13 @@ describe('RPCHandler', () => {
   })
 
   it('returns matched:false when prefix does not match', async () => {
-    const result = await handler.handle(new Request('http://localhost/health'), {
-      prefix: '/rpc',
-      context: {},
-    })
+    const result = await handler.handle(
+      new Request('http://localhost/health'),
+      {
+        prefix: '/rpc',
+        context: {},
+      },
+    )
     expect(result.matched).toBe(false)
   })
 

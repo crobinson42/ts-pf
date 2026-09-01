@@ -3,7 +3,11 @@ export type NextFn<TCtx, TInput, TOutput> = (opts?: {
   input?: TInput
 }) => Promise<TOutput>
 
-export type MiddlewareFn<TCtx = unknown, TInput = unknown, TOutput = unknown> = (opts: {
+export type MiddlewareFn<
+  TCtx = unknown,
+  TInput = unknown,
+  TOutput = unknown,
+> = (opts: {
   context: TCtx
   input: TInput
   next: NextFn<TCtx, TInput, TOutput>
@@ -11,6 +15,8 @@ export type MiddlewareFn<TCtx = unknown, TInput = unknown, TOutput = unknown> = 
   path: string[]
 }) => Promise<TOutput>
 
-export type ErrorFactory<E extends Record<string, unknown> = Record<string, unknown>> = {
+export type ErrorFactory<
+  E extends Record<string, unknown> = Record<string, unknown>,
+> = {
   [K in keyof E]: (data?: unknown) => never
 }

@@ -1,7 +1,10 @@
 import type { ErrorMap } from './errors.js'
 import type { AnySchema } from './schema.js'
 
-export interface ContractProcedureDef<TErrors extends ErrorMap = ErrorMap, TMeta = {}> {
+export interface ContractProcedureDef<
+  TErrors extends ErrorMap = ErrorMap,
+  TMeta = {},
+> {
   type: 'procedure'
   input?: AnySchema
   output?: AnySchema
@@ -16,9 +19,12 @@ export interface ContractProcedure<
   TMeta = {},
 > {
   readonly '~pf': ContractProcedureDef<TErrors, TMeta>
+  readonly '~types'?: { input: TInput; output: TOutput }
 }
 
-export function isContractProcedure(value: unknown): value is ContractProcedure {
+export function isContractProcedure(
+  value: unknown,
+): value is ContractProcedure {
   return (
     typeof value === 'object' &&
     value !== null &&

@@ -5,7 +5,9 @@ function isStandardSchema(schema: unknown): schema is StandardSchemaV1 {
   return typeof schema === 'object' && schema !== null && '~standard' in schema
 }
 
-function toIssues(issues: ReadonlyArray<StandardSchemaV1.Issue>): ValidationIssue[] {
+function toIssues(
+  issues: ReadonlyArray<StandardSchemaV1.Issue>,
+): ValidationIssue[] {
   return issues.map((issue) => ({
     message: issue.message,
     path: (issue.path ?? []).map((segment) => {
@@ -22,7 +24,9 @@ export const standardSchemaAdapter: SchemaAdapter = {
   vendor: 'standard-schema',
   accept: isStandardSchema,
   async validate(schema, value) {
-    const result = await (schema as StandardSchemaV1)['~standard'].validate(value)
+    const result = await (schema as StandardSchemaV1)['~standard'].validate(
+      value,
+    )
     if (result.issues) {
       return { success: false, issues: toIssues(result.issues) }
     }

@@ -1,14 +1,14 @@
 import {
-  isContractProcedure,
   type ContractBuilder,
   type ContractProcedure,
+  isContractProcedure,
 } from '@ts-pf/contract'
 import type { MiddlewareFn } from './middleware.js'
 import {
-  isImplementedProcedure,
   type HandlerFn,
   type ImplementedProcedure,
   type ImplementedRouter,
+  isImplementedProcedure,
 } from './runtime.js'
 
 type Inherited = {
@@ -36,7 +36,10 @@ function createImplemented(
   }
 }
 
-function applyInherited(node: ImplementedProcedure | ImplementedRouter, inherited: Inherited): ImplementedProcedure | ImplementedRouter {
+function applyInherited(
+  node: ImplementedProcedure | ImplementedRouter,
+  inherited: Inherited,
+): ImplementedProcedure | ImplementedRouter {
   if (isImplementedProcedure(node)) {
     return {
       '~pf': {
@@ -65,7 +68,9 @@ function assertComplete(
 ): void {
   if (isContractProcedure(contract)) {
     if (!isImplementedProcedure(impl)) {
-      throw new Error(`Missing implementation at "${path.join('.') || '<root>'}"`)
+      throw new Error(
+        `Missing implementation at "${path.join('.') || '<root>'}"`,
+      )
     }
     return
   }
@@ -81,11 +86,17 @@ function assertComplete(
     if (!(key in (impl as object))) {
       throw new Error(`Missing implementation at "${[...path, key].join('.')}"`)
     }
-    assertComplete((contract as Record<string, unknown>)[key], (impl as Record<string, unknown>)[key], [...path, key])
+    assertComplete(
+      (contract as Record<string, unknown>)[key],
+      (impl as Record<string, unknown>)[key],
+      [...path, key],
+    )
   }
   for (const key of implKeys) {
     if (!(key in (contract as object))) {
-      throw new Error(`Unexpected implementation key "${[...path, key].join('.')}"`)
+      throw new Error(
+        `Unexpected implementation key "${[...path, key].join('.')}"`,
+      )
     }
   }
 }
@@ -102,7 +113,10 @@ function createNode(contract: unknown, inherited: Inherited): object {
       return createNode(contract, { ...inherited, use: [...inherited.use, mw] })
     },
     useAfter(mw: MiddlewareFn) {
-      return createNode(contract, { ...inherited, useAfter: [...inherited.useAfter, mw] })
+      return createNode(contract, {
+        ...inherited,
+        useAfter: [...inherited.useAfter, mw],
+      })
     },
     middleware(fn: MiddlewareFn) {
       return fn
@@ -156,12 +170,25 @@ function createNode(contract: unknown, inherited: Inherited): object {
 }
 
 export function implement<T>(contract: T) {
-  return createNode(contract, { use: [], useAfter: [], path: [] }) as Implementer<T, object>
+  return createNode(contract, {
+    use: [],
+    useAfter: [],
+    path: [],
+  }) as Implementer<T, object>
 }
 
-export type ProcedureBuilder<TInput, TOutput, TCtx, TErrors extends Record<string, unknown> = Record<string, unknown>> = {
-  use: (mw: MiddlewareFn<TCtx, unknown, TOutput>) => ProcedureBuilder<TInput, TOutput, TCtx, TErrors>
-  useAfter: (mw: MiddlewareFn<TCtx, TInput, TOutput>) => ProcedureBuilder<TInput, TOutput, TCtx, TErrors>
+export type ProcedureBuilder<
+  TInput,
+  TOutput,
+  TCtx,
+  TErrors extends Record<string, unknown> = Record<string, unknown>,
+> = {
+  use: (
+    mw: MiddlewareFn<TCtx, unknown, TOutput>,
+  ) => ProcedureBuilder<TInput, TOutput, TCtx, TErrors>
+  useAfter: (
+    mw: MiddlewareFn<TCtx, TInput, TOutput>,
+  ) => ProcedureBuilder<TInput, TOutput, TCtx, TErrors>
   handler: (
     fn: (opts: {
       input: TInput
@@ -176,7 +203,9 @@ export type Implementer<T, TCtx> = {
   $context: <C>() => Implementer<T, C>
   use: (mw: MiddlewareFn<TCtx, unknown, unknown>) => Implementer<T, TCtx>
   useAfter: (mw: MiddlewareFn<TCtx, unknown, unknown>) => Implementer<T, TCtx>
-  middleware: (fn: MiddlewareFn<TCtx, unknown, unknown>) => MiddlewareFn<TCtx, unknown, unknown>
+  middleware: (
+    fn: MiddlewareFn<TCtx, unknown, unknown>,
+  ) => MiddlewareFn<TCtx, unknown, unknown>
   router: (impl: RouterImpl<T, TCtx>) => ImplementedRouter<T>
 } & {
   [K in keyof T as K extends '~pf' ? never : K]: T[K] extends ContractBuilder<
@@ -193,8 +222,8 @@ export type Implementer<T, TCtx> = {
 
 export type RouterImpl<T, TCtx> = {
   [K in keyof T as K extends '~pf' ? never : K]: T[K] extends ContractBuilder<
-    infer I,
-    infer O,
+    infer _I,
+    infer _O,
     infer _E,
     infer _M
   >

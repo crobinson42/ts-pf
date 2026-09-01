@@ -1,17 +1,17 @@
 import {
+  isPFError,
   JSONCodec,
   PFError,
   PROTOCOL_HEADER,
   PROTOCOL_VERSION,
-  isPFError,
   parseProcedurePath,
   type RpcCodec,
 } from '@ts-pf/protocol'
 import type { HandlerPlugin } from './plugins.js'
 import {
+  type ImplementedRouter,
   lookupProcedure,
   runProcedure,
-  type ImplementedRouter,
 } from './runtime.js'
 
 export type HandleResult =
@@ -74,7 +74,9 @@ export class RPCHandler<TCtx = unknown> {
 
       const context =
         typeof opts.context === 'function'
-          ? await (opts.context as (req: Request) => TCtx | Promise<TCtx>)(request)
+          ? await (opts.context as (req: Request) => TCtx | Promise<TCtx>)(
+              request,
+            )
           : opts.context
 
       const output = await runProcedure(procedure, decoded.input, context)

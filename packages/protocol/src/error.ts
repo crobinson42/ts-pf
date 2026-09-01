@@ -5,7 +5,10 @@ export type PFErrorInit<TCode extends string = string, TData = unknown> = {
   data?: TData
 }
 
-export class PFError<TCode extends string = string, TData = unknown> extends Error {
+export class PFError<
+  TCode extends string = string,
+  TData = unknown,
+> extends Error {
   readonly code: TCode
   readonly status: number
   readonly data?: TData

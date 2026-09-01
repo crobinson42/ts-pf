@@ -1,6 +1,6 @@
+import { isContractProcedure, isContractRouter, oc } from '@ts-pf/contract'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
-import { oc, isContractProcedure, isContractRouter } from '@ts-pf/contract'
 
 describe('oc builder', () => {
   it('builds a procedure with input, output, errors, meta', () => {
@@ -28,7 +28,9 @@ describe('oc builder', () => {
   it('oc.router brands a nested object', () => {
     const contract = oc.router({
       planet: {
-        find: oc.input(z.object({ id: z.number() })).output(z.object({ id: z.number() })),
+        find: oc
+          .input(z.object({ id: z.number() }))
+          .output(z.object({ id: z.number() })),
       },
     })
     expect(isContractRouter(contract)).toBe(true)

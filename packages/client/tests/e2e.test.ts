@@ -1,9 +1,9 @@
 import { Type } from '@sinclair/typebox'
+import { createClient, FetchLink } from '@ts-pf/client'
 import { oc } from '@ts-pf/contract'
 import { implement, RPCHandler } from '@ts-pf/server'
 import { describe, expect, expectTypeOf, it } from 'vitest'
 import { z } from 'zod'
-import { createClient, FetchLink } from '@ts-pf/client'
 
 const contract = oc.router({
   planet: {
@@ -46,12 +46,22 @@ describe('e2e Zod + TypeBox', () => {
   )
 
   it('roundtrips both schema libraries', async () => {
-    expect(await client.planet.find({ id: 1 })).toEqual({ id: 1, name: 'Earth' })
-    expect(await client.planet.create({ name: 'Mars' })).toEqual({ id: 3, name: 'Mars' })
+    expect(await client.planet.find({ id: 1 })).toEqual({
+      id: 1,
+      name: 'Earth',
+    })
+    expect(await client.planet.create({ name: 'Mars' })).toEqual({
+      id: 3,
+      name: 'Mars',
+    })
   })
 
   it('types the client from the contract', () => {
-    expectTypeOf(client.planet.find).parameter(0).toEqualTypeOf<{ id: number }>()
-    expectTypeOf(client.planet.create).parameter(0).toEqualTypeOf<{ name: string }>()
+    expectTypeOf(client.planet.find)
+      .parameter(0)
+      .toEqualTypeOf<{ id: number }>()
+    expectTypeOf(client.planet.create)
+      .parameter(0)
+      .toEqualTypeOf<{ name: string }>()
   })
 })

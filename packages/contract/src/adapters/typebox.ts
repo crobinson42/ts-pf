@@ -23,7 +23,9 @@ export const typeboxAdapter: SchemaAdapter = {
           .filter((part) => part.length > 0)
           .map((part) => {
             const asNumber = Number(part)
-            return Number.isInteger(asNumber) && String(asNumber) === part ? asNumber : part
+            return Number.isInteger(asNumber) && String(asNumber) === part
+              ? asNumber
+              : part
           }),
       })
     }

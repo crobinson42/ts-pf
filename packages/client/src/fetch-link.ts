@@ -1,20 +1,28 @@
 import {
   JSONCodec,
   PFError,
+  type PFResultPromise,
   PROTOCOL_HEADER,
   PROTOCOL_VERSION,
-  type PFResultPromise,
   type RpcCodec,
+  type RpcResponse,
 } from '@ts-pf/protocol'
-import { runInterceptors, type Interceptor } from './interceptors.js'
+import { type Interceptor, runInterceptors } from './interceptors.js'
 
 export interface Link {
-  call(path: string[], input: unknown, signal?: AbortSignal): PFResultPromise<unknown, PFError>
+  call(
+    path: string[],
+    input: unknown,
+    signal?: AbortSignal,
+  ): PFResultPromise<unknown, PFError>
 }
 
 export class FetchLink implements Link {
   private readonly url: string
-  private readonly headers: HeadersInit | (() => HeadersInit | Promise<HeadersInit>) | undefined
+  private readonly headers:
+    | HeadersInit
+    | (() => HeadersInit | Promise<HeadersInit>)
+    | undefined
   private readonly fetchFn: typeof fetch
   private readonly interceptors: Interceptor[]
   private readonly codec: RpcCodec
@@ -33,11 +41,22 @@ export class FetchLink implements Link {
     this.codec = opts.codec ?? new JSONCodec()
   }
 
-  call(path: string[], input: unknown, signal?: AbortSignal): PFResultPromise<unknown, PFError> {
-    return this.callInner(path, input, signal) as PFResultPromise<unknown, PFError>
+  call(
+    path: string[],
+    input: unknown,
+    signal?: AbortSignal,
+  ): PFResultPromise<unknown, PFError> {
+    return this.callInner(path, input, signal) as PFResultPromise<
+      unknown,
+      PFError
+    >
   }
 
-  private async callInner(path: string[], input: unknown, signal?: AbortSignal): Promise<unknown> {
+  private async callInner(
+    path: string[],
+    input: unknown,
+    signal?: AbortSignal,
+  ): Promise<unknown> {
     const url = joinUrl(this.url, path)
     const headers = new Headers(
       typeof this.headers === 'function' ? await this.headers() : this.headers,
@@ -57,7 +76,9 @@ export class FetchLink implements Link {
 
     let response: Response
     try {
-      response = await runInterceptors(this.interceptors, request, (req) => this.fetchFn(req))
+      response = await runInterceptors(this.interceptors, request, (req) =>
+        this.fetchFn(req),
+      )
     } catch (error) {
       if (error instanceof PFError) {
         throw error
@@ -70,7 +91,7 @@ export class FetchLink implements Link {
     }
 
     const text = await response.text()
-    let decoded
+    let decoded: RpcResponse
     try {
       decoded = this.codec.decodeResponse(text)
     } catch {
@@ -86,7 +107,9 @@ export class FetchLink implements Link {
         code: decoded.error.code,
         status: response.status,
         message: decoded.error.message,
-        ...(decoded.error.data !== undefined ? { data: decoded.error.data } : {}),
+        ...(decoded.error.data !== undefined
+          ? { data: decoded.error.data }
+          : {}),
       })
     }
     return decoded.output

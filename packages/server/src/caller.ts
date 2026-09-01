@@ -1,9 +1,9 @@
 import type { ContractClient } from '@ts-pf/contract'
 import {
-  isImplementedProcedure,
-  runProcedure,
   type ImplementedProcedure,
   type ImplementedRouter,
+  isImplementedProcedure,
+  runProcedure,
 } from './runtime.js'
 
 function createNode(

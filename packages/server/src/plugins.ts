@@ -4,6 +4,6 @@ export interface HandlerPlugin {
   onResponse?(ctx: {
     request: Request
     response: Response
-  }): Response | void | Promise<Response | void>
+  }): Response | undefined | Promise<Response | undefined>
   onError?(ctx: { request: Request; error: unknown }): void | Promise<void>
 }

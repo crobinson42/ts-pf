@@ -1,12 +1,17 @@
-export { implement, type Implementer, type ProcedureBuilder, type RouterImpl } from './implement.js'
 export { createRouterClient } from './caller.js'
-export { RPCHandler, type HandleResult } from './handler.js'
-export type { HandlerPlugin } from './plugins.js'
-export type { MiddlewareFn, NextFn, ErrorFactory } from './middleware.js'
+export { type HandleResult, RPCHandler } from './handler.js'
 export {
-  runProcedure,
-  lookupProcedure,
-  isImplementedProcedure,
+  type Implementer,
+  implement,
+  type ProcedureBuilder,
+  type RouterImpl,
+} from './implement.js'
+export type { ErrorFactory, MiddlewareFn, NextFn } from './middleware.js'
+export type { HandlerPlugin } from './plugins.js'
+export {
   type ImplementedProcedure,
   type ImplementedRouter,
+  isImplementedProcedure,
+  lookupProcedure,
+  runProcedure,
 } from './runtime.js'

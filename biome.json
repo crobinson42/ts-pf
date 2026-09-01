@@ -10,6 +10,13 @@
       "semicolons": "asNeeded"
     }
   },
+  "linter": {
+    "rules": {
+      "complexity": {
+        "noBannedTypes": "off"
+      }
+    }
+  },
   "files": {
     "includes": ["**", "!**/dist", "!**/node_modules", "!**/.turbo"]
   }

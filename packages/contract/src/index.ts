@@ -1,24 +1,33 @@
+export { ContractBuilder, oc } from './builder.js'
+export type { ErrorDef, ErrorMap } from './errors.js'
+export type {
+  ClientError,
+  ContractClient,
+  ContractResultPromise,
+  InferContractErrorCodes,
+  InferContractInputs,
+  InferContractOutputs,
+  ProcedureClient,
+} from './infer.js'
 export {
-  validateSchema,
-  registerSchemaAdapter,
-  isStandardSchema,
-  type SchemaAdapter,
-  type SchemaResult,
-  type ValidationIssue,
+  type ContractProcedure,
+  type ContractProcedureDef,
+  isContractProcedure,
+} from './procedure.js'
+export {
+  assertContractRouter,
+  type ContractRouter,
+  type ContractRouterBrand,
+  isContractRouter,
+} from './router.js'
+export {
   type AnySchema,
   type InferSchemaInput,
   type InferSchemaOutput,
+  isStandardSchema,
+  registerSchemaAdapter,
+  type SchemaAdapter,
+  type SchemaResult,
+  type ValidationIssue,
+  validateSchema,
 } from './schema.js'
-export { oc, ContractBuilder } from './builder.js'
-export { isContractProcedure, type ContractProcedure, type ContractProcedureDef } from './procedure.js'
-export { isContractRouter, assertContractRouter, type ContractRouter, type ContractRouterBrand } from './router.js'
-export type { ErrorDef, ErrorMap } from './errors.js'
-export type {
-  InferContractInputs,
-  InferContractOutputs,
-  InferContractErrorCodes,
-  ContractClient,
-  ProcedureClient,
-  ClientError,
-  ContractResultPromise,
-} from './infer.js'
