@@ -233,4 +233,56 @@ describe('PortHandler', () => {
     bind.close()
     client.close()
   })
+
+  it('aborts in-flight calls when the peer port closes', async () => {
+    let resolveStarted!: () => void
+    const started = new Promise<void>((resolve) => {
+      resolveStarted = resolve
+    })
+    let aborted = false
+    const app = planetApp(async ({ signal }) => {
+      await new Promise<void>((resolve) => {
+        const onAbort = () => {
+          aborted = true
+          resolve()
+        }
+        if (signal?.aborted) {
+          onAbort()
+          return
+        }
+        signal?.addEventListener('abort', onAbort)
+        resolveStarted()
+      })
+      return { id: 1, name: 'late' }
+    })
+    const { port1, port2 } = new MessageChannel()
+    const bind = new PortHandler(app).bind(port1, { context: {} })
+    const { client, frames } = openClient(port2)
+    await client.ready
+
+    expect(
+      client.send({
+        type: 'call',
+        id: '1',
+        path: ['planet', 'find'],
+        input: { id: 1 },
+      }).ok,
+    ).toBe(true)
+    await started
+    port2.close()
+
+    for (let i = 0; i < 40; i++) {
+      await nextTurn()
+    }
+    expect(aborted).toBe(true)
+    expect(
+      frames.some(
+        (frame) =>
+          frame.type === 'result' ||
+          frame.type === 'item' ||
+          frame.type === 'done',
+      ),
+    ).toBe(false)
+    bind.close()
+  })
 })

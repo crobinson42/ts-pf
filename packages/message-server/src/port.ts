@@ -25,6 +25,10 @@ function createPortDuplex(port: MessagePort): Duplex {
     }
   }
 
+  port.addEventListener('close', () => {
+    close()
+  })
+
   return {
     send(text) {
       if (closed) {
