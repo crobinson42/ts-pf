@@ -161,17 +161,17 @@ describe('createClient', () => {
         },
       }),
     )
-    await expect(
-      aborted.planet.list({ signal: ac.signal }),
-    ).rejects.toSatisfy((error: unknown) => {
-      expect(isLocalFailure(error)).toBe(true)
-      if (!isLocalFailure(error)) {
-        return false
-      }
-      expect(error.message).toBe('Request aborted')
-      expect(error.cause).toBe(abortError)
-      return true
-    })
+    await expect(aborted.planet.list({ signal: ac.signal })).rejects.toSatisfy(
+      (error: unknown) => {
+        expect(isLocalFailure(error)).toBe(true)
+        if (!isLocalFailure(error)) {
+          return false
+        }
+        expect(error.message).toBe('Request aborted')
+        expect(error.cause).toBe(abortError)
+        return true
+      },
+    )
   })
 
   it('wraps non-RPC HTTP bodies as INTERNAL with the HTTP status', async () => {
