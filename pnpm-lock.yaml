@@ -463,6 +463,12 @@ importers:
         specifier: ^4.0.0
         version: 4.5.4
 
+  packages/message:
+    dependencies:
+      '@ts-pf/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+
   packages/protocol: {}
 
   packages/server:
