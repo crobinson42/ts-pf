@@ -10,12 +10,15 @@ Contract-first TypeScript RPC library (`@ts-pf/*`). oRPC-like DX is the bar; oRP
     @ts-pf/server   @ts-pf/client  @ts-pf/file  @ts-pf/stream
                                                          \
                                                       @ts-pf/sse
+
+@ts-pf/docs  (contract + protocol; not imported by core)
 ```
 
 - `contract` and `protocol` are siblings. Neither depends on the other.
 - `server` and `client` each depend on both.
 - **Client never depends on server. Server never depends on client.**
 - `@ts-pf/file` depends on `protocol` only. `@ts-pf/stream` depends on `protocol` and `contract` (`stream()` schema). `@ts-pf/sse` depends on `stream` and `protocol`. All three are opt-in; default handler/link stay JSON.
+- `@ts-pf/docs` depends on `contract` and `protocol`. Not imported by core. Optional; not a handler, codec, or HTTP route.
 - Routers are nested objects, not a package.
 
 | Package | Owns |
@@ -27,6 +30,7 @@ Contract-first TypeScript RPC library (`@ts-pf/*`). oRPC-like DX is the bar; oRP
 | `file` | `MultipartCodec` only. Do not add `PFFile`, `file()`, or export walk helpers. Not imported by contract/server/client. |
 | `stream` | `StreamCodec` + `stream()`. Root `AsyncIterable` as JSONL envelopes. Not imported by contract/server/client. |
 | `sse` | `SseCodec` + `SSE_CONTENT_TYPE`. Output-only `text/event-stream` wrapping the same envelopes. Input streams stay JSONL. Not imported by contract/server/client. |
+| `docs` | `catalog()`, `docs()` meta helper, `walkContract`, `registerJsonSchemaConverter`. Optional. Contract-first. No OpenAPI, no UI, no HTTP. |
 
 ## Public names
 
@@ -58,7 +62,7 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 - FetchLink maps local network/abort failures to `INTERNAL` with `status: 0` and sets `Error.cause`. Abort message is `Request aborted`. That status is not on the wire and is not a protocol status. `isLocalFailure` is `status === 0` on `@ts-pf/client`.
 - Keep `ProtocolErrorCode` duplicated as a private union in `packages/contract/src/infer.ts`. Do not import `@ts-pf/protocol` from contract.
 
-**Not in core:** OpenAPI/REST, error-catalog RPC, Node `IncomingMessage` adapters, framework adapters, TanStack Query, lazy routers, Map/Set on the wire, EventSource clients, Last-Event-ID, EventPublisher. File/Blob is `@ts-pf/file`. Message streams are `@ts-pf/stream`. SSE output framing is `@ts-pf/sse`. None of these are core defaults. Do not redeclare `VALIDATION`, `INTERNAL`, `BAD_REQUEST`, `METHOD_NOT_ALLOWED`, or `PAYLOAD_TOO_LARGE` on `.errors()`.
+**Not in core:** OpenAPI/REST, error-catalog RPC, Node `IncomingMessage` adapters, framework adapters, TanStack Query, lazy routers, Map/Set on the wire, EventSource clients, Last-Event-ID, EventPublisher. File/Blob is `@ts-pf/file`. Message streams are `@ts-pf/stream`. SSE output framing is `@ts-pf/sse`. Procedure catalogs are `@ts-pf/docs`. Do not add `.docs()` to the contract builder. None of these are core defaults. Do not redeclare `VALIDATION`, `INTERNAL`, `BAD_REQUEST`, `METHOD_NOT_ALLOWED`, or `PAYLOAD_TOO_LARGE` on `.errors()`.
 
 ## Extension (hooks, not a plugin framework)
 
@@ -70,6 +74,7 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 | `HandlerPlugin` | server (`CORSPlugin`, `RequestLimitPlugin`, `RequestHeadersPlugin`, `ResponseHeadersPlugin`) |
 | `RpcCodec` | protocol (`JSONCodec` is the v1 impl) |
 | `Link` / interceptors | client |
+| `docs()` / `catalog()` / `registerJsonSchemaConverter` | docs |
 
 `RpcCodec` encode returns `{ contentType, body }` (`string | Blob | FormData | ReadableStream<Uint8Array> | null`). Decode takes `RpcBodySource` (`contentType`, `text()`, `formData()`, `body()`). `JSONCodec` still emits `application/json` and the JSON envelope. `MultipartCodec`, `StreamCodec`, and `SseCodec` wrap it without changing contracts. `SseCodec` maps output JSONL envelopes to `text/event-stream` (`event: message` / `event: error` / `event: close`). Keep `x-ts-pf-protocol: 1` until the JSON envelope actually breaks.
 
@@ -84,7 +89,7 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 
 ## Examples
 
-Live in `examples/`, numbered `01-hello` … `08-workshop`. They are private workspace packages, not published.
+Live in `examples/`, numbered `01-hello` … `08-workshop` and `10-docs`. They are private workspace packages, not published.
 
 - Implemented routers are named `app` (not `router` — that name is the contract helper).
 - Example `client.ts` / workshop `web` must not import `@ts-pf/server`.

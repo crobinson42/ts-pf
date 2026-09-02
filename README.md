@@ -17,6 +17,7 @@ Requires Node.js 18+.
 | [`@ts-pf/file`](packages/file) | Opt-in `MultipartCodec` for `File`/`Blob` attachments |
 | [`@ts-pf/stream`](packages/stream) | Opt-in `StreamCodec` for root `AsyncIterable` (JSONL) |
 | [`@ts-pf/sse`](packages/sse) | Opt-in `SseCodec` for SSE output framing of the same envelopes |
+| [`@ts-pf/docs`](packages/docs) | Opt-in procedure catalog from a contract (`docs()`, `catalog()`) |
 
 Wire spec: [packages/protocol/PROTOCOL.md](packages/protocol/PROTOCOL.md).
 
@@ -155,13 +156,22 @@ if (!result.ok) {
 
 Any HTTP client parses the same `{ ok: false, error: { code, message, data? } }` envelope and switches on `error.code`. `asResult` is optional TypeScript DX.
 
+Procedure catalogs are opt-in. Do not put this in the default happy path:
+
+```ts
+import { catalog, docs } from '@ts-pf/docs'
+
+procedure.meta(docs({ description: 'Find a planet by id' }))
+const spec = catalog(contract, { prefix: '/rpc' })
+```
+
 ## Why not oRPC?
 
 oRPC is a dual RPC + OpenAPI platform with many adapters, serializers, and integrations. ts-pf keeps the contract-first DX and typed middleware, and leaves OpenAPI, extra adapters, and TanStack Query to later packages.
 
 ## Examples
 
-Runnable apps in [`examples/`](examples/), from the happy path to a contract-first workshop.
+Runnable apps in [`examples/`](examples/), from the happy path to a contract-first workshop and a [`10-docs`](examples/10-docs) catalog example.
 
 See [`examples/README.md`](examples/README.md) for the learning path.
 

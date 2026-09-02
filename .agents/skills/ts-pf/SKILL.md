@@ -1,6 +1,6 @@
 ---
 name: ts-pf
-description: Use when implementing, reviewing, refactoring, or extending the ts-pf library — @ts-pf/contract, protocol, server, client, file, stream, or sse; procedure/router builders; FetchHandler; createClient; schema adapters; middleware; JSON RPC; MultipartCodec; StreamCodec; or SseCodec.
+description: Use when implementing, reviewing, refactoring, or extending the ts-pf library — @ts-pf/contract, protocol, server, client, file, stream, sse, or docs; procedure/router builders; FetchHandler; createClient; schema adapters; middleware; JSON RPC; MultipartCodec; StreamCodec; SseCodec; or catalog()/docs().
 ---
 
 # ts-pf
@@ -23,6 +23,7 @@ examples/
   06-streams/         StreamCodec + stream()
   07-sse/             SseCodec
   08-workshop/        contract / api / Vite web (client never imports server)
+  10-docs/            catalog() from contract; userland markdown renderer
 packages/contract/src/
   builder.ts          procedure singleton, router()
   procedure.ts        ContractProcedure brand
@@ -69,6 +70,15 @@ packages/sse/src/
   codec.ts            SSE output wrap of StreamCodec
   sse.ts              SSE read/write (internal)
   is-async-iterable.ts (internal)
+packages/docs/src/
+  index.ts            catalog, docs, getDocs, walkContract, toJsonSchema, registerJsonSchemaConverter
+  docs.ts             DOCS_KEY, DocsMeta, docs(), getDocs()
+  walk.ts             walkContract / WalkEntry
+  types.ts            ProcedureCatalog, CatalogProcedure, CatalogSchema, CatalogError, JsonSchema
+  catalog.ts          catalog(contract, options)
+  json-schema.ts      JsonSchemaConverter, registerJsonSchemaConverter, toJsonSchema, tryToJsonSchema
+  converters/standard.ts  ~standard.jsonSchema (internal)
+  converters/typebox.ts   '~kind' + JSON.stringify (internal)
 ```
 
 Do not merge handler + implementer. Do not put HTTP in contract.
@@ -151,6 +161,15 @@ new FetchLink({ url: '/rpc', codec: sseCodec })
 // input streams stay JSONL; output streams are text/event-stream
 ```
 
+Procedure catalogs are opt-in too. Do not put this in the default happy path:
+
+```ts
+import { catalog, docs } from '@ts-pf/docs'
+
+procedure.meta(docs({ description: 'Find a planet by id' }))
+const spec = catalog(contract, { prefix: '/rpc' })
+```
+
 `$context<C>()` is the source of context types. Middleware runtime-merges; it does not infer added keys.
 
 ## Call pipeline
@@ -192,6 +211,7 @@ Runtime `validateSchema`: user `registerSchemaAdapter` (first `accept` match) �
 | File/Blob | `@ts-pf/file` `MultipartCodec` on `FetchHandler` / `FetchLink` `{ codec }`. Limits are codec options (`maxFiles` / `maxFileSize`), not a HandlerPlugin. Do not export placeholders or a `file()` helper. Do not fold into contract/server/client. |
 | AsyncIterable streams | `@ts-pf/stream` `StreamCodec` + `stream()` on `.input()` / `.output()`. Root only. JSONL envelopes, lazy `body()`. Nested streams and File/Blob in items are `BAD_REQUEST`. Custom fetch Links must set `duplex: 'half'`. |
 | SSE output | `@ts-pf/sse` `SseCodec` on `FetchHandler` / `FetchLink`. Same `stream()` contracts. Output-only `text/event-stream` (`message` / `error` / `close`). Input streams stay JSONL. Fetch parser, not `EventSource`. Do not fold into `StreamCodec` or core. |
+| API docs / procedure catalog | `@ts-pf/docs` `docs()` + `catalog()`. Do not fold OpenAPI or a UI into contract/server. |
 | OpenAPI, TanStack Query, Node HTTP, EventPublisher | **new package** under `packages/`. Do not fold into contract/server/client. |
 | Typed errors on a procedure | `.errors({ CODE: { status, message, data? } })`. Handler: `throw errors.CODE(data)` — `ErrorFactory<TErrors>` requires `data` when the def has a schema and forbids extra args when it does not — or `throw new PFError(...)`. Middleware `errors` stays loose; undeclared codes (e.g. `UNAUTHORIZED`) via `new PFError(...)`. Do not type `MiddlewareFn` from the procedure map. Runtime factory is always the loose object; typing is only on `ProcedureBuilder.handler`. `runProcedure` + `finalizeDeclaredError` (internal) validate declared `data` (unary + wrapped async iterable); invalid/missing `data` when a schema exists → `INTERNAL` 500, never serialize the lie. Codes with no `data` schema and undeclared codes pass through. `ClientError<E>` is declared variants plus remaining protocol codes (`VALIDATION` still has `data: { issues }`); a declared code replaces the protocol variant so `NOT_FOUND` may be reused. `asResult` → `CallResult<T, E>` from `ContractResultPromise` (do not widen `E | PFError`). Non-JS clients switch on JSON `error.code`. Client three-way: `isLocalFailure` (status 0) vs declared code vs `INTERNAL` with non-zero status. Do not put `status` or `cause` in `{ ok: false, error }`. No OpenAPI or catalog RPC. |
 
@@ -201,6 +221,11 @@ New packages: same `exports` (source for workspace, `publishConfig` → `dist`),
 
 - Client importing `@ts-pf/server` (tests may, as a **devDependency**)
 - `@ts-pf/file`, `@ts-pf/stream`, or `@ts-pf/sse` imported by contract/server/client (prod)
+- `@ts-pf/docs` imported by contract/server/client (prod)
+- `.docs()` on `ContractBuilder`
+- OpenAPI types in `@ts-pf/contract`
+- Walking `app` instead of `contract` for docs
+- Embedding Scalar/Swagger in `@ts-pf/docs`
 - `PFFile` / `file()` on `@ts-pf/file`; `RpcCodec` that returns a raw string
 - Nested streams, File/Blob in stream items, byte `ReadableStream` as the message-stream protocol, SSE in `JSONCodec` / `StreamCodec`
 - `EventSource` as the ts-pf client; SSE request bodies; `Last-Event-ID` / publisher in core
@@ -228,8 +253,8 @@ New packages: same `exports` (source for workspace, `publishConfig` → `dist`),
 ## Review checklist
 
 - Names match the table in `.agents/rules.md`
-- DAG still acyclic; client never depends on server; `@ts-pf/file` protocol-only; `@ts-pf/stream` protocol + contract; `@ts-pf/sse` stream + protocol; none imported by contract/server/client (prod)
-- Public exports: file = `MultipartCodec`; stream = `StreamCodec` + `stream()`; sse = `SseCodec` + `SSE_CONTENT_TYPE`. Server plugins = `HandlerPlugin`, `CORSPlugin`, `RequestLimitPlugin`, `RequestHeadersPlugin`, `ResponseHeadersPlugin`, `RequestHeadersPluginContext`, `ResponseHeadersPluginContext`, `CORSPluginOptions`, `RequestLimitPluginOptions`. Contract errors = `ClientError`, `InferErrorData`, `InferContractErrors` (and `InferContractErrorCodes`). Client = `asResult` + `CallResult` + `isLocalFailure`. Server exports `ErrorFactory`; does **not** export `createErrorFactory` / `finalizeDeclaredError`. Handler `errors` is `ErrorFactory<TErrors>`; middleware `errors` is default `ErrorFactory`. `ClientError` still includes protocol codes except those the procedure redeclared. `RpcBodySource.body()` and `FetchLink` `duplex: 'half'` still present. `CallOptions.signal` forwarded; typed handlers include `signal`; middleware still has no `signal`. Streamed `ReadableStream` responses get anti-buffering headers. `FetchLink` rethrows `PFError` from `decodeResponse` only when `x-ts-pf-protocol` is present. Non-RPC decode wrap uses HTTP status + `Non-RPC response (HTTP …)` + `cause`, not status 0. Protocol-header + non-`PFError` decode throw stays `INTERNAL` + HTTP status + `Invalid response` + `cause`. `FetchLink` binds `opts.fetch ?? globalThis.fetch` to `globalThis` (browser `this` / Illegal invocation). `HandlerPlugin.onResponse` runs on errors and 405. `OPTIONS` without `CORSPlugin` is still 405
+- DAG still acyclic; client never depends on server; `@ts-pf/file` protocol-only; `@ts-pf/stream` protocol + contract; `@ts-pf/sse` stream + protocol; `@ts-pf/docs` contract + protocol; none imported by contract/server/client (prod)
+- Public exports: file = `MultipartCodec`; stream = `StreamCodec` + `stream()`; sse = `SseCodec` + `SSE_CONTENT_TYPE`. docs = `catalog`, `CatalogOptions`, `DOCS_KEY`, `DocsMeta`, `docs`, `getDocs`, `JsonSchemaConverter`, `JsonSchemaConvertOptions`, `registerJsonSchemaConverter`, `toJsonSchema`, `tryToJsonSchema`, `CatalogError`, `CatalogProcedure`, `CatalogSchema`, `JsonSchema`, `ProcedureCatalog`, `WalkEntry`, `walkContract`. No OpenAPI document type. No `HandlerPlugin` from docs. Server plugins = `HandlerPlugin`, `CORSPlugin`, `RequestLimitPlugin`, `RequestHeadersPlugin`, `ResponseHeadersPlugin`, `RequestHeadersPluginContext`, `ResponseHeadersPluginContext`, `CORSPluginOptions`, `RequestLimitPluginOptions`. Contract errors = `ClientError`, `InferErrorData`, `InferContractErrors` (and `InferContractErrorCodes`). Client = `asResult` + `CallResult` + `isLocalFailure`. Server exports `ErrorFactory`; does **not** export `createErrorFactory` / `finalizeDeclaredError`. Handler `errors` is `ErrorFactory<TErrors>`; middleware `errors` is default `ErrorFactory`. `ClientError` still includes protocol codes except those the procedure redeclared. `RpcBodySource.body()` and `FetchLink` `duplex: 'half'` still present. `CallOptions.signal` forwarded; typed handlers include `signal`; middleware still has no `signal`. Streamed `ReadableStream` responses get anti-buffering headers. `FetchLink` rethrows `PFError` from `decodeResponse` only when `x-ts-pf-protocol` is present. Non-RPC decode wrap uses HTTP status + `Non-RPC response (HTTP …)` + `cause`, not status 0. Protocol-header + non-`PFError` decode throw stays `INTERNAL` + HTTP status + `Invalid response` + `cause`. `FetchLink` binds `opts.fetch ?? globalThis.fetch` to `globalThis` (browser `this` / Illegal invocation). `HandlerPlugin.onResponse` runs on errors and 405. `OPTIONS` without `CORSPlugin` is still 405
 - Separation of concern for long term maintainability of all packages and their dependencies
 - Procedure completeness: `impl.router()` rejects missing/extra keys (types + runtime)
 - Errors: unknown throws → `INTERNAL` 500, no stack in JSON. Unary output schema failure → `INTERNAL` 500, no issues. Invalid declared error `data` → `INTERNAL` 500, never serialize the bad payload. `ClientError` narrows `data` from `code`. `asResult` is `CallResult<T, E>` (no `E | PFError` widen). Do not put `status` / `cause` / `defined` / brands on the JSON error object.
