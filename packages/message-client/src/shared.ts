@@ -73,15 +73,8 @@ export function attachClient(options: AttachClientOptions): {
     onFrame: (frame) => {
       handleFrame(frame)
     },
-    onInvalidFrame: (info) => {
-      const rec = inflight.get(info.id)
-      if (rec === undefined || rec.mode !== 'pending-first') {
-        return
-      }
-      finish(info.id, rec, () => {
-        rec.reject(localFailure('Invalid response'))
-      })
-    },
+    // decode failures never settle a call, in-flight or not
+    onInvalidFrame: () => {},
     onClose: (reason) => {
       closed = true
       const error =

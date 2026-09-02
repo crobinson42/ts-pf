@@ -361,6 +361,49 @@ describe('PortLink', () => {
     peer.session.close()
   })
 
+  it('ignores invalid in-flight frames and still accepts a later result', async () => {
+    const { port1, port2 } = new MessageChannel()
+    const peer = openPeer(port1)
+    const link = new PortLink({ port: port2 })
+    await peer.session.ready
+
+    const pending = link.call(['planet', 'find'], { id: 1 })
+    await waitFor(
+      peer.frames,
+      (frame) => frame.type === 'call' && frame.id === '1',
+    )
+    expect(peer.session.sendText('{"type":"nope","id":"1"}').ok).toBe(true)
+    expect(
+      peer.session.sendText(
+        '{"type":"result","id":"1","ok":true,"output":{"id":1,"name":"bogus"},"nope":true}',
+      ).ok,
+    ).toBe(true)
+    for (let i = 0; i < 20; i++) {
+      await nextTurn()
+    }
+    const marker = await Promise.race([
+      pending.then(
+        () => 'settled' as const,
+        () => 'settled' as const,
+      ),
+      nextTurn().then(() => 'pending' as const),
+    ])
+    expect(marker).toBe('pending')
+
+    expect(
+      peer.session.send({
+        type: 'result',
+        id: '1',
+        ok: true,
+        output: { id: 1, name: 'Earth' },
+      }).ok,
+    ).toBe(true)
+    expect(await pending).toEqual({ id: 1, name: 'Earth' })
+
+    link.close()
+    peer.session.close()
+  })
+
   it('first illegal frame is Invalid response for that call only', async () => {
     const { port1, port2 } = new MessageChannel()
     const peer = openPeer(port1)
