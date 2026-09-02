@@ -80,4 +80,53 @@ describe('catalog', () => {
       'PAYLOAD_TOO_LARGE',
     ])
   })
+
+  it('attaches JSON Schema for input, output, and error data', () => {
+    const withErrorData = router({
+      planet: {
+        find: procedure
+          .input(z.object({ id: z.number() }))
+          .output(z.object({ id: z.number(), name: z.string() }))
+          .errors({
+            NOT_FOUND: {
+              status: 404,
+              data: z.object({ id: z.number() }),
+            },
+          }),
+      },
+    })
+    const result = catalog(withErrorData)
+    const find = result.procedures.find((p) => p.key === 'planet/find')
+    expect(find?.input?.kind).toBe('json')
+    expect(find?.output?.kind).toBe('json')
+    if (find?.input?.kind === 'json') {
+      expect(find.input.jsonSchema).toMatchObject({
+        type: 'object',
+        properties: { id: { type: 'number' } },
+      })
+    }
+    expect(find?.errors[0]?.data?.kind).toBe('json')
+  })
+
+  it('marks ts-pf stream schemas as kind stream without converting the iterable', async () => {
+    const { stream } = await import('@ts-pf/stream')
+    const streamed = router({
+      chat: procedure.output(stream(z.object({ token: z.string() }))),
+    })
+    const result = catalog(streamed)
+    expect(result.procedures[0]?.output).toEqual({
+      kind: 'stream',
+      vendor: 'ts-pf',
+    })
+  })
+
+  it('records unavailable when a schema has no converter', () => {
+    const odd = router({
+      ping: procedure.output({ not: 'a schema' }),
+    })
+    const result = catalog(odd)
+    expect(result.procedures[0]?.output).toMatchObject({
+      kind: 'unavailable',
+    })
+  })
 })

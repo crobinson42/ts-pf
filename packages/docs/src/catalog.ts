@@ -5,9 +5,11 @@ import {
   ProtocolErrorCode,
 } from '@ts-pf/protocol'
 import { getDocs } from './docs.js'
+import { tryToJsonSchema } from './json-schema.js'
 import type {
   CatalogError,
   CatalogProcedure,
+  CatalogSchema,
   ProcedureCatalog,
 } from './types.js'
 import { walkContract } from './walk.js'
@@ -96,6 +98,9 @@ function toProcedure(
       if (err.message !== undefined) {
         item.message = err.message
       }
+      if (schemas && err.data !== undefined) {
+        item.data = toCatalogSchema(err.data, 'output')
+      }
       return item
     }),
   }
@@ -105,6 +110,44 @@ function toProcedure(
   if (docs !== undefined) {
     proc.docs = docs
   }
-  void schemas
+  if (schemas) {
+    if (def.input !== undefined) {
+      proc.input = toCatalogSchema(def.input, 'input')
+    }
+    if (def.output !== undefined) {
+      proc.output = toCatalogSchema(def.output, 'output')
+    }
+  }
   return proc
+}
+
+function isTsPfStream(schema: unknown): boolean {
+  return (
+    typeof schema === 'object' &&
+    schema !== null &&
+    '~standard' in schema &&
+    (schema as { '~standard'?: { vendor?: string } })['~standard']?.vendor ===
+      'ts-pf'
+  )
+}
+
+function toCatalogSchema(
+  schema: unknown,
+  io: 'input' | 'output',
+): CatalogSchema {
+  if (isTsPfStream(schema)) {
+    return { kind: 'stream', vendor: 'ts-pf' }
+  }
+  const converted = tryToJsonSchema(schema, { io })
+  if (converted.ok) {
+    const result: CatalogSchema = {
+      kind: 'json',
+      jsonSchema: converted.schema,
+    }
+    if (converted.vendor !== undefined) {
+      result.vendor = converted.vendor
+    }
+    return result
+  }
+  return { kind: 'unavailable', reason: converted.reason }
 }
