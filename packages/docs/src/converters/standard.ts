@@ -16,7 +16,10 @@ export const standardJsonSchemaConverter: JsonSchemaConverter = {
     if (!isRecord(standard) || !isRecord(standard.jsonSchema)) {
       return false
     }
-    return typeof standard.jsonSchema.input === 'function'
+    return (
+      typeof standard.jsonSchema.input === 'function' &&
+      typeof standard.jsonSchema.output === 'function'
+    )
   },
   convert(schema, options) {
     const standard = (

@@ -32,6 +32,19 @@ describe('toJsonSchema', () => {
     )
   })
 
+  it('rejects Standard JSON Schema missing output converter', () => {
+    const halfBaked = {
+      '~standard': {
+        jsonSchema: {
+          input: () => ({ type: 'string' }),
+        },
+      },
+    }
+    expect(() => toJsonSchema(halfBaked, { io: 'output' })).toThrow(
+      /converter/i,
+    )
+  })
+
   it('lets registerJsonSchemaConverter win first', () => {
     registerJsonSchemaConverter({
       vendor: 'test',
