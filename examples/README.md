@@ -16,7 +16,7 @@ Override the listen port with `PORT`. Defaults are `3101`–`3108` so several de
 | Example | Teaches | Packages |
 |---|---|---|
 | [01-hello](01-hello) | Contract, nested router, implementer, `FetchHandler`, `createClient` | contract, server, client |
-| [02-errors](02-errors) | Declared `.errors()`, `asResult`, undeclared `PFError` | contract, server, client, protocol |
+| [02-errors](02-errors) | Declared `.errors()`, `asResult`, `isLocalFailure` vs `INTERNAL` | contract, server, client, protocol |
 | [03-middleware](03-middleware) | `$context`, `.use` / `.useAfter`, `createLocalClient` | contract, server, client, protocol |
 | [04-plugins](04-plugins) | CORS / limits / header plugins, interceptors, `signal` | contract, server, client, protocol |
 | [05-files](05-files) | Opt-in `MultipartCodec` for `File` / `Blob` | + `@ts-pf/file` |
