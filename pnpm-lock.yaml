@@ -487,6 +487,9 @@ importers:
       '@ts-pf/message':
         specifier: workspace:*
         version: link:../message
+      '@ts-pf/protocol':
+        specifier: workspace:*
+        version: link:../protocol
       '@ts-pf/server':
         specifier: workspace:*
         version: link:../server

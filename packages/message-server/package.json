@@ -36,6 +36,7 @@
   },
   "dependencies": {
     "@ts-pf/message": "workspace:*",
+    "@ts-pf/protocol": "workspace:*",
     "@ts-pf/server": "workspace:*"
   },
   "devDependencies": {

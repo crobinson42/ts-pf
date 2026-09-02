@@ -5,6 +5,7 @@ import {
   MessageSession,
   type WireError,
 } from '@ts-pf/message'
+import { isPFError, PFError } from '@ts-pf/protocol'
 import {
   type ImplementedRouter,
   lookupProcedure,
@@ -36,48 +37,6 @@ function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError'
 }
 
-// message-server must not depend on @ts-pf/protocol; PFError is name + toJSON.
-function envelopeFromError(error: unknown): WireError | undefined {
-  if (
-    typeof error !== 'object' ||
-    error === null ||
-    (error as { name?: unknown }).name !== 'PFError' ||
-    typeof (error as { toJSON?: unknown }).toJSON !== 'function'
-  ) {
-    return undefined
-  }
-  const json = (error as { toJSON: () => unknown }).toJSON()
-  if (
-    typeof json !== 'object' ||
-    json === null ||
-    typeof (json as { code?: unknown }).code !== 'string' ||
-    typeof (json as { message?: unknown }).message !== 'string'
-  ) {
-    return undefined
-  }
-  const envelope: WireError = {
-    code: (json as { code: string }).code,
-    message: (json as { message: string }).message,
-  }
-  if ('data' in json && (json as { data?: unknown }).data !== undefined) {
-    envelope.data = (json as { data: unknown }).data
-  }
-  return envelope
-}
-
-function notFoundError(): never {
-  const error = new Error('Procedure not found')
-  error.name = 'PFError'
-  throw Object.assign(error, {
-    code: 'NOT_FOUND',
-    status: 404,
-    toJSON: (): WireError => ({
-      code: 'NOT_FOUND',
-      message: 'Procedure not found',
-    }),
-  })
-}
-
 async function dispatchCall(
   router: ImplementedRouter,
   frame: CallFrame,
@@ -86,7 +45,11 @@ async function dispatchCall(
 ): Promise<unknown> {
   const procedure = lookupProcedure(router, frame.path)
   if (!procedure) {
-    notFoundError()
+    throw new PFError({
+      code: 'NOT_FOUND',
+      status: 404,
+      message: 'Procedure not found',
+    })
   }
   const rawInput =
     frame.stream === true
@@ -296,10 +259,9 @@ export function attachRouter<TCtx = unknown>(
         ...(output !== undefined ? { output } : {}),
       })
     } catch (error) {
-      const envelope = envelopeFromError(error)
       if (rec.cancelled) {
         if (
-          envelope === undefined &&
+          !isPFError(error) &&
           !isAbortError(error) &&
           options.onError !== undefined
         ) {
@@ -307,12 +269,12 @@ export function attachRouter<TCtx = unknown>(
         }
         return
       }
-      if (envelope !== undefined) {
+      if (isPFError(error)) {
         sendOutbound(rec, frame.id, {
           type: 'result',
           id: frame.id,
           ok: false,
-          error: envelope,
+          error: error.toJSON(),
         })
         return
       }
