@@ -1,4 +1,9 @@
-import { asResult, createClient, FetchLink, isLocalFailure } from '@ts-pf/client'
+import {
+  asResult,
+  createClient,
+  FetchLink,
+  isLocalFailure,
+} from '@ts-pf/client'
 import { fetchFor } from 'ts-pf-example-shared/test-fetch'
 import { describe, expect, expectTypeOf, it } from 'vitest'
 import type { contract } from '../src/contract.js'
@@ -60,7 +65,9 @@ describe('02-errors', () => {
     expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(isLocalFailure(result.error)).toBe(true)
-      expect(result.error.cause).toBe(fetchError)
+      if (isLocalFailure(result.error)) {
+        expect(result.error.cause).toBe(fetchError)
+      }
     }
   })
 })
