@@ -3,12 +3,14 @@ import type { ContractClient } from '@ts-pf/contract'
 import { PFError } from '@ts-pf/protocol'
 import { examplePort, isEntrypoint } from 'ts-pf-example-shared/listen'
 import type { contract } from './contract.js'
+import { retryOnLocalFailure } from './retry-on-local-failure.js'
 
 export async function run(url: string) {
   const client: ContractClient<typeof contract> = createClient(
     new FetchLink({
       url,
       interceptors: [
+        retryOnLocalFailure,
         async ({ request, next }) => {
           request.headers.set('authorization', 'Bearer demo')
           return next(request)
@@ -26,7 +28,7 @@ export async function run(url: string) {
     await client.planet.list({ signal: ac.signal })
   } catch (error) {
     if (error instanceof PFError) {
-      console.log('aborted', error.code, error.status)
+      console.log('aborted', error.code, error.status, error.message)
     } else {
       console.log('aborted', error)
     }

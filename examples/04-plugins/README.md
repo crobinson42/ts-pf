@@ -18,7 +18,8 @@ Default port `3104`.
 
 - `src/server.ts` — `CORSPlugin`, `RequestLimitPlugin`, `RequestHeadersPlugin`, `ResponseHeadersPlugin`
 - `src/app.ts` — `context.reqHeaders` / `context.resHeaders` (optional keys from the plugins)
-- `src/client.ts` — interceptor attaches `Authorization`; `list({ signal })` forwards abort. `FetchLink` maps local abort/network failures to `INTERNAL` with `status: 0` (not on the wire).
+- `src/client.ts` — interceptor attaches `Authorization`; `list({ signal })` forwards abort. `FetchLink` maps local abort/network failures to `INTERNAL` with `status: 0` (not on the wire). Abort uses message `Request aborted` and keeps `cause`.
+- `src/retry-on-local-failure.ts` — example interceptor: one retry on a thrown fetch, never on abort. Interceptors see raw `fetch` throws; `isLocalFailure` is for mapped `PFError` after the call (`asResult` / `catch`).
 
 `RequestLimitPlugin` caps the HTTP body. Multipart file caps stay on `MultipartCodec` in [05-files](../05-files).
 

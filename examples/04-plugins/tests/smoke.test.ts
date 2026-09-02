@@ -3,6 +3,7 @@ import { fetchFor } from 'ts-pf-example-shared/test-fetch'
 import { describe, expect, it } from 'vitest'
 import type { Planet } from '../src/app.js'
 import type { contract } from '../src/contract.js'
+import { retryOnLocalFailure } from '../src/retry-on-local-failure.js'
 import { handler } from '../src/server.js'
 
 function db(): Planet[] {
@@ -101,7 +102,55 @@ describe('04-plugins', () => {
     ac.abort()
     await expect(
       client.planet.list({ signal: ac.signal }),
-    ).rejects.toMatchObject({ code: 'INTERNAL', status: 0 })
+    ).rejects.toMatchObject({
+      code: 'INTERNAL',
+      status: 0,
+      message: 'Request aborted',
+    })
+  })
+
+  it('retries once when fetch throws a non-abort error', async () => {
+    let attempts = 0
+    const inner = fetchFor(handler, { db: db() })
+    const client = createClient<typeof contract>(
+      new FetchLink({
+        url: 'http://127.0.0.1/rpc',
+        fetch: async (input, init) => {
+          attempts += 1
+          if (attempts === 1) {
+            throw new TypeError('fetch failed')
+          }
+          return inner(input, init)
+        },
+        interceptors: [retryOnLocalFailure],
+      }),
+    )
+    expect(await client.planet.list()).toEqual([{ id: 1, name: 'Earth' }])
+    expect(attempts).toBe(2)
+  })
+
+  it('does not retry abort', async () => {
+    let attempts = 0
+    const client = createClient<typeof contract>(
+      new FetchLink({
+        url: 'http://127.0.0.1/rpc',
+        fetch: async () => {
+          attempts += 1
+          throw new DOMException('This operation was aborted.', 'AbortError')
+        },
+        interceptors: [retryOnLocalFailure],
+      }),
+    )
+    const ac = new AbortController()
+    ac.abort()
+    await expect(
+      client.planet.list({ signal: ac.signal }),
+    ).rejects.toMatchObject({
+      code: 'INTERNAL',
+      status: 0,
+      message: 'Request aborted',
+    })
+    expect(attempts).toBe(1)
   })
 
   it('rejects create without the interceptor', async () => {
