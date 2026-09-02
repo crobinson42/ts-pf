@@ -109,10 +109,9 @@ function openPeer(
 }
 
 describe('PortLink', () => {
-  it('exports PortLink and not WsLink, StdioLink, or attachClient', async () => {
+  it('exports PortLink and not StdioLink or attachClient', async () => {
     const exported = await import('../src/index.js')
-    expect(Object.keys(exported).sort()).toEqual(['PortLink'])
-    expect(exported).not.toHaveProperty('WsLink')
+    expect(Object.keys(exported).sort()).toEqual(['PortLink', 'WsLink'])
     expect(exported).not.toHaveProperty('StdioLink')
     expect(exported).not.toHaveProperty('attachClient')
     expect(exported).not.toHaveProperty('RPCLink')

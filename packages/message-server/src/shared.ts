@@ -103,6 +103,9 @@ export function attachRouter<TCtx = unknown>(
       abortAll()
     },
   })
+  void session.ready.catch(() => {
+    // handshake / close rejects ready; bind() does not await it
+  })
 
   function abortAll(): void {
     for (const rec of inflight.values()) {
