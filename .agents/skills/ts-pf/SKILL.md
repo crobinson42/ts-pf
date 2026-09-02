@@ -23,7 +23,6 @@ examples/
   06-streams/         StreamCodec + stream()
   07-sse/             SseCodec
   08-workshop/        contract / api / Vite web (client never imports server)
-  09-onion-arch/      domain (no @ts-pf) / contract / application / infrastructure / api (local.ts here)
 packages/contract/src/
   builder.ts          procedure singleton, router()
   procedure.ts        ContractProcedure brand

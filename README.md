@@ -161,7 +161,7 @@ oRPC is a dual RPC + OpenAPI platform with many adapters, serializers, and integ
 
 ## Examples
 
-Runnable apps in [`examples/`](examples/), from the happy path to a contract-first workshop and an onion-layered server.
+Runnable apps in [`examples/`](examples/), from the happy path to a contract-first workshop.
 
 See [`examples/README.md`](examples/README.md) for the learning path.
 

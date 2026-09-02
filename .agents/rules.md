@@ -84,7 +84,7 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 
 ## Examples
 
-Live in `examples/`, numbered `01-hello` … `09-onion-arch`. They are private workspace packages, not published.
+Live in `examples/`, numbered `01-hello` … `08-workshop`. They are private workspace packages, not published.
 
 - Implemented routers are named `app` (not `router` — that name is the contract helper).
 - Example `client.ts` / workshop `web` must not import `@ts-pf/server`.
