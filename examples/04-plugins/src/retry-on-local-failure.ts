@@ -6,12 +6,13 @@ function isAbortError(error: unknown): boolean {
 
 /** One retry on a thrown fetch. Interceptors see raw transport throws, not mapped PFError. */
 export const retryOnLocalFailure: Interceptor = async ({ request, next }) => {
+  const retryable = request.clone()
   try {
     return await next(request)
   } catch (error) {
     if (isAbortError(error) || request.signal.aborted) {
       throw error
     }
-    return next(request.clone())
+    return next(retryable)
   }
 }

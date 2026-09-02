@@ -117,7 +117,10 @@ describe('04-plugins', () => {
         url: 'http://127.0.0.1/rpc',
         fetch: async (input, init) => {
           attempts += 1
+          const req =
+            input instanceof Request ? input : new Request(input, init)
           if (attempts === 1) {
+            await req.arrayBuffer()
             throw new TypeError('fetch failed')
           }
           return inner(input, init)
