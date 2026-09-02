@@ -37,4 +37,24 @@ describe('PFError', () => {
       data: { id: 1 },
     })
   })
+
+  it('preserves cause and omits it from toJSON', () => {
+    const cause = new Error('connect ECONNREFUSED 127.0.0.1:80')
+    const err = new PFError({
+      code: 'INTERNAL',
+      status: 0,
+      message: 'fetch failed',
+      cause,
+    })
+    expect(err.cause).toBe(cause)
+    expect(err.toJSON()).toEqual({
+      code: 'INTERNAL',
+      message: 'fetch failed',
+    })
+  })
+
+  it('omits cause when not provided', () => {
+    const err = new PFError({ code: 'INTERNAL', message: 'x' })
+    expect(err.cause).toBeUndefined()
+  })
 })

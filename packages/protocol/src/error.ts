@@ -3,6 +3,7 @@ export type PFErrorInit<TCode extends string = string, TData = unknown> = {
   status?: number
   message?: string
   data?: TData
+  cause?: unknown
 }
 
 export class PFError<
@@ -14,7 +15,12 @@ export class PFError<
   readonly data?: TData
 
   constructor(init: PFErrorInit<TCode, TData>) {
-    super(init.message ?? init.code)
+    const message = init.message ?? init.code
+    if ('cause' in init) {
+      super(message, { cause: init.cause })
+    } else {
+      super(message)
+    }
     this.name = 'PFError'
     this.code = init.code
     this.status = init.status ?? 400
