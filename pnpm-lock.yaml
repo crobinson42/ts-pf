@@ -478,9 +478,21 @@ importers:
         specifier: workspace:*
         version: link:../message
     devDependencies:
+      '@ts-pf/contract':
+        specifier: workspace:*
+        version: link:../contract
       '@ts-pf/message-server':
         specifier: workspace:*
         version: link:../message-server
+      '@ts-pf/server':
+        specifier: workspace:*
+        version: link:../server
+      typebox:
+        specifier: ^1.3.24
+        version: 1.3.24
+      zod:
+        specifier: ^4.0.0
+        version: 4.5.4
 
   packages/message-server:
     dependencies:
