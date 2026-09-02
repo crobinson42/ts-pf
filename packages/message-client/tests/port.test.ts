@@ -481,6 +481,40 @@ describe('PortLink', () => {
     peer.session.close()
   })
 
+  it.each([
+    { type: 'hello-ok' as const, v: 1 as const },
+    {
+      type: 'hello-error' as const,
+      error: { code: 'BAD_REQUEST', message: 'nope' },
+    },
+  ])(
+    'post-ready $type rejects inflight with Connection closed',
+    async (frame) => {
+      const { port1, port2 } = new MessageChannel()
+      const peer = openPeer(port1)
+      const link = new PortLink({ port: port2 })
+      await peer.session.ready
+
+      const pending = link.call(['planet', 'find'], { id: 1 })
+      await waitFor(peer.frames, (f) => f.type === 'call')
+      expect(peer.session.send(frame).ok).toBe(true)
+
+      const error = await pending.then(
+        () => {
+          throw new Error('should reject')
+        },
+        (reason: unknown) => reason,
+      )
+      expect(isLocalFailure(error)).toBe(true)
+      expect(error).toMatchObject({
+        code: 'INTERNAL',
+        status: 0,
+        message: 'Connection closed',
+      })
+      link.close()
+    },
+  )
+
   it('rejects inflight calls when the peer port closes', async () => {
     const { port1, port2 } = new MessageChannel()
     const peer = openPeer(port1)

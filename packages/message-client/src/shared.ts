@@ -108,6 +108,7 @@ export function attachClient(options: AttachClientOptions): {
       frame.type === 'hello-ok' ||
       frame.type === 'hello-error'
     ) {
+      session.close()
       return
     }
     const rec = inflight.get(frame.id)
@@ -196,22 +197,9 @@ export function attachClient(options: AttachClientOptions): {
         sendingInput: false,
       }
 
-      if (signal !== undefined) {
-        const abortSignal = signal
-        if (abortSignal.aborted) {
-          reject(abortedFailure(abortSignal))
-          return
-        }
-        const onAbort = (): void => {
-          finish(id, rec, () => {
-            session.send({ type: 'cancel', id })
-            rec.reject(abortedFailure(abortSignal))
-          })
-        }
-        abortSignal.addEventListener('abort', onAbort)
-        rec.unsubAbort = () => {
-          abortSignal.removeEventListener('abort', onAbort)
-        }
+      if (signal?.aborted) {
+        reject(abortedFailure(signal))
+        return
       }
 
       inflight.set(id, rec)
@@ -243,6 +231,24 @@ export function attachClient(options: AttachClientOptions): {
           }
           rec.reject(localFailure('Connection closed'))
         })
+        return
+      }
+
+      if (signal !== undefined) {
+        const abortSignal = signal
+        const onAbort = (): void => {
+          finish(id, rec, () => {
+            session.send({ type: 'cancel', id })
+            rec.reject(abortedFailure(abortSignal))
+          })
+        }
+        abortSignal.addEventListener('abort', onAbort)
+        rec.unsubAbort = () => {
+          abortSignal.removeEventListener('abort', onAbort)
+        }
+        if (abortSignal.aborted) {
+          onAbort()
+        }
       }
     })
   }
