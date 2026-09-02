@@ -1,4 +1,9 @@
-import { asResult, createClient, FetchLink } from '@ts-pf/client'
+import {
+  asResult,
+  createClient,
+  FetchLink,
+  isLocalFailure,
+} from '@ts-pf/client'
 import { procedure, router } from '@ts-pf/contract'
 import { isPFError, JSONCodec, PFError } from '@ts-pf/protocol'
 import { createImplementer, FetchHandler } from '@ts-pf/server'
@@ -173,5 +178,32 @@ describe('createClient', () => {
     await expect(browserish.planet.list()).resolves.toEqual([
       { id: 1, name: 'Earth' },
     ])
+  })
+})
+
+describe('isLocalFailure', () => {
+  it('is true only for PFError with status 0', () => {
+    expect(isLocalFailure(new PFError({ code: 'INTERNAL', status: 0 }))).toBe(
+      true,
+    )
+    expect(isLocalFailure(new PFError({ code: 'INTERNAL', status: 500 }))).toBe(
+      false,
+    )
+    expect(
+      isLocalFailure(new PFError({ code: 'NOT_FOUND', status: 404 })),
+    ).toBe(false)
+    expect(isLocalFailure(new Error('fetch failed'))).toBe(false)
+  })
+
+  it('narrows status to 0', () => {
+    const error: unknown = new PFError({
+      code: 'INTERNAL',
+      status: 0,
+      message: 'fetch failed',
+    })
+    if (isLocalFailure(error)) {
+      expectTypeOf(error.status).toEqualTypeOf<0>()
+      expectTypeOf(error.code).toEqualTypeOf<string>()
+    }
   })
 })
