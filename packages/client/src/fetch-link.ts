@@ -91,10 +91,19 @@ export class FetchLink implements Link {
       if (error instanceof PFError) {
         throw error
       }
+      if (isAbortFailure(error, signal)) {
+        throw new PFError({
+          code: 'INTERNAL',
+          status: 0,
+          message: 'Request aborted',
+          cause: error,
+        })
+      }
       throw new PFError({
         code: 'INTERNAL',
         status: 0,
         message: error instanceof Error ? error.message : 'Network error',
+        cause: error,
       })
     }
 
@@ -149,4 +158,11 @@ function applyEncodedHeaders(headers: Headers, encoded: RpcEncodedBody): void {
     return
   }
   headers.set('content-type', encoded.contentType)
+}
+
+function isAbortFailure(error: unknown, signal?: AbortSignal): boolean {
+  if (signal?.aborted) {
+    return true
+  }
+  return error instanceof Error && error.name === 'AbortError'
 }

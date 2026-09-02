@@ -116,6 +116,58 @@ describe('createClient', () => {
     })
   })
 
+  it('maps fetch throws to INTERNAL status 0 and keeps cause', async () => {
+    const syscall = new Error('connect ECONNREFUSED 127.0.0.1:80')
+    const fetchError = new TypeError('fetch failed')
+    fetchError.cause = syscall
+    const offline = createClient<typeof contract>(
+      new FetchLink({
+        url: 'http://localhost/rpc',
+        fetch: async () => {
+          throw fetchError
+        },
+      }),
+    )
+    await expect(offline.planet.list()).rejects.toSatisfy((error: unknown) => {
+      expect(isLocalFailure(error)).toBe(true)
+      if (!isLocalFailure(error)) {
+        return false
+      }
+      expect(error.code).toBe('INTERNAL')
+      expect(error.message).toBe('fetch failed')
+      expect(error.cause).toBe(fetchError)
+      return true
+    })
+  })
+
+  it('maps abort to INTERNAL status 0 with message Request aborted', async () => {
+    const abortError = new DOMException(
+      'This operation was aborted.',
+      'AbortError',
+    )
+    const ac = new AbortController()
+    ac.abort()
+    const aborted = createClient<typeof contract>(
+      new FetchLink({
+        url: 'http://localhost/rpc',
+        fetch: async () => {
+          throw abortError
+        },
+      }),
+    )
+    await expect(
+      aborted.planet.list({ signal: ac.signal }),
+    ).rejects.toSatisfy((error: unknown) => {
+      expect(isLocalFailure(error)).toBe(true)
+      if (!isLocalFailure(error)) {
+        return false
+      }
+      expect(error.message).toBe('Request aborted')
+      expect(error.cause).toBe(abortError)
+      return true
+    })
+  })
+
   it('asResult() returns a result union', async () => {
     const result = await asResult(client.planet.find({ id: -1 }))
     expect(result.ok).toBe(false)
