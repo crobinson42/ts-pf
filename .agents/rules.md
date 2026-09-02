@@ -82,6 +82,15 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 - Tests: Vitest. Type tests: `expectTypeOf` plus `tsc --noEmit`.
 - Workspace: pnpm + Turborepo. Build: `tsc -p tsconfig.build.json`.
 
+## Examples
+
+Live in `examples/`, numbered `01-hello` … `08-workshop`. They are private workspace packages, not published.
+
+- Implemented routers are named `app` (not `router` — that name is the contract helper).
+- Example `client.ts` / workshop `web` must not import `@ts-pf/server`.
+- Do not add framework adapter packages to satisfy an example.
+- Shared Node glue is `examples/_shared` (`ts-pf-example-shared`). It is private, not a published HTTP adapter. The library surface remains `FetchHandler` + `FetchLink`.
+
 ## Done means verified
 
 ```

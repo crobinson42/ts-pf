@@ -1,0 +1,17 @@
+import { FetchHandler } from '@ts-pf/server'
+import { SseCodec } from '@ts-pf/sse'
+import { examplePort, isEntrypoint, listen } from 'ts-pf-example-shared/listen'
+import { app } from './app.js'
+
+export const codec = new SseCodec({ keepAliveMs: 0 })
+export const handler = new FetchHandler(app, { codec })
+export const port = examplePort(3107)
+
+export async function start() {
+  return listen(handler, { port, prefix: '/rpc', context: {} })
+}
+
+if (isEntrypoint(import.meta.url)) {
+  const { url } = await start()
+  console.log(`listening on ${url}/rpc`)
+}

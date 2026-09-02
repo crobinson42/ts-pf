@@ -146,6 +146,12 @@ Any HTTP client parses the same `{ ok: false, error: { code, message, data? } }`
 
 oRPC is a dual RPC + OpenAPI platform with many adapters, serializers, and integrations. ts-pf keeps the contract-first DX and typed middleware, and leaves OpenAPI, extra adapters, and TanStack Query to later packages.
 
+## Examples
+
+Runnable apps in [`examples/`](examples/), from the happy path to a contract-first workshop.
+
+See [`examples/README.md`](examples/README.md) for the learning path.
+
 ## Development
 
 ```sh

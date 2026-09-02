@@ -1,5 +1,7 @@
 packages:
   - packages/*
+  - examples/*
+  - examples/08-workshop/*
 
 allowBuilds:
   esbuild: true

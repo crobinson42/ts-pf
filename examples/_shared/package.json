@@ -1,0 +1,20 @@
+{
+  "name": "ts-pf-example-shared",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./listen": "./src/listen.ts",
+    "./test-fetch": "./src/test-fetch.ts"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "lint": "biome check src"
+  },
+  "dependencies": {
+    "@ts-pf/server": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "typescript": "^5.8.0"
+  }
+}

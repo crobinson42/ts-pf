@@ -1,0 +1,28 @@
+{
+  "name": "@ts-pf/example-07-sse",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/server.ts",
+    "client": "tsx src/client.ts",
+    "demo": "tsx src/demo.ts",
+    "test": "vitest run",
+    "type-check": "tsc --noEmit",
+    "lint": "biome check src tests"
+  },
+  "dependencies": {
+    "@ts-pf/client": "workspace:*",
+    "@ts-pf/contract": "workspace:*",
+    "@ts-pf/server": "workspace:*",
+    "@ts-pf/sse": "workspace:*",
+    "@ts-pf/stream": "workspace:*",
+    "ts-pf-example-shared": "workspace:*",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
+  }
+}

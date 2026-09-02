@@ -12,6 +12,17 @@ Wire format: `packages/protocol/PROTOCOL.md`. DX overview: `README.md`.
 ## File map
 
 ```
+examples/
+  README.md           learning path
+  _shared/            private Node listen + test fetch (not a published adapter)
+  01-hello/           contract, implementer, FetchHandler, createClient
+  02-errors/          .errors(), asResult, undeclared PFError
+  03-middleware/      $context, .use / .useAfter, createLocalClient
+  04-plugins/         CORS / limits / headers, interceptors, signal
+  05-files/           MultipartCodec
+  06-streams/         StreamCodec + stream()
+  07-sse/             SseCodec
+  08-workshop/        contract / api / Vite web (client never imports server)
 packages/contract/src/
   builder.ts          procedure singleton, router()
   procedure.ts        ContractProcedure brand
@@ -95,6 +106,8 @@ const client = createClient<typeof contract>(new FetchLink({ url: '/rpc' }))
 await client.planet.find({ id: 1 })
 // asResult(client.planet.find({ id: 1 })) — result.error.code === 'NOT_FOUND' narrows data
 ```
+
+Runnable form of this happy path: `examples/01-hello`. Declared errors: `examples/02-errors`. Full learning path: `examples/README.md`.
 
 Files are opt-in. Do not put this in the default happy path:
 
