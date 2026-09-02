@@ -490,6 +490,13 @@ importers:
       '@ts-pf/server':
         specifier: workspace:*
         version: link:../server
+    devDependencies:
+      '@ts-pf/contract':
+        specifier: workspace:*
+        version: link:../contract
+      zod:
+        specifier: ^4.0.0
+        version: 4.5.4
 
   packages/protocol: {}
 
