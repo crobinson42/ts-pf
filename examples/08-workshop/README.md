@@ -29,3 +29,5 @@ Default bearer token is `demo` (create is protected). Clear it to see `UNAUTHORI
 - `contract/src/index.ts` — shared procedures, declared errors, `stream()`
 - `api/src/app.ts` — `createImplementer(contract)`, middleware, generator handler
 - `web/src/client.ts` — `createClient<typeof contract>`; no `@ts-pf/server`
+
+Next: [10-docs](../10-docs) builds a procedure catalog from a contract and renders it as markdown.
