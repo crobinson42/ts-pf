@@ -258,7 +258,7 @@ Logical frames are compact JSON objects. All three bindings send **JSON text**. 
 |---|---|
 | WebSocket | One JSON string per WebSocket **text** message. Binary frames: close with no parse. Close code `1002`. |
 | MessagePort | One JSON string per `postMessage`. Not structured clone of the object. Non-string data: close with no parse. |
-| stdio | Newline-delimited compact JSON (NDJSON). One object per `\n`. Empty lines ignored. Trailing partial line on EOF: if `trim()` is non-empty, treat it as a complete frame; if it fails decode, close. |
+| stdio | UTF-8 NDJSON. Split on `\n`. Strip an optional trailing `\r` and surrounding whitespace on **every** line (so `\r\n` works, matching HTTP JSONL). Empty lines ignored. Trailing partial line on EOF: if non-empty after that strip, treat it as a complete frame; if it fails decode, close. |
 
 ### Frame types
 
@@ -277,11 +277,20 @@ Logical frames are compact JSON objects. All three bindings send **JSON text**. 
 
 A present key that is not in the allow-list is invalid. Missing a required field is invalid. Include a decoded `id` on a decode failure only when it is already a non-empty string.
 
+Each type travels one way:
+
+| Direction | `type` |
+|---|---|
+| Client → server | `hello`, `call`, `cancel`, `in-item`, `in-done` |
+| Server → client | `hello-ok`, `hello-error`, `result`, `item`, `done` |
+
+A well-behaved peer never sends the wrong direction. After `ready`, treat a wrong-direction frame as an unknown type. Decode may still succeed if the shape is valid; the receiver then applies the [first-frame](#first-frame-client) / [multiplex](#multiplex) ignore rules. A wrong-direction frame with a usable `id` that is not a legal next event is ignored, or `Invalid response` if it is the first frame for that id. Do not invent a new error code.
+
 | Field | Rule |
 |---|---|
 | `id` | Non-empty string. `"1"` is fine; `1` (number) is invalid; `""` is invalid. A client *may* use a decimal counter. A server **must not** `Number(id)`. After a terminal frame, the same string may be reused for a new call. |
 | `path` | Array of strings (may be empty). Not `"planet/find"`. A non-string element is invalid. |
-| `v` | JSON number `1`. `"1"` is invalid. `1.5` is invalid. |
+| `v` | JSON number. Handshake uses the version check below. `"1"` is not a number. |
 | `ok` | Boolean. Required on `result`. |
 | `stream` | Literal `true` or omitted. `false`, `1`, `"true"` are invalid. |
 | `input` on `call` | Omitted or `null` means no input (same as JSON HTTP). Any other JSON value is the input. **Invalid if `stream` is `true` and `input` is present** (including `null`). |
@@ -311,14 +320,21 @@ HTTP equivalent of header `x-ts-pf-protocol: 1`. Hello is not a `call` and has n
 `waiting-hello` inbound:
 
 1. Inbound over-limit / binary / non-string / `JSON.parse` throw / parsed value is not a non-array object → **close with no frame**.
-2. Else `JSON.parse` produced an object. Validate it as a frame.
-3. Branch:
+2. Else `JSON.parse` produced an object. Look at `type` and `v` **before** treating the object as a fully valid frame.
+3. If `type` is `"hello"`, check `v`:
+
+| `v` after `JSON.parse` | Action |
+|---|---|
+| Not a JSON number (missing, `"1"`, `true`, `null`, …) | `{ "type": "hello-error", "error": { "code": "BAD_REQUEST", "message": "Invalid hello" } }` then close. |
+| JSON number and `v === 1` | Valid hello **if** the rest of the object is a legal `hello` (no extra keys). Then accept (row below). Extra keys / other field errors still `Invalid hello`. |
+| JSON number and `v !== 1` (including `2`, `0`, `1.5`) | `{ "type": "hello-error", "error": { "code": "BAD_REQUEST", "message": "Unsupported protocol version" } }` then close. Numeric mismatch wins over extra keys. |
+
+4. Branch on the rest:
 
 | Condition | Action |
 |---|---|
-| Valid `hello` with `v === 1`, and this is the **first** hello | Stay `waiting-hello`. Accept the hello (context factory, if any). **Success:** send `{ "type": "hello-ok", "v": 1 }`, go `ready`, then and only then deliver **later** frames. **Throw:** send `{ "type": "hello-error", "error": { "code": "INTERNAL", "message": "Internal server error" } }` (no stack, no factory message) and close. Do not send `hello-ok`. |
-| Valid `hello` with `v !== 1` | `{ "type": "hello-error", "error": { "code": "BAD_REQUEST", "message": "Unsupported protocol version" } }` then close. |
-| Any other object, **including** a decode failure (`v: "1"`, extra keys, missing `v`, `type: "call"`, …) and including frames that arrive **while accept is outstanding** | `{ "type": "hello-error", "error": { "code": "BAD_REQUEST", "message": "Expected hello" } }` then close. If the decoded type is `hello` (invalid `v`, extra keys, …), the message is `Invalid hello` instead. If accept is in flight, **abandon** it (ignore its later settle; do not send `hello-ok` if it succeeds after close). |
+| Valid `hello` (`v === 1`, no extra keys), and this is the **first** hello | Stay `waiting-hello`. Accept the hello (context factory, if any). **Success:** send `{ "type": "hello-ok", "v": 1 }`, go `ready`, then and only then deliver **later** frames. **Throw:** send `{ "type": "hello-error", "error": { "code": "INTERNAL", "message": "Internal server error" } }` (no stack, no factory message) and close. Do not send `hello-ok`. |
+| Any other object (`type: "call"`, extra keys on `hello` with `v === 1`, missing `v`, frames that arrive **while accept is outstanding**, …) | `{ "type": "hello-error", "error": { "code": "BAD_REQUEST", "message": "Expected hello" } }` then close. If `type` is `"hello"` and this is not the numeric `v !== 1` case above, the message is `Invalid hello` instead. If accept is in flight, **abandon** it (ignore its later settle; do not send `hello-ok` if it succeeds after close). |
 
 Optional hello timeout (TypeScript default `10_000` ms; `0` = none): if still `waiting-hello` when the timer fires (including during accept), close with no frame, abandon accept.
 
@@ -326,11 +342,19 @@ Optional hello timeout (TypeScript default `10_000` ms; `0` = none): if still `w
 
 The client sends `hello` as soon as the duplex is open. `call` waits for `ready`.
 
+If `JSON.parse` produced an object with `type: "hello-ok"`, check `v` the same way (numeric `v !== 1` is a version mismatch). The client does not send `hello-error`; it fails `ready` locally:
+
+| `v` on `hello-ok` | Action |
+|---|---|
+| JSON number and `v === 1`, otherwise valid | Become `ready`. |
+| Not a JSON number | Fail the connect as a local `Invalid response`. Close. |
+| JSON number and `v !== 1` (including `2`, `0`, `1.5`) | Fail the connect as a local `Invalid response`. Close. |
+
 | Received while `handshaking` | Action |
 |---|---|
-| Valid `hello-ok` `v === 1` | Become `ready`. |
+| Valid `hello-ok` (`v === 1`) | Become `ready`. |
 | Valid `hello-error` | Fail the connect with that `error` (typically `BAD_REQUEST` / `INTERNAL`, not status 0). Close. |
-| Anything else parsed | Fail the connect as a local `Invalid response`. Close. |
+| Anything else parsed (wrong type, extra keys, invalid `v` as above) | Fail the connect as a local `Invalid response`. Close. |
 | Unparseable / close / timeout | Fail the connect as a local `Network error` or `Connection closed`. |
 
 On hello timeout: local `Network error`, then close. Callers who disable the timeout must abort via `AbortSignal` or close the connection.
