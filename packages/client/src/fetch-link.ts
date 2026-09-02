@@ -111,13 +111,16 @@ export class FetchLink implements Link {
     try {
       decoded = await this.codec.decodeResponse(bodySource(response))
     } catch (error) {
-      if (isPFError(error)) {
+      if (isPFError(error) && isProtocolResponse(response)) {
         throw error
       }
       throw new PFError({
         code: 'INTERNAL',
         status: response.status,
-        message: 'Invalid response',
+        message: isProtocolResponse(response)
+          ? 'Invalid response'
+          : `Non-RPC response (HTTP ${response.status})`,
+        cause: error,
       })
     }
 
@@ -165,4 +168,8 @@ function isAbortFailure(error: unknown, signal?: AbortSignal): boolean {
     return true
   }
   return error instanceof Error && error.name === 'AbortError'
+}
+
+function isProtocolResponse(response: Response): boolean {
+  return response.headers.get(PROTOCOL_HEADER) != null
 }

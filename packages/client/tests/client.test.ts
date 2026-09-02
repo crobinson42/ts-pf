@@ -5,7 +5,13 @@ import {
   isLocalFailure,
 } from '@ts-pf/client'
 import { procedure, router } from '@ts-pf/contract'
-import { isPFError, JSONCodec, PFError } from '@ts-pf/protocol'
+import {
+  isPFError,
+  JSONCodec,
+  PFError,
+  PROTOCOL_HEADER,
+  PROTOCOL_VERSION,
+} from '@ts-pf/protocol'
 import { createImplementer, FetchHandler } from '@ts-pf/server'
 import { describe, expect, expectTypeOf, it } from 'vitest'
 import { z } from 'zod'
@@ -165,6 +171,52 @@ describe('createClient', () => {
       expect(error.message).toBe('Request aborted')
       expect(error.cause).toBe(abortError)
       return true
+    })
+  })
+
+  it('wraps non-RPC HTTP bodies as INTERNAL with the HTTP status', async () => {
+    const proxy = createClient<typeof contract>(
+      new FetchLink({
+        url: 'http://localhost/rpc',
+        fetch: async () =>
+          new Response('<html>Bad Gateway</html>', {
+            status: 502,
+            headers: { 'content-type': 'text/html' },
+          }),
+      }),
+    )
+    await expect(proxy.planet.list()).rejects.toSatisfy((error: unknown) => {
+      expect(isPFError(error)).toBe(true)
+      if (!isPFError(error)) {
+        return false
+      }
+      expect(error.code).toBe('INTERNAL')
+      expect(error.status).toBe(502)
+      expect(error.message).toBe('Non-RPC response (HTTP 502)')
+      expect(isLocalFailure(error)).toBe(false)
+      expect(isPFError(error.cause)).toBe(true)
+      return true
+    })
+  })
+
+  it('rethrows codec PFError when x-ts-pf-protocol is present', async () => {
+    const broken = createClient<typeof contract>(
+      new FetchLink({
+        url: 'http://localhost/rpc',
+        fetch: async () =>
+          new Response('not-json', {
+            status: 500,
+            headers: {
+              'content-type': 'application/json',
+              [PROTOCOL_HEADER]: PROTOCOL_VERSION,
+            },
+          }),
+      }),
+    )
+    await expect(broken.planet.list()).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+      status: 400,
+      message: 'Invalid JSON',
     })
   })
 
