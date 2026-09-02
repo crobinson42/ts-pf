@@ -469,6 +469,28 @@ importers:
         specifier: workspace:*
         version: link:../protocol
 
+  packages/message-client:
+    dependencies:
+      '@ts-pf/client':
+        specifier: workspace:*
+        version: link:../client
+      '@ts-pf/message':
+        specifier: workspace:*
+        version: link:../message
+    devDependencies:
+      '@ts-pf/message-server':
+        specifier: workspace:*
+        version: link:../message-server
+
+  packages/message-server:
+    dependencies:
+      '@ts-pf/message':
+        specifier: workspace:*
+        version: link:../message
+      '@ts-pf/server':
+        specifier: workspace:*
+        version: link:../server
+
   packages/protocol: {}
 
   packages/server:

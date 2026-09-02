@@ -1,0 +1,44 @@
+{
+  "name": "@ts-pf/message-client",
+  "version": "0.0.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    },
+    "./stdio": {
+      "types": "./src/stdio.ts",
+      "import": "./src/stdio.ts"
+    }
+  },
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      },
+      "./stdio": {
+        "types": "./dist/stdio.d.ts",
+        "import": "./dist/stdio.js"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "type-check": "tsc --noEmit",
+    "lint": "biome check src tests"
+  },
+  "dependencies": {
+    "@ts-pf/client": "workspace:*",
+    "@ts-pf/message": "workspace:*"
+  },
+  "devDependencies": {
+    "@ts-pf/message-server": "workspace:*"
+  }
+}
