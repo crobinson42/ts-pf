@@ -16,13 +16,14 @@ examples/
   README.md           learning path
   _shared/            private Node listen + test fetch (not a published adapter)
   01-hello/           contract, implementer, FetchHandler, createClient
-  02-errors/          .errors(), asResult, undeclared PFError
+  02-errors/          .errors(), asResult, isLocalFailure, undeclared PFError
   03-middleware/      $context, .use / .useAfter, createLocalClient
   04-plugins/         CORS / limits / headers, interceptors, signal
   05-files/           MultipartCodec
   06-streams/         StreamCodec + stream()
   07-sse/             SseCodec
   08-workshop/        contract / api / Vite web (client never imports server)
+  09-onion-arch/      domain (no @ts-pf) / contract / application / infrastructure / api (local.ts here)
 packages/contract/src/
   builder.ts          procedure singleton, router()
   procedure.ts        ContractProcedure brand
@@ -50,9 +51,10 @@ packages/server/src/
   response-headers-plugin.ts ResponseHeadersPlugin / ResponseHeadersPluginContext
 packages/client/src/
   client.ts           createClient proxy
-  fetch-link.ts       FetchLink (binds fetch to globalThis; signal, duplex: 'half', rethrows PFError; local network → INTERNAL status 0)
+  fetch-link.ts       FetchLink (binds fetch to globalThis; signal, duplex: 'half'; protocol-header rethrow; local network/abort → INTERNAL status 0 + cause)
   interceptors.ts
   as-result.ts        asResult, CallResult
+  is-local-failure.ts isLocalFailure (status === 0)
 packages/file/src/
   index.ts            re-exports MultipartCodec only
   codec.ts            MultipartCodec (wraps JSONCodec)
@@ -226,7 +228,7 @@ New packages: same `exports` (source for workspace, `publishConfig` → `dist`),
 
 - Names match the table in `.agents/rules.md`
 - DAG still acyclic; client never depends on server; `@ts-pf/file` protocol-only; `@ts-pf/stream` protocol + contract; `@ts-pf/sse` stream + protocol; none imported by contract/server/client (prod)
-- Public exports: file = `MultipartCodec`; stream = `StreamCodec` + `stream()`; sse = `SseCodec` + `SSE_CONTENT_TYPE`. Server plugins = `HandlerPlugin`, `CORSPlugin`, `RequestLimitPlugin`, `RequestHeadersPlugin`, `ResponseHeadersPlugin`, `RequestHeadersPluginContext`, `ResponseHeadersPluginContext`, `CORSPluginOptions`, `RequestLimitPluginOptions`. Contract errors = `ClientError`, `InferErrorData`, `InferContractErrors` (and `InferContractErrorCodes`). Client = `asResult` + `CallResult`. Server exports `ErrorFactory`; does **not** export `createErrorFactory` / `finalizeDeclaredError`. Handler `errors` is `ErrorFactory<TErrors>`; middleware `errors` is default `ErrorFactory`. `ClientError` still includes protocol codes except those the procedure redeclared. `RpcBodySource.body()` and `FetchLink` `duplex: 'half'` still present. `CallOptions.signal` forwarded; typed handlers include `signal`; middleware still has no `signal`. Streamed `ReadableStream` responses get anti-buffering headers. `FetchLink` rethrows `PFError` from `decodeResponse`. `FetchLink` binds `opts.fetch ?? globalThis.fetch` to `globalThis` (browser `this` / Illegal invocation). `HandlerPlugin.onResponse` runs on errors and 405. `OPTIONS` without `CORSPlugin` is still 405
+- Public exports: file = `MultipartCodec`; stream = `StreamCodec` + `stream()`; sse = `SseCodec` + `SSE_CONTENT_TYPE`. Server plugins = `HandlerPlugin`, `CORSPlugin`, `RequestLimitPlugin`, `RequestHeadersPlugin`, `ResponseHeadersPlugin`, `RequestHeadersPluginContext`, `ResponseHeadersPluginContext`, `CORSPluginOptions`, `RequestLimitPluginOptions`. Contract errors = `ClientError`, `InferErrorData`, `InferContractErrors` (and `InferContractErrorCodes`). Client = `asResult` + `CallResult` + `isLocalFailure`. Server exports `ErrorFactory`; does **not** export `createErrorFactory` / `finalizeDeclaredError`. Handler `errors` is `ErrorFactory<TErrors>`; middleware `errors` is default `ErrorFactory`. `ClientError` still includes protocol codes except those the procedure redeclared. `RpcBodySource.body()` and `FetchLink` `duplex: 'half'` still present. `CallOptions.signal` forwarded; typed handlers include `signal`; middleware still has no `signal`. Streamed `ReadableStream` responses get anti-buffering headers. `FetchLink` rethrows `PFError` from `decodeResponse` only when `x-ts-pf-protocol` is present. `FetchLink` binds `opts.fetch ?? globalThis.fetch` to `globalThis` (browser `this` / Illegal invocation). `HandlerPlugin.onResponse` runs on errors and 405. `OPTIONS` without `CORSPlugin` is still 405
 - Separation of concern for long term maintainability of all packages and their dependencies
 - Procedure completeness: `impl.router()` rejects missing/extra keys (types + runtime)
 - Errors: unknown throws → `INTERNAL` 500, no stack in JSON. Unary output schema failure → `INTERNAL` 500, no issues. Invalid declared error `data` → `INTERNAL` 500, never serialize the bad payload. `ClientError` narrows `data` from `code`. `asResult` is `CallResult<T, E>` (no `E | PFError` widen). Do not put `status` / `defined` / brands on the JSON error object.

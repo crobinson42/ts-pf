@@ -23,7 +23,7 @@ Contract-first TypeScript RPC library (`@ts-pf/*`). oRPC-like DX is the bar; oRP
 | `contract` | `procedure`, `router`, schema adapters, typed errors (`ClientError` discriminated union, `InferErrorData`, `InferContractErrors`), infer types |
 | `protocol` | `PFError`, JSON envelope, `RpcCodec`, path helpers. No HTTP server. No schemas. Failure JSON is `{ code, message, data? }` only (`toJSON` omits `status`). `ProtocolErrorCode` is a closed set. |
 | `server` | `createImplementer`, middleware, `FetchHandler`, `createLocalClient`, `HandlerPlugin` (`CORSPlugin`, `RequestLimitPlugin`, `RequestHeadersPlugin`, `ResponseHeadersPlugin`). `ErrorFactory` is typed on `ProcedureBuilder.handler` from that procedure’s map; `MiddlewareFn.errors` stays the default/loose factory. `finalizeDeclaredError` is internal (`runProcedure` only, not exported): invalid declared `data` → `INTERNAL` 500, no payload; async iterables are wrapped so mid-stream throws get the same check. |
-| `client` | `createClient`, `FetchLink`, interceptors, `asResult` / `CallResult<T, E>` (do not widen with `E | PFError`) |
+| `client` | `createClient`, `FetchLink`, interceptors, `asResult` / `CallResult<T, E>` (do not widen with `E | PFError`), `isLocalFailure` |
 | `file` | `MultipartCodec` only. Do not add `PFFile`, `file()`, or export walk helpers. Not imported by contract/server/client. |
 | `stream` | `StreamCodec` + `stream()`. Root `AsyncIterable` as JSONL envelopes. Not imported by contract/server/client. |
 | `sse` | `SseCodec` + `SSE_CONTENT_TYPE`. Output-only `text/event-stream` wrapping the same envelopes. Input streams stay JSONL. Not imported by contract/server/client. |
@@ -55,7 +55,7 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 - Client-side input validation is off by default.
 - Unary output schema failure is `INTERNAL` 500 with no `issues` (input failure stays `VALIDATION` 422). Invalid declared error `data` is the same `INTERNAL`.
 - Discriminator is JSON `error.code`. HTTP status is transport-only; never put `status` in the envelope.
-- FetchLink maps local network failures to `INTERNAL` with `status: 0`. That status is not on the wire and is not a protocol status.
+- FetchLink maps local network/abort failures to `INTERNAL` with `status: 0` and sets `Error.cause`. Abort message is `Request aborted`. That status is not on the wire and is not a protocol status. `isLocalFailure` is `status === 0` on `@ts-pf/client`.
 - Keep `ProtocolErrorCode` duplicated as a private union in `packages/contract/src/infer.ts`. Do not import `@ts-pf/protocol` from contract.
 
 **Not in core:** OpenAPI/REST, error-catalog RPC, Node `IncomingMessage` adapters, framework adapters, TanStack Query, lazy routers, Map/Set on the wire, EventSource clients, Last-Event-ID, EventPublisher. File/Blob is `@ts-pf/file`. Message streams are `@ts-pf/stream`. SSE output framing is `@ts-pf/sse`. None of these are core defaults. Do not redeclare `VALIDATION`, `INTERNAL`, `BAD_REQUEST`, `METHOD_NOT_ALLOWED`, or `PAYLOAD_TOO_LARGE` on `.errors()`.
@@ -73,7 +73,7 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 
 `RpcCodec` encode returns `{ contentType, body }` (`string | Blob | FormData | ReadableStream<Uint8Array> | null`). Decode takes `RpcBodySource` (`contentType`, `text()`, `formData()`, `body()`). `JSONCodec` still emits `application/json` and the JSON envelope. `MultipartCodec`, `StreamCodec`, and `SseCodec` wrap it without changing contracts. `SseCodec` maps output JSONL envelopes to `text/event-stream` (`event: message` / `event: error` / `event: close`). Keep `x-ts-pf-protocol: 1` until the JSON envelope actually breaks.
 
-`CallOptions` is `{ signal?: AbortSignal }` on `ProcedureClient`. `createClient` / `createLocalClient` forward it; `FetchLink` sets `RequestInit.signal`; `FetchHandler` passes `request.signal` into `runProcedure` → `HandlerFn` only (not middleware). Typed `ProcedureBuilder.handler` opts include `signal?: AbortSignal`. `FetchLink` sets `duplex: 'half'` when `encoded.body instanceof ReadableStream`. Streamed `ReadableStream` responses also get `Cache-Control: no-cache, no-transform` and `X-Accel-Buffering: no`. `FetchLink` binds `opts.fetch ?? globalThis.fetch` to `globalThis` so browser `window.fetch` is not called with `FetchLink` as `this`. `FetchLink` rethrows `PFError` from `decodeResponse`.
+`CallOptions` is `{ signal?: AbortSignal }` on `ProcedureClient`. `createClient` / `createLocalClient` forward it; `FetchLink` sets `RequestInit.signal`; `FetchHandler` passes `request.signal` into `runProcedure` → `HandlerFn` only (not middleware). Typed `ProcedureBuilder.handler` opts include `signal?: AbortSignal`. `FetchLink` sets `duplex: 'half'` when `encoded.body instanceof ReadableStream`. Streamed `ReadableStream` responses also get `Cache-Control: no-cache, no-transform` and `X-Accel-Buffering: no`. `FetchLink` binds `opts.fetch ?? globalThis.fetch` to `globalThis` so browser `window.fetch` is not called with `FetchLink` as `this`. `FetchLink` rethrows `PFError` from `decodeResponse` only when the response has `x-ts-pf-protocol`; otherwise it wraps `INTERNAL` with the HTTP status (`Non-RPC response (HTTP …)`).
 
 ## Code
 
@@ -84,7 +84,7 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 
 ## Examples
 
-Live in `examples/`, numbered `01-hello` … `08-workshop`. They are private workspace packages, not published.
+Live in `examples/`, numbered `01-hello` … `09-onion-arch`. They are private workspace packages, not published.
 
 - Implemented routers are named `app` (not `router` — that name is the contract helper).
 - Example `client.ts` / workshop `web` must not import `@ts-pf/server`.

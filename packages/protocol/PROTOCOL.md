@@ -59,7 +59,9 @@ After a stream starts, HTTP status stays 200; the same `{ ok: false, error }` ob
 
 TypeScript `PFError`, `instanceof`, and `asResult` are JS conveniences. They are not required to consume the API. Any HTTP client parses this envelope.
 
-Contract-declared error codes use the status on the error definition. The TypeScript FetchLink maps **local** network failures to `INTERNAL` with `status: 0`; that status is not on the wire and is not a protocol status.
+Contract-declared error codes use the status on the error definition.
+
+The TypeScript FetchLink maps **local** failures to `INTERNAL` with `status: 0`. That status is not on the wire and is not a protocol status. Abort uses message `Request aborted`. Network throws keep `error.message` and set `Error.cause` to the thrown value (Node’s `ECONNREFUSED` is then `error.cause.cause`). HTTP responses **without** `x-ts-pf-protocol` that fail `decodeResponse` become `INTERNAL` with the HTTP status and message `Non-RPC response (HTTP …)` — do not surface codec `BAD_REQUEST` 400 for proxy HTML. Codec `PFError` is rethrown only when `x-ts-pf-protocol` is present (truncated JSONL/SSE at decode time, malformed ts-pf JSON). `toJSON()` still omits `status` and `cause`.
 
 ## Versioning
 

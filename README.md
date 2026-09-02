@@ -140,6 +140,19 @@ if (!result.ok && result.error.code === 'NOT_FOUND') {
 }
 ```
 
+```ts
+import { asResult, isLocalFailure } from '@ts-pf/client'
+
+const result = await asResult(client.planet.find({ id: 1 }))
+if (!result.ok) {
+  if (isLocalFailure(result.error)) {
+    // status === 0 — never reached the server
+  } else if (result.error.code === 'NOT_FOUND') {
+    result.error.data.id
+  }
+}
+```
+
 Any HTTP client parses the same `{ ok: false, error: { code, message, data? } }` envelope and switches on `error.code`. `asResult` is optional TypeScript DX.
 
 ## Why not oRPC?
@@ -148,7 +161,7 @@ oRPC is a dual RPC + OpenAPI platform with many adapters, serializers, and integ
 
 ## Examples
 
-Runnable apps in [`examples/`](examples/), from the happy path to a contract-first workshop.
+Runnable apps in [`examples/`](examples/), from the happy path to a contract-first workshop and an onion-layered server.
 
 See [`examples/README.md`](examples/README.md) for the learning path.
 
