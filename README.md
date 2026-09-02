@@ -13,7 +13,7 @@ Requires Node.js 18+.
 | [`@ts-pf/contract`](packages/contract) | `procedure` / `router`, schema adapters, nested routers, infer types |
 | [`@ts-pf/protocol`](packages/protocol) | Portable JSON RPC envelope, `PFError`, codec |
 | [`@ts-pf/server`](packages/server) | `createImplementer()`, middleware, `FetchHandler`, `createLocalClient()` |
-| [`@ts-pf/client`](packages/client) | `createClient()`, `FetchLink`, `asResult()` |
+| [`@ts-pf/client`](packages/client) | `createClient()`, `FetchLink`, `asResult()`, `isLocalFailure()` |
 | [`@ts-pf/file`](packages/file) | Opt-in `MultipartCodec` for `File`/`Blob` attachments |
 | [`@ts-pf/stream`](packages/stream) | Opt-in `StreamCodec` for root `AsyncIterable` (JSONL) |
 | [`@ts-pf/sse`](packages/sse) | Opt-in `SseCodec` for SSE output framing of the same envelopes |
