@@ -44,6 +44,9 @@ export class MessageSession {
   private readonly maxFrameBytes: number | undefined
   private readonly onHello: (meta?: unknown) => void | Promise<void>
   private readonly onFrame: (frame: MessageFrame) => void
+  private readonly onInvalidFrame:
+    | ((info: { id: string; message: string }) => void)
+    | undefined
   private readonly onClose: ((reason?: unknown) => void) | undefined
   private readonly unsubMessage: () => void
   private readonly unsubClose: () => void
@@ -56,6 +59,7 @@ export class MessageSession {
     helloMeta?: unknown
     onHello?: (meta?: unknown) => void | Promise<void>
     onFrame: (frame: MessageFrame) => void
+    onInvalidFrame?: (info: { id: string; message: string }) => void
     onClose?: (reason?: unknown) => void
   }) {
     this.duplex = opts.duplex
@@ -64,6 +68,7 @@ export class MessageSession {
     this.onHello =
       opts.role === 'server' ? (opts.onHello ?? noopHello) : noopHello
     this.onFrame = opts.onFrame
+    this.onInvalidFrame = opts.onInvalidFrame
     this.onClose = opts.onClose
     this.ready = new Promise<void>((resolve, reject) => {
       this.resolveReady = resolve
@@ -310,7 +315,9 @@ export class MessageSession {
     if (!decoded.ok) {
       if (decoded.id === undefined) {
         this.close()
+        return
       }
+      this.onInvalidFrame?.({ id: decoded.id, message: decoded.message })
       return
     }
     this.onFrame(decoded.frame)

@@ -362,6 +362,40 @@ describe('MessageSession', () => {
     expect(error.code).toBe('INTERNAL')
   })
 
+  it('after ready, decode failure with an id calls onInvalidFrame and does not close', async () => {
+    const { a, b } = createMemoryDuplex()
+    const invalid: Array<{ id: string; message: string }> = []
+    const received: MessageFrame[] = []
+    const server = new MessageSession({
+      duplex: a,
+      role: 'server',
+      onFrame: (frame) => {
+        received.push(frame)
+      },
+      onInvalidFrame: (info) => {
+        invalid.push(info)
+      },
+    })
+    const client = new MessageSession({
+      duplex: b,
+      role: 'client',
+      onFrame: noopFrame(),
+    })
+    await Promise.all([server.ready, client.ready])
+
+    b.send('{"type":"call","id":"9","path":["planet"],"nope":true}')
+    await turns(2)
+
+    expect(invalid).toEqual([{ id: '9', message: 'Unexpected key nope' }])
+    expect(received).toEqual([])
+
+    expect(client.send({ type: 'call', id: '1', path: ['planet'] }).ok).toBe(
+      true,
+    )
+    await turns(2)
+    expect(received).toEqual([{ type: 'call', id: '1', path: ['planet'] }])
+  })
+
   it('client helloMeta appears on server onHello argument', async () => {
     const { a, b } = createMemoryDuplex()
     const metas: unknown[] = []
