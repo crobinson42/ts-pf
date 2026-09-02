@@ -1,1 +1,1 @@
-export { attachRouter, type HandlerOptions } from './shared.js'
+export type { HandlerOptions } from './shared.js'

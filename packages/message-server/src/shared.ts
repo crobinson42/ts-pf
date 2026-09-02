@@ -237,18 +237,25 @@ export function attachRouter<TCtx = unknown>(
         rec.iterator = iterator
         try {
           await iterator.return?.()
-        } finally {
-          if (!rec.cancelled) {
-            sendOutbound(rec, frame.id, {
-              type: 'result',
-              id: frame.id,
-              ok: false,
-              error: {
-                code: 'INTERNAL',
-                message: 'Streaming output is not enabled',
-              },
-            })
+        } catch (error) {
+          if (options.onError !== undefined) {
+            try {
+              await options.onError(error)
+            } catch {
+              // onError is side-effect only
+            }
           }
+        }
+        if (!rec.cancelled) {
+          sendOutbound(rec, frame.id, {
+            type: 'result',
+            id: frame.id,
+            ok: false,
+            error: {
+              code: 'INTERNAL',
+              message: 'Streaming output is not enabled',
+            },
+          })
         }
         return
       }

@@ -10,7 +10,8 @@ import {
 import { createImplementer, type ImplementedRouter } from '@ts-pf/server'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
-import { attachRouter, type HandlerOptions } from '../src/index.js'
+import type { HandlerOptions } from '../src/index.js'
+import { attachRouter } from '../src/shared.js'
 
 function nextTurn(): Promise<void> {
   return new Promise((resolve) => {
@@ -337,6 +338,100 @@ describe('shared unary dispatch', () => {
     server.close()
   })
 
+  it('malformed unused-id frame after ready is BAD_REQUEST; later calls still work', async () => {
+    const { client, frames, server } = openPair(defaultApp)
+    await Promise.all([server.ready, client.ready])
+
+    expect(
+      client.sendText(
+        '{"type":"call","id":"9","path":["planet","find"],"nope":true}',
+      ).ok,
+    ).toBe(true)
+
+    const invalid = await waitFor(
+      frames,
+      (frame) => frame.type === 'result' && frame.id === '9',
+    )
+    expect(invalid).toEqual({
+      type: 'result',
+      id: '9',
+      ok: false,
+      error: { code: 'BAD_REQUEST', message: 'Unexpected key nope' },
+    })
+
+    expect(
+      client.send({
+        type: 'call',
+        id: '1',
+        path: ['planet', 'find'],
+        input: { id: 1 },
+      }).ok,
+    ).toBe(true)
+    const result = await waitFor(
+      frames,
+      (frame) => frame.type === 'result' && frame.id === '1',
+    )
+    expect(result).toEqual({
+      type: 'result',
+      id: '1',
+      ok: true,
+      output: { id: 1, name: 'Earth' },
+    })
+    server.close()
+  })
+
+  it('malformed in-flight id is ignored; first call still completes', async () => {
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    let started = 0
+    const app = planetApp(async ({ input }) => {
+      started += 1
+      await gate
+      return { id: input.id, name: 'Earth' }
+    })
+    const { client, frames, server } = openPair(app)
+    await Promise.all([server.ready, client.ready])
+
+    expect(
+      client.send({
+        type: 'call',
+        id: '1',
+        path: ['planet', 'find'],
+        input: { id: 1 },
+      }).ok,
+    ).toBe(true)
+    for (let i = 0; i < 80 && started < 1; i++) {
+      await nextTurn()
+    }
+    expect(started).toBe(1)
+
+    expect(
+      client.sendText(
+        '{"type":"call","id":"1","path":["planet","find"],"nope":true}',
+      ).ok,
+    ).toBe(true)
+    for (let i = 0; i < 20; i++) {
+      await nextTurn()
+    }
+    expect(frames.filter((frame) => frame.type === 'result')).toEqual([])
+
+    release()
+    const result = await waitFor(
+      frames,
+      (frame) => frame.type === 'result' && frame.id === '1',
+    )
+    expect(result).toEqual({
+      type: 'result',
+      id: '1',
+      ok: true,
+      output: { id: 1, name: 'Earth' },
+    })
+    expect(frames.filter((frame) => frame.type === 'result')).toHaveLength(1)
+    server.close()
+  })
+
   it('cancel aborts the handler signal and sends no terminal frame', async () => {
     let resolveStarted!: () => void
     const started = new Promise<void>((resolve) => {
@@ -434,6 +529,60 @@ describe('shared unary dispatch', () => {
       },
     })
     expect(JSON.stringify(result)).not.toBe('{}')
+    server.close()
+  })
+
+  it('iterator.return() throw still sends only Streaming output is not enabled', async () => {
+    const boom = new Error('return failed')
+    const seen: unknown[] = []
+    const chatContract = router({
+      chat: procedure,
+    })
+    const chatImpl = createImplementer(chatContract)
+    const app = chatImpl.router({
+      chat: chatImpl.chat.handler(async () => ({
+        [Symbol.asyncIterator]() {
+          return {
+            async next() {
+              return { done: false, value: { token: 'hi' } }
+            },
+            async return() {
+              throw boom
+            },
+          }
+        },
+      })),
+    })
+    const { client, frames, server } = openPair(app, {
+      onError: (error) => {
+        seen.push(error)
+      },
+    })
+    await Promise.all([server.ready, client.ready])
+
+    expect(
+      client.send({
+        type: 'call',
+        id: '1',
+        path: ['chat'],
+      }).ok,
+    ).toBe(true)
+
+    const result = await waitFor(
+      frames,
+      (frame) => frame.type === 'result' && frame.id === '1',
+    )
+    expect(result).toEqual({
+      type: 'result',
+      id: '1',
+      ok: false,
+      error: {
+        code: 'INTERNAL',
+        message: 'Streaming output is not enabled',
+      },
+    })
+    expect(frames.filter((frame) => frame.type === 'result')).toHaveLength(1)
+    expect(seen).toEqual([boom])
     server.close()
   })
 
