@@ -39,7 +39,7 @@ export class FetchLink implements Link {
   }) {
     this.url = opts.url
     this.headers = opts.headers
-    this.fetchFn = opts.fetch ?? fetch
+    this.fetchFn = (opts.fetch ?? globalThis.fetch).bind(globalThis)
     this.interceptors = opts.interceptors ?? []
     this.codec = opts.codec ?? new JSONCodec()
   }

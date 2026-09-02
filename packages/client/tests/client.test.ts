@@ -150,4 +150,28 @@ describe('createClient', () => {
     await clientWithHeader.planet.list()
     expect(seen).toEqual(['1'])
   })
+
+  it('does not invoke fetch with FetchLink as this', async () => {
+    const fetchImplBound: typeof fetch = async function (
+      this: unknown,
+      input,
+      init,
+    ) {
+      if (this !== undefined && this !== globalThis) {
+        throw new TypeError(
+          "Failed to execute 'fetch' on 'Window': Illegal invocation",
+        )
+      }
+      return fetchImpl(input, init)
+    }
+    const browserish = createClient<typeof contract>(
+      new FetchLink({
+        url: 'http://localhost/rpc',
+        fetch: fetchImplBound,
+      }),
+    )
+    await expect(browserish.planet.list()).resolves.toEqual([
+      { id: 1, name: 'Earth' },
+    ])
+  })
 })

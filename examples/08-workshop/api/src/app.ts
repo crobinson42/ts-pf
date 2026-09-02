@@ -53,6 +53,7 @@ export const app = impl.router({
       }
       const words = `${row.name} is catalogued in the workshop.`.split(' ')
       for (const token of words) {
+        await new Promise((resolve) => setTimeout(resolve, 200))
         if (signal?.aborted) {
           return
         }
