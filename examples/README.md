@@ -2,7 +2,7 @@
 
 Runnable apps that teach ts-pf from the README happy path up to a contract-first client/server split.
 
-These packages are **not published**. ts-pf does not ship an HTTP adapter — `_shared/listen.ts` is Node glue so demos can bind a port. The library surface is `FetchHandler` + `FetchLink`.
+These packages are **not published**. ts-pf does not ship an HTTP adapter — `_shared/listen.ts` is Node glue so demos can bind a port. The library surface is `FetchHandler` + `FetchLink`. Opt-in message transports (`PortHandler` / `PortLink`, plus WebSocket and stdio) live in `@ts-pf/message-server` and `@ts-pf/message-client`.
 
 ```sh
 pnpm install
@@ -24,6 +24,7 @@ Override the listen port with `PORT`. Defaults are `3101`–`3108` so several de
 | [07-sse](07-sse) | Opt-in `SseCodec` output framing | + `@ts-pf/sse` |
 | [08-workshop](08-workshop) | Contract-first monorepo: contract / api / Vite web | contract, server, client, stream, sse, protocol |
 | [10-docs](10-docs) | Opt-in `@ts-pf/docs` catalog from the contract | + `@ts-pf/docs` |
+| [11-message](11-message) | Opt-in MessagePort (`PortHandler` / `PortLink`) | + `@ts-pf/message-server`, `@ts-pf/message-client` |
 
 The domain is **planet** in every example so the README snippets transfer.
 

@@ -6,10 +6,12 @@ Contract-first TypeScript RPC library (`@ts-pf/*`). oRPC-like DX is the bar; oRP
 
 ```
 @ts-pf/contract     @ts-pf/protocol
-        \                /    \       \        \
-    @ts-pf/server   @ts-pf/client  @ts-pf/file  @ts-pf/stream
-                                                         \
-                                                      @ts-pf/sse
+        \                /    \       \        \              \
+    @ts-pf/server   @ts-pf/client  @ts-pf/file  @ts-pf/stream  @ts-pf/message
+                                                         \         /      \
+                                                      @ts-pf/sse          \
+                                                              @ts-pf/message-server
+                                                              @ts-pf/message-client
 
 @ts-pf/docs  (contract + protocol; not imported by core)
 ```
@@ -18,6 +20,7 @@ Contract-first TypeScript RPC library (`@ts-pf/*`). oRPC-like DX is the bar; oRP
 - `server` and `client` each depend on both.
 - **Client never depends on server. Server never depends on client.**
 - `@ts-pf/file` depends on `protocol` only. `@ts-pf/stream` depends on `protocol` and `contract` (`stream()` schema). `@ts-pf/sse` depends on `stream` and `protocol`. All three are opt-in; default handler/link stay JSON.
+- `@ts-pf/message` depends on `protocol` only. `@ts-pf/message-server` depends on `message` + `server` (never client, prod or dev). `@ts-pf/message-client` depends on `message` + `client` (never server in prod; one-way `message-server` **devDependency** for e2e). All three are opt-in; default handler/link stay Fetch.
 - `@ts-pf/docs` depends on `contract` and `protocol`. Not imported by core. Optional; not a handler, codec, or HTTP route.
 - Routers are nested objects, not a package.
 
@@ -31,6 +34,9 @@ Contract-first TypeScript RPC library (`@ts-pf/*`). oRPC-like DX is the bar; oRP
 | `stream` | `StreamCodec` + `stream()`. Root `AsyncIterable` as JSONL envelopes. Not imported by contract/server/client. |
 | `sse` | `SseCodec` + `SSE_CONTENT_TYPE`. Output-only `text/event-stream` wrapping the same envelopes. Input streams stay JSONL. Not imported by contract/server/client. |
 | `docs` | `catalog()`, `docs()` meta helper, `walkContract`, `registerJsonSchemaConverter`. Optional. Contract-first. No OpenAPI, no UI, no HTTP. |
+| `message` | JSON text frames + `MessageSession` / `Duplex`. Not an HTTP codec. Not imported by contract/server/client. |
+| `message-server` | `PortHandler`, `WsHandler`, `StdioHandler` (`./stdio` only). Calls `lookupProcedure` + `runProcedure`. Never depends on client. |
+| `message-client` | `PortLink`, `WsLink`, `StdioLink` (`./stdio` only). Implements `Link`. Never depends on server (prod). |
 
 ## Public names
 
@@ -40,11 +46,12 @@ Do not resurrect oRPC names in code, docs, or examples.
 |---|---|
 | `procedure` / `router` | `oc` |
 | `createImplementer` / local `impl` | `implement` / `os` |
-| `FetchHandler` | `RPCHandler` |
+| `FetchHandler` / `PortHandler` / `WsHandler` / `StdioHandler` | `RPCHandler` |
 | `CORSPlugin` / `RequestLimitPlugin` / `RequestHeadersPlugin` / `ResponseHeadersPlugin` | `*HandlerPlugin` |
 | `createLocalClient` | `createRouterClient` |
 | `asResult` | `safe` |
-| `FetchLink` | `RPCLink` |
+| `FetchLink` / `PortLink` / `WsLink` / `StdioLink` | `RPCLink` |
+| `bind` | `upgrade` |
 | `stream()` | `eventIterator` |
 
 Implemented routers in examples: `app`, not `router` (that name is the contract helper).
@@ -52,8 +59,8 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 ## v1 locks
 
 - Contract-first only. No server-first builder whose output is inferred from the handler.
-- One protocol: POST JSON RPC. Path = router keys. Spec: `packages/protocol/PROTOCOL.md`. Optional `multipart/form-data` wraps the same envelope (`@ts-pf/file`). Optional `application/jsonl` is one envelope per line (`@ts-pf/stream`). Optional `text/event-stream` is output-only framing of those same lines (`@ts-pf/sse`).
-- Server runtime: Fetch `Request` / `Response` only.
+- One protocol: POST JSON RPC. Path = router keys. Spec: `packages/protocol/PROTOCOL.md`. Optional `multipart/form-data` wraps the same envelope (`@ts-pf/file`). Optional `application/jsonl` is one envelope per line (`@ts-pf/stream`). Optional `text/event-stream` is output-only framing of those same lines (`@ts-pf/sse`). Optional message transports (`@ts-pf/message` / `message-server` / `message-client`) wrap the same envelope over WebSocket, stdio, and MessagePort. Default handler/link stay Fetch.
+- Server runtime: `FetchHandler` is Fetch `Request` / `Response` only. Opt-in message adapters (`PortHandler` / `WsHandler` / `StdioHandler`) live in `@ts-pf/message-server` and call `lookupProcedure` + `runProcedure`.
 - `.output()` is optional (`unknown` if omitted). `.input()` once; no stacked merge/pipe.
 - `.use()` runs **before** input validation (`input: unknown`). `.useAfter()` runs **after** (typed input).
 - Client-side input validation is off by default.
@@ -62,7 +69,7 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 - FetchLink maps local network/abort failures to `INTERNAL` with `status: 0` and sets `Error.cause`. Abort message is `Request aborted`. That status is not on the wire and is not a protocol status. `isLocalFailure` is `status === 0` on `@ts-pf/client`.
 - Keep `ProtocolErrorCode` duplicated as a private union in `packages/contract/src/infer.ts`. Do not import `@ts-pf/protocol` from contract.
 
-**Not in core:** OpenAPI/REST, error-catalog RPC, Node `IncomingMessage` adapters, framework adapters, TanStack Query, lazy routers, Map/Set on the wire, EventSource clients, Last-Event-ID, EventPublisher. File/Blob is `@ts-pf/file`. Message streams are `@ts-pf/stream`. SSE output framing is `@ts-pf/sse`. Procedure catalogs are `@ts-pf/docs`. Do not add `.docs()` to the contract builder. None of these are core defaults. Do not redeclare `VALIDATION`, `INTERNAL`, `BAD_REQUEST`, `METHOD_NOT_ALLOWED`, or `PAYLOAD_TOO_LARGE` on `.errors()`.
+**Not in core:** OpenAPI/REST, error-catalog RPC, Node `IncomingMessage` adapters, framework adapters, TanStack Query, lazy routers, Map/Set on the wire, EventSource clients, Last-Event-ID, EventPublisher. File/Blob is `@ts-pf/file`. Message streams are `@ts-pf/stream`. SSE output framing is `@ts-pf/sse`. Procedure catalogs are `@ts-pf/docs`. Message transports are `@ts-pf/message` / `message-server` / `message-client`. Do not add `.docs()` to the contract builder. None of these are core defaults. Do not redeclare `VALIDATION`, `INTERNAL`, `BAD_REQUEST`, `METHOD_NOT_ALLOWED`, or `PAYLOAD_TOO_LARGE` on `.errors()`.
 
 ## Extension (hooks, not a plugin framework)
 
@@ -87,14 +94,27 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 - Tests: Vitest. Type tests: `expectTypeOf` plus `tsc --noEmit`.
 - Workspace: pnpm + Turborepo. Build: `tsc -p tsconfig.build.json`.
 
+## Anti-patterns
+
+- Do not invent `TransportHandler`. `FetchHandler` stays Fetch-only.
+- Do not port `HandlerPlugin` onto WS / stdio / MessagePort.
+- Do not reuse `RpcCodec` as a message framer. Reuse envelope types only.
+- Do not put `.ws()` / `.stdio()` / `.port()` on procedures.
+- Do not depend on the `ws` npm package. Inject a `WebSocket` constructor.
+- `@ts-pf/message-server` never depends on `@ts-pf/client` (prod or dev).
+- `@ts-pf/message-client` never depends on `@ts-pf/server` (prod).
+- Do not `await runProcedure` inside `MessageSession` (`onFrame` must return without awaiting it).
+- Context factory is `onHello`, not `onFrame`.
+- Do not rewrite oversize payloads in `session.send`.
+
 ## Examples
 
-Live in `examples/`, numbered `01-hello` … `08-workshop` and `10-docs`. They are private workspace packages, not published.
+Live in `examples/`, numbered `01-hello` … `08-workshop`, `10-docs`, and `11-message`. They are private workspace packages, not published.
 
 - Implemented routers are named `app` (not `router` — that name is the contract helper).
 - Example `client.ts` / workshop `web` must not import `@ts-pf/server`.
 - Do not add framework adapter packages to satisfy an example.
-- Shared Node glue is `examples/_shared` (`ts-pf-example-shared`). It is private, not a published HTTP adapter. The library surface remains `FetchHandler` + `FetchLink`.
+- Shared Node glue is `examples/_shared` (`ts-pf-example-shared`). It is private, not a published HTTP adapter. The library surface remains `FetchHandler` + `FetchLink`. Opt-in message transports are `PortHandler` / `PortLink` (and WS / stdio) in other packages.
 
 ## Done means verified
 

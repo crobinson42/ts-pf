@@ -18,6 +18,9 @@ Requires Node.js 18+.
 | [`@ts-pf/stream`](packages/stream) | Opt-in `StreamCodec` for root `AsyncIterable` (JSONL) |
 | [`@ts-pf/sse`](packages/sse) | Opt-in `SseCodec` for SSE output framing of the same envelopes |
 | [`@ts-pf/docs`](packages/docs) | Opt-in procedure catalog from a contract (`docs()`, `catalog()`) |
+| [`@ts-pf/message`](packages/message) | Opt-in JSON text frames + `MessageSession` (not an HTTP codec) |
+| [`@ts-pf/message-server`](packages/message-server) | Opt-in `PortHandler` / `WsHandler` / `StdioHandler` |
+| [`@ts-pf/message-client`](packages/message-client) | Opt-in `PortLink` / `WsLink` / `StdioLink` |
 
 Wire spec: [packages/protocol/PROTOCOL.md](packages/protocol/PROTOCOL.md).
 
@@ -165,13 +168,25 @@ procedure.meta(docs({ description: 'Find a planet by id' }))
 const spec = catalog(contract, { prefix: '/rpc' })
 ```
 
+Message transports are opt-in too. Do not put this in the default happy path:
+
+```ts
+import { PortHandler } from '@ts-pf/message-server'
+import { PortLink } from '@ts-pf/message-client'
+import { createClient } from '@ts-pf/client'
+
+const { port1, port2 } = new MessageChannel()
+new PortHandler(app).bind(port1, { context: { db } })
+const client = createClient<typeof contract>(new PortLink({ port: port2 }))
+```
+
 ## Why not oRPC?
 
 oRPC is a dual RPC + OpenAPI platform with many adapters, serializers, and integrations. ts-pf keeps the contract-first DX and typed middleware, and leaves OpenAPI, extra adapters, and TanStack Query to later packages.
 
 ## Examples
 
-Runnable apps in [`examples/`](examples/), from the happy path to a contract-first workshop and a [`10-docs`](examples/10-docs) catalog example.
+Runnable apps in [`examples/`](examples/), from the happy path to a contract-first workshop, a [`10-docs`](examples/10-docs) catalog example, and an opt-in [`11-message`](examples/11-message) MessagePort example.
 
 See [`examples/README.md`](examples/README.md) for the learning path.
 
