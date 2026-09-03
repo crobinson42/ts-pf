@@ -103,9 +103,11 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 - Do not depend on the `ws` npm package. Inject a `WebSocket` constructor.
 - `@ts-pf/message-server` never depends on `@ts-pf/client` (prod or dev).
 - `@ts-pf/message-client` never depends on `@ts-pf/server` (prod).
+- Do not import `@ts-pf/message-server` from `@ts-pf/server`; do not import `@ts-pf/message-client` from `@ts-pf/client` (prod).
 - Do not `await runProcedure` inside `MessageSession` (`onFrame` must return without awaiting it).
 - Context factory is `onHello`, not `onFrame`.
 - Do not rewrite oversize payloads in `session.send`.
+- Do not add a published Node HTTP upgrade helper or `child_process.spawn` adapter; user owns listen/upgrade/spawn/Worker bootstrap. Do not turn `examples/_shared` into a published WS listen API.
 
 ## Examples
 
