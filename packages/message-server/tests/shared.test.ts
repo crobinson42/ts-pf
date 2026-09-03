@@ -482,26 +482,16 @@ describe('shared unary dispatch', () => {
     server.close()
   })
 
-  it('unexpected async generator calls return() then INTERNAL', async () => {
-    let returnCalled = false
+  it('async generator output emits item then done', async () => {
     const chatContract = router({
       chat: procedure,
     })
     const chatImpl = createImplementer(chatContract)
     const app = chatImpl.router({
-      chat: chatImpl.chat.handler(async () => ({
-        [Symbol.asyncIterator]() {
-          return {
-            async next() {
-              return { done: false, value: { token: 'hi' } }
-            },
-            async return() {
-              returnCalled = true
-              return { done: true as const, value: undefined }
-            },
-          }
-        },
-      })),
+      chat: chatImpl.chat.handler(async function* () {
+        yield { token: 'hi' }
+        yield { token: 'there' }
+      }),
     })
     const { client, frames, server } = openPair(app)
     await Promise.all([server.ready, client.ready])
@@ -514,27 +504,23 @@ describe('shared unary dispatch', () => {
       }).ok,
     ).toBe(true)
 
-    const result = await waitFor(
+    const done = await waitFor(
       frames,
-      (frame) => frame.type === 'result' && frame.id === '1',
+      (frame) => frame.type === 'done' && frame.id === '1',
     )
-    expect(returnCalled).toBe(true)
-    expect(result).toEqual({
-      type: 'result',
-      id: '1',
-      ok: false,
-      error: {
-        code: 'INTERNAL',
-        message: 'Streaming output is not enabled',
-      },
-    })
-    expect(JSON.stringify(result)).not.toBe('{}')
+    expect(done).toEqual({ type: 'done', id: '1' })
+    expect(frames.filter((frame) => frame.type === 'item')).toEqual([
+      { type: 'item', id: '1', output: { token: 'hi' } },
+      { type: 'item', id: '1', output: { token: 'there' } },
+    ])
+    expect(frames.some((frame) => frame.type === 'result')).toBe(false)
     server.close()
   })
 
-  it('iterator.return() throw still sends only Streaming output is not enabled', async () => {
+  it('cancel during a stream calls iterator.return and sends no late frames', async () => {
     const boom = new Error('return failed')
     const seen: unknown[] = []
+    let hanging!: Promise<void>
     const chatContract = router({
       chat: procedure,
     })
@@ -542,9 +528,16 @@ describe('shared unary dispatch', () => {
     const app = chatImpl.router({
       chat: chatImpl.chat.handler(async () => ({
         [Symbol.asyncIterator]() {
+          let first = true
           return {
             async next() {
-              return { done: false, value: { token: 'hi' } }
+              if (first) {
+                first = false
+                return { done: false, value: { token: 'hi' } }
+              }
+              hanging = new Promise(() => {})
+              await hanging
+              return { done: true as const, value: undefined }
             },
             async return() {
               throw boom
@@ -567,22 +560,21 @@ describe('shared unary dispatch', () => {
         path: ['chat'],
       }).ok,
     ).toBe(true)
-
-    const result = await waitFor(
+    await waitFor(
       frames,
-      (frame) => frame.type === 'result' && frame.id === '1',
+      (frame) =>
+        frame.type === 'item' &&
+        frame.id === '1' &&
+        (frame.output as { token: string }).token === 'hi',
     )
-    expect(result).toEqual({
-      type: 'result',
-      id: '1',
-      ok: false,
-      error: {
-        code: 'INTERNAL',
-        message: 'Streaming output is not enabled',
-      },
-    })
-    expect(frames.filter((frame) => frame.type === 'result')).toHaveLength(1)
+    expect(client.send({ type: 'cancel', id: '1' }).ok).toBe(true)
+    for (let i = 0; i < 40; i++) {
+      await nextTurn()
+    }
     expect(seen).toEqual([boom])
+    expect(
+      frames.some((frame) => frame.type === 'done' || frame.type === 'result'),
+    ).toBe(false)
     server.close()
   })
 
@@ -702,11 +694,23 @@ describe('shared unary dispatch', () => {
     await expect(server.ready).rejects.toMatchObject({ code: 'INTERNAL' })
   })
 
-  it('call.stream true is BAD_REQUEST and does not run the procedure', async () => {
+  it('call.stream true runs with an input queue and keeps the first in-item', async () => {
+    const ingestContract = router({
+      ingest: procedure.output(z.object({ count: z.number() })),
+    })
+    const ingestImpl = createImplementer(ingestContract)
     let ran = false
-    const app = planetApp(async ({ input }) => {
-      ran = true
-      return { id: input.id, name: 'Earth' }
+    const app = ingestImpl.router({
+      ingest: ingestImpl.ingest.handler(async ({ input }) => {
+        ran = true
+        let count = 0
+        for await (const item of input as unknown as AsyncIterable<{
+          chunk: number
+        }>) {
+          count += item.chunk
+        }
+        return { count }
+      }),
     })
     const { client, frames, server } = openPair(app)
     await Promise.all([server.ready, client.ready])
@@ -715,8 +719,243 @@ describe('shared unary dispatch', () => {
       client.send({
         type: 'call',
         id: '1',
-        path: ['planet', 'find'],
+        path: ['ingest'],
         stream: true,
+      }).ok,
+    ).toBe(true)
+    expect(
+      client.send({
+        type: 'in-item',
+        id: '1',
+        input: { chunk: 1 },
+      }).ok,
+    ).toBe(true)
+    expect(
+      client.send({
+        type: 'in-item',
+        id: '1',
+        input: { chunk: 2 },
+      }).ok,
+    ).toBe(true)
+    expect(client.send({ type: 'in-done', id: '1' }).ok).toBe(true)
+
+    const result = await waitFor(
+      frames,
+      (frame) => frame.type === 'result' && frame.id === '1',
+    )
+    expect(ran).toBe(true)
+    expect(result).toEqual({
+      type: 'result',
+      id: '1',
+      ok: true,
+      output: { count: 3 },
+    })
+    server.close()
+  })
+})
+
+describe('shared stream dispatch', () => {
+  it('emits done with zero items for an empty generator', async () => {
+    const chatContract = router({
+      chat: procedure,
+    })
+    const chatImpl = createImplementer(chatContract)
+    const app = chatImpl.router({
+      chat: chatImpl.chat.handler(async function* () {}),
+    })
+    const { client, frames, server } = openPair(app)
+    await Promise.all([server.ready, client.ready])
+
+    expect(client.send({ type: 'call', id: '1', path: ['chat'] }).ok).toBe(true)
+    const done = await waitFor(
+      frames,
+      (frame) => frame.type === 'done' && frame.id === '1',
+    )
+    expect(done).toEqual({ type: 'done', id: '1' })
+    expect(frames.filter((frame) => frame.type === 'item')).toEqual([])
+    server.close()
+  })
+
+  it('sends result error and no done on a mid-stream PFError', async () => {
+    const chatContract = router({
+      chat: procedure.errors({
+        NOT_FOUND: { status: 404, data: z.object({ id: z.number() }) },
+      }),
+    })
+    const chatImpl = createImplementer(chatContract)
+    const app = chatImpl.router({
+      chat: chatImpl.chat.handler(async function* ({ errors }) {
+        yield { token: 'a' }
+        throw errors.NOT_FOUND({ id: 1 })
+      }),
+    })
+    const { client, frames, server } = openPair(app)
+    await Promise.all([server.ready, client.ready])
+
+    expect(client.send({ type: 'call', id: '1', path: ['chat'] }).ok).toBe(true)
+    const result = await waitFor(
+      frames,
+      (frame) => frame.type === 'result' && frame.id === '1',
+    )
+    expect(frames.filter((frame) => frame.type === 'item')).toEqual([
+      { type: 'item', id: '1', output: { token: 'a' } },
+    ])
+    expect(result).toEqual({
+      type: 'result',
+      id: '1',
+      ok: false,
+      error: {
+        code: 'NOT_FOUND',
+        message: 'NOT_FOUND',
+        data: { id: 1 },
+      },
+    })
+    expect(frames.some((frame) => frame.type === 'done')).toBe(false)
+    server.close()
+  })
+
+  it('sends INTERNAL and calls onError on a mid-stream unknown throw', async () => {
+    const boom = new Error('secret boom')
+    const seen: unknown[] = []
+    const chatContract = router({
+      chat: procedure,
+    })
+    const chatImpl = createImplementer(chatContract)
+    const app = chatImpl.router({
+      chat: chatImpl.chat.handler(async function* () {
+        yield { token: 'a' }
+        throw boom
+      }),
+    })
+    const { client, frames, server } = openPair(app, {
+      onError: (error) => {
+        seen.push(error)
+      },
+    })
+    await Promise.all([server.ready, client.ready])
+
+    expect(client.send({ type: 'call', id: '1', path: ['chat'] }).ok).toBe(true)
+    const result = await waitFor(
+      frames,
+      (frame) => frame.type === 'result' && frame.id === '1',
+    )
+    expect(result).toEqual({
+      type: 'result',
+      id: '1',
+      ok: false,
+      error: { code: 'INTERNAL', message: 'Internal server error' },
+    })
+    expect(JSON.stringify(result)).not.toContain('secret')
+    expect(frames.some((frame) => frame.type === 'done')).toBe(false)
+    expect(seen).toEqual([boom])
+    server.close()
+  })
+
+  it('rejects a nested stream item with BAD_REQUEST and no done', async () => {
+    const chatContract = router({
+      chat: procedure,
+    })
+    const chatImpl = createImplementer(chatContract)
+    const app = chatImpl.router({
+      chat: chatImpl.chat.handler(async function* () {
+        async function* inner() {
+          yield 1
+        }
+        yield inner()
+      }),
+    })
+    const { client, frames, server } = openPair(app)
+    await Promise.all([server.ready, client.ready])
+
+    expect(client.send({ type: 'call', id: '1', path: ['chat'] }).ok).toBe(true)
+    const result = await waitFor(
+      frames,
+      (frame) => frame.type === 'result' && frame.id === '1',
+    )
+    expect(result).toEqual({
+      type: 'result',
+      id: '1',
+      ok: false,
+      error: {
+        code: 'BAD_REQUEST',
+        message: 'Nested streams are not supported',
+      },
+    })
+    expect(frames.some((frame) => frame.type === 'done')).toBe(false)
+    expect(frames.some((frame) => frame.type === 'item')).toBe(false)
+    server.close()
+  })
+
+  it('rejects a Blob item with BAD_REQUEST', async () => {
+    const chatContract = router({
+      chat: procedure,
+    })
+    const chatImpl = createImplementer(chatContract)
+    const app = chatImpl.router({
+      chat: chatImpl.chat.handler(async function* () {
+        yield new Blob(['x'])
+      }),
+    })
+    const { client, frames, server } = openPair(app)
+    await Promise.all([server.ready, client.ready])
+
+    expect(client.send({ type: 'call', id: '1', path: ['chat'] }).ok).toBe(true)
+    const result = await waitFor(
+      frames,
+      (frame) => frame.type === 'result' && frame.id === '1',
+    )
+    expect(result).toEqual({
+      type: 'result',
+      id: '1',
+      ok: false,
+      error: {
+        code: 'BAD_REQUEST',
+        message: 'File values are not supported in streams',
+      },
+    })
+    server.close()
+  })
+
+  it('ignores in-item after in-done', async () => {
+    const seen: number[] = []
+    const ingestContract = router({
+      ingest: procedure.output(z.object({ count: z.number() })),
+    })
+    const ingestImpl = createImplementer(ingestContract)
+    const app = ingestImpl.router({
+      ingest: ingestImpl.ingest.handler(async ({ input }) => {
+        for await (const item of input as unknown as AsyncIterable<{
+          chunk: number
+        }>) {
+          seen.push(item.chunk)
+        }
+        return { count: seen.reduce((sum, n) => sum + n, 0) }
+      }),
+    })
+    const { client, frames, server } = openPair(app)
+    await Promise.all([server.ready, client.ready])
+
+    expect(
+      client.send({
+        type: 'call',
+        id: '1',
+        path: ['ingest'],
+        stream: true,
+      }).ok,
+    ).toBe(true)
+    expect(
+      client.send({
+        type: 'in-item',
+        id: '1',
+        input: { chunk: 1 },
+      }).ok,
+    ).toBe(true)
+    expect(client.send({ type: 'in-done', id: '1' }).ok).toBe(true)
+    expect(
+      client.send({
+        type: 'in-item',
+        id: '1',
+        input: { chunk: 99 },
       }).ok,
     ).toBe(true)
 
@@ -724,16 +963,13 @@ describe('shared unary dispatch', () => {
       frames,
       (frame) => frame.type === 'result' && frame.id === '1',
     )
-    expect(ran).toBe(false)
     expect(result).toEqual({
       type: 'result',
       id: '1',
-      ok: false,
-      error: {
-        code: 'BAD_REQUEST',
-        message: 'Streaming input is not enabled',
-      },
+      ok: true,
+      output: { count: 1 },
     })
+    expect(seen).toEqual([1])
     server.close()
   })
 })

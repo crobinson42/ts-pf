@@ -415,7 +415,7 @@ describe('PortLink', () => {
       (frame) => frame.type === 'call' && frame.id === '1',
     )
     expect(
-      peer.session.send({ type: 'item', id: '1', output: { token: 'x' } }).ok,
+      peer.session.send({ type: 'in-item', id: '1', input: { chunk: 1 } }).ok,
     ).toBe(true)
     const badError = await bad.then(
       () => {
@@ -458,7 +458,7 @@ describe('PortLink', () => {
     peer.session.close()
   })
 
-  it('treats a first done frame as Invalid response', async () => {
+  it('resolves a first done frame to an empty async iterable', async () => {
     const { port1, port2 } = new MessageChannel()
     const peer = openPeer(port1)
     const link = new PortLink({ port: port2 })
@@ -467,14 +467,122 @@ describe('PortLink', () => {
     const pending = link.call(['planet', 'chat'], { prompt: 'hi' })
     await waitFor(peer.frames, (frame) => frame.type === 'call')
     expect(peer.session.send({ type: 'done', id: '1' }).ok).toBe(true)
-    const error = await pending.then(
+    const tokens = await pending
+    const collected: unknown[] = []
+    for await (const item of tokens as AsyncIterable<unknown>) {
+      collected.push(item)
+    }
+    expect(collected).toEqual([])
+
+    link.close()
+    peer.session.close()
+  })
+
+  it('resolves a first item frame to an async iterable', async () => {
+    const { port1, port2 } = new MessageChannel()
+    const peer = openPeer(port1)
+    const link = new PortLink({ port: port2 })
+    await peer.session.ready
+
+    const pending = link.call(['planet', 'chat'], { prompt: 'hi' })
+    await waitFor(peer.frames, (frame) => frame.type === 'call')
+    expect(
+      peer.session.send({
+        type: 'item',
+        id: '1',
+        output: { token: 'a' },
+      }).ok,
+    ).toBe(true)
+    const tokens = await pending
+    expect(
+      peer.session.send({
+        type: 'item',
+        id: '1',
+        output: { token: 'b' },
+      }).ok,
+    ).toBe(true)
+    expect(peer.session.send({ type: 'done', id: '1' }).ok).toBe(true)
+    const collected: unknown[] = []
+    for await (const item of tokens as AsyncIterable<unknown>) {
+      collected.push(item)
+    }
+    expect(collected).toEqual([{ token: 'a' }, { token: 'b' }])
+
+    link.close()
+    peer.session.close()
+  })
+
+  it('rejects the iterator on mid-stream result ok false', async () => {
+    const { port1, port2 } = new MessageChannel()
+    const peer = openPeer(port1)
+    const link = new PortLink({ port: port2 })
+    await peer.session.ready
+
+    const pending = link.call(['planet', 'chat'], { prompt: 'hi' })
+    await waitFor(peer.frames, (frame) => frame.type === 'call')
+    expect(
+      peer.session.send({
+        type: 'item',
+        id: '1',
+        output: { token: 'a' },
+      }).ok,
+    ).toBe(true)
+    const tokens = (await pending) as AsyncIterable<unknown>
+    const iter = tokens[Symbol.asyncIterator]()
+    expect(await iter.next()).toEqual({
+      done: false,
+      value: { token: 'a' },
+    })
+    expect(
+      peer.session.send({
+        type: 'result',
+        id: '1',
+        ok: false,
+        error: { code: 'NOT_FOUND', message: 'missing' },
+      }).ok,
+    ).toBe(true)
+    const error = await iter.next().then(
       () => {
         throw new Error('should reject')
       },
       (reason: unknown) => reason,
     )
-    expect(isLocalFailure(error)).toBe(true)
-    expect(error).toMatchObject({ message: 'Invalid response' })
+    expect(isLocalFailure(error)).toBe(false)
+    expect(error).toMatchObject({ code: 'NOT_FOUND', message: 'missing' })
+    expect(peer.frames.some((frame) => frame.type === 'cancel')).toBe(false)
+
+    link.close()
+    peer.session.close()
+  })
+
+  it('sends cancel not in-done when the output iterator returns', async () => {
+    const { port1, port2 } = new MessageChannel()
+    const peer = openPeer(port1)
+    const link = new PortLink({ port: port2 })
+    await peer.session.ready
+
+    const pending = link.call(['planet', 'chat'], { prompt: 'hi' })
+    await waitFor(peer.frames, (frame) => frame.type === 'call')
+    expect(
+      peer.session.send({
+        type: 'item',
+        id: '1',
+        output: { token: 'a' },
+      }).ok,
+    ).toBe(true)
+    const tokens = (await pending) as AsyncIterable<unknown>
+    const iter = tokens[Symbol.asyncIterator]()
+    expect(await iter.next()).toEqual({
+      done: false,
+      value: { token: 'a' },
+    })
+    await iter.return?.()
+    const cancel = await waitFor(
+      peer.frames,
+      (frame) => frame.type === 'cancel',
+    )
+    expect(cancel).toEqual({ type: 'cancel', id: '1' })
+    expect(peer.frames.some((frame) => frame.type === 'in-done')).toBe(false)
 
     link.close()
     peer.session.close()
@@ -570,31 +678,86 @@ describe('PortLink', () => {
     peer.session.close()
   })
 
-  it('refuses AsyncIterable input without sending a call', async () => {
+  it('sends stream true and pumps in-item then in-done for AsyncIterable input', async () => {
     const { port1, port2 } = new MessageChannel()
-    const peer = openPeer(port1, { helloTimeoutMs: 0 })
-    const link = new PortLink({ port: port2, helloTimeoutMs: 0 })
+    const peer = openPeer(port1)
+    const link = new PortLink({ port: port2 })
+    await peer.session.ready
 
     async function* chunks() {
       yield { chunk: 1 }
+      yield { chunk: 2 }
     }
 
-    const error = await link.call(['planet', 'ingest'], chunks()).then(
+    const pending = link.call(['planet', 'ingest'], chunks())
+    const call = await waitFor(
+      peer.frames,
+      (frame) => frame.type === 'call' && frame.id === '1',
+    )
+    expect(call).toEqual({
+      type: 'call',
+      id: '1',
+      path: ['planet', 'ingest'],
+      stream: true,
+    })
+    expect('input' in call).toBe(false)
+    await waitFor(
+      peer.frames,
+      (frame) =>
+        frame.type === 'in-item' &&
+        frame.id === '1' &&
+        (frame.input as { chunk: number }).chunk === 2,
+    )
+    expect(peer.frames.filter((frame) => frame.type === 'in-item')).toEqual([
+      { type: 'in-item', id: '1', input: { chunk: 1 } },
+      { type: 'in-item', id: '1', input: { chunk: 2 } },
+    ])
+    const done = await waitFor(peer.frames, (frame) => frame.type === 'in-done')
+    expect(done).toEqual({ type: 'in-done', id: '1' })
+    expect(
+      peer.session.send({
+        type: 'result',
+        id: '1',
+        ok: true,
+        output: { count: 3 },
+      }).ok,
+    ).toBe(true)
+    expect(await pending).toEqual({ count: 3 })
+
+    link.close()
+    peer.session.close()
+  })
+
+  it('sends cancel not in-done when the input generator throws', async () => {
+    const { port1, port2 } = new MessageChannel()
+    const peer = openPeer(port1)
+    const link = new PortLink({ port: port2 })
+    await peer.session.ready
+
+    async function* chunks() {
+      yield { chunk: 1 }
+      throw new Error('input failed')
+    }
+
+    const pending = link.call(['planet', 'ingest'], chunks()).then(
       () => {
         throw new Error('should reject')
       },
       (reason: unknown) => reason,
     )
-    expect(isLocalFailure(error)).toBe(false)
-    expect(error).toMatchObject({
-      code: 'BAD_REQUEST',
-      status: 400,
-      message: 'Streaming input is not enabled',
-    })
-    for (let i = 0; i < 10; i++) {
-      await nextTurn()
-    }
-    expect(peer.frames.filter((frame) => frame.type === 'call')).toEqual([])
+    await waitFor(
+      peer.frames,
+      (frame) => frame.type === 'in-item' && frame.id === '1',
+    )
+    const cancel = await waitFor(
+      peer.frames,
+      (frame) => frame.type === 'cancel',
+    )
+    expect(cancel).toEqual({ type: 'cancel', id: '1' })
+    expect(peer.frames.some((frame) => frame.type === 'in-done')).toBe(false)
+    const error = await pending
+    expect(isLocalFailure(error)).toBe(true)
+    expect(error).toMatchObject({ message: 'input failed' })
 
     link.close()
     peer.session.close()

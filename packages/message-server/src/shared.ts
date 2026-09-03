@@ -1,6 +1,7 @@
 import {
   type CallFrame,
   type Duplex,
+  type ItemFrame,
   type MessageFrame,
   MessageSession,
   type WireError,
@@ -12,6 +13,7 @@ import {
   runProcedure,
 } from '@ts-pf/server'
 import { isAsyncIterable } from './is-async-iterable.js'
+import { createPushQueue, type PushQueue } from './push-queue.js'
 
 export type HandlerOptions = {
   maxFrameBytes?: number
@@ -30,11 +32,28 @@ type ServerInflight = {
   cancelled: boolean
   startedItems: boolean
   iterator?: AsyncIterator<unknown>
-  inputQueue?: AsyncIterable<unknown>
+  inputQueue?: PushQueue<unknown>
 }
 
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError'
+}
+
+function assertItem(value: unknown): void {
+  if (isAsyncIterable(value)) {
+    throw new PFError({
+      code: 'BAD_REQUEST',
+      status: 400,
+      message: 'Nested streams are not supported',
+    })
+  }
+  if (typeof Blob !== 'undefined' && value instanceof Blob) {
+    throw new PFError({
+      code: 'BAD_REQUEST',
+      status: 400,
+      message: 'File values are not supported in streams',
+    })
+  }
 }
 
 async function dispatchCall(
@@ -107,11 +126,31 @@ export function attachRouter<TCtx = unknown>(
     // handshake / close rejects ready; bind() does not await it
   })
 
+  function closeIterator(rec: ServerInflight): void {
+    const iterator = rec.iterator
+    delete rec.iterator
+    if (iterator?.return === undefined) {
+      return
+    }
+    void Promise.resolve(iterator.return()).then(
+      () => {},
+      (error) => {
+        if (isPFError(error) || isAbortError(error)) {
+          return
+        }
+        if (options.onError !== undefined) {
+          void options.onError(error)
+        }
+      },
+    )
+  }
+
   function abortAll(): void {
     for (const rec of inflight.values()) {
       rec.cancelled = true
       rec.ac.abort()
-      void rec.iterator?.return?.()
+      rec.inputQueue?.end()
+      closeIterator(rec)
     }
     inflight.clear()
   }
@@ -182,8 +221,23 @@ export function attachRouter<TCtx = unknown>(
         cancelled: false,
         startedItems: false,
       }
+      if (frame.stream === true) {
+        rec.inputQueue = createPushQueue()
+      }
       inflight.set(frame.id, rec)
       void runCall(frame, rec)
+      return
+    }
+    if (frame.type === 'in-item' || frame.type === 'in-done') {
+      const rec = inflight.get(frame.id)
+      if (!rec?.inputQueue) {
+        return
+      }
+      if (frame.type === 'in-done') {
+        rec.inputQueue.end()
+      } else {
+        rec.inputQueue.push(frame.input)
+      }
       return
     }
     if (frame.type === 'cancel') {
@@ -193,7 +247,8 @@ export function attachRouter<TCtx = unknown>(
       }
       rec.cancelled = true
       rec.ac.abort()
-      void rec.iterator?.return?.()
+      rec.inputQueue?.end()
+      closeIterator(rec)
       inflight.delete(frame.id)
       return
     }
@@ -214,52 +269,85 @@ export function attachRouter<TCtx = unknown>(
     })
   }
 
-  async function runCall(frame: CallFrame, rec: ServerInflight): Promise<void> {
-    if (frame.stream === true) {
-      if (rec.cancelled) {
-        return
+  async function failCall(
+    rec: ServerInflight,
+    id: string,
+    error: unknown,
+  ): Promise<void> {
+    if (rec.cancelled) {
+      if (
+        !isPFError(error) &&
+        !isAbortError(error) &&
+        options.onError !== undefined
+      ) {
+        await options.onError(error)
       }
-      sendOutbound(rec, frame.id, {
+      return
+    }
+    if (isPFError(error)) {
+      sendOutbound(rec, id, {
         type: 'result',
-        id: frame.id,
+        id,
         ok: false,
-        error: {
-          code: 'BAD_REQUEST',
-          message: 'Streaming input is not enabled',
-        },
+        error: error.toJSON(),
       })
       return
     }
+    if (options.onError !== undefined) {
+      await options.onError(error)
+    }
+    if (rec.cancelled) {
+      return
+    }
+    sendOutbound(rec, id, {
+      type: 'result',
+      id,
+      ok: false,
+      error: { code: 'INTERNAL', message: 'Internal server error' },
+    })
+  }
+
+  async function emitStream(
+    rec: ServerInflight,
+    id: string,
+    output: AsyncIterable<unknown>,
+  ): Promise<void> {
+    const iterator = output[Symbol.asyncIterator]()
+    rec.iterator = iterator
+    try {
+      while (true) {
+        const next = await iterator.next()
+        if (rec.cancelled) {
+          return
+        }
+        if (next.done) {
+          sendOutbound(rec, id, { type: 'done', id })
+          return
+        }
+        assertItem(next.value)
+        const item: ItemFrame = { type: 'item', id }
+        if (next.value !== undefined) {
+          item.output = next.value
+        }
+        if (!sendOutbound(rec, id, item)) {
+          closeIterator(rec)
+          return
+        }
+      }
+    } catch (error) {
+      closeIterator(rec)
+      await failCall(rec, id, error)
+    }
+  }
+
+  async function runCall(frame: CallFrame, rec: ServerInflight): Promise<void> {
     try {
       const output = await dispatchCall(options.router, frame, rec, context)
       if (rec.cancelled) {
         return
       }
       if (isAsyncIterable(output)) {
-        const iterator = output[Symbol.asyncIterator]()
-        rec.iterator = iterator
-        try {
-          await iterator.return?.()
-        } catch (error) {
-          if (options.onError !== undefined) {
-            try {
-              await options.onError(error)
-            } catch {
-              // onError is side-effect only
-            }
-          }
-        }
-        if (!rec.cancelled) {
-          sendOutbound(rec, frame.id, {
-            type: 'result',
-            id: frame.id,
-            ok: false,
-            error: {
-              code: 'INTERNAL',
-              message: 'Streaming output is not enabled',
-            },
-          })
-        }
+        await emitStream(rec, frame.id, output)
         return
       }
       sendOutbound(rec, frame.id, {
@@ -269,37 +357,7 @@ export function attachRouter<TCtx = unknown>(
         ...(output !== undefined ? { output } : {}),
       })
     } catch (error) {
-      if (rec.cancelled) {
-        if (
-          !isPFError(error) &&
-          !isAbortError(error) &&
-          options.onError !== undefined
-        ) {
-          await options.onError(error)
-        }
-        return
-      }
-      if (isPFError(error)) {
-        sendOutbound(rec, frame.id, {
-          type: 'result',
-          id: frame.id,
-          ok: false,
-          error: error.toJSON(),
-        })
-        return
-      }
-      if (options.onError !== undefined) {
-        await options.onError(error)
-      }
-      if (rec.cancelled) {
-        return
-      }
-      sendOutbound(rec, frame.id, {
-        type: 'result',
-        id: frame.id,
-        ok: false,
-        error: { code: 'INTERNAL', message: 'Internal server error' },
-      })
+      await failCall(rec, frame.id, error)
     }
   }
 
