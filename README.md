@@ -24,6 +24,7 @@ Requires Node.js 18+.
 | [`@ts-pf/message-server`](packages/message-server) | Opt-in `PortHandler` / `WsHandler` / `StdioHandler` |
 | [`@ts-pf/message-client`](packages/message-client) | Opt-in `PortLink` / `WsLink` / `StdioLink` |
 | [`@ts-pf/swr`](packages/swr) | Opt-in SWR keys, fetchers, mutators, and matchers |
+| [`@ts-pf/mvc-kit`](packages/mvc-kit) | Opt-in `bindClient` + `issuesToFieldErrors` for mvc-kit Resources |
 
 Wire spec: [packages/protocol/PROTOCOL.md](packages/protocol/PROTOCOL.md).
 
@@ -221,13 +222,27 @@ const { data } = useSWR(
 )
 ```
 
+mvc-kit is opt-in too. Do not put this in the default happy path:
+
+```ts
+import { bindClient } from '@ts-pf/mvc-kit'
+import { Resource } from 'mvc-kit'
+
+class PlanetsResource extends Resource<Planet> {
+  private rpc = bindClient(client, this)
+  async loadById(id: number) {
+    this.upsert(await this.rpc.planet.find({ id }))
+  }
+}
+```
+
 ## Why not oRPC?
 
-oRPC is a dual RPC + OpenAPI platform with many adapters, serializers, and integrations. ts-pf keeps the contract-first DX and typed middleware. The catalog is the portable contract. `@ts-pf/openapi` is a document projection of `catalog()` (POST JSON RPC), not an OpenAPI runtime or REST handler. `@ts-pf/codegen` prints a `.d.ts` from that catalog for split-repo `createClient<Contract>` — not an OpenAPI runtime. TanStack Query and extra adapters stay later packages. SWR lives in `@ts-pf/swr`.
+oRPC is a dual RPC + OpenAPI platform with many adapters, serializers, and integrations. ts-pf keeps the contract-first DX and typed middleware. The catalog is the portable contract. `@ts-pf/openapi` is a document projection of `catalog()` (POST JSON RPC), not an OpenAPI runtime or REST handler. `@ts-pf/codegen` prints a `.d.ts` from that catalog for split-repo `createClient<Contract>` — not an OpenAPI runtime. TanStack Query and extra adapters stay later packages. SWR lives in `@ts-pf/swr`. mvc-kit Resource helpers live in `@ts-pf/mvc-kit`.
 
 ## Examples
 
-Runnable apps in [`examples/`](examples/), from the happy path to a contract-first workshop, a [`10-docs`](examples/10-docs) catalog example, an opt-in [`11-message`](examples/11-message) MessagePort example, [`12-swr`](examples/12-swr) for `@ts-pf/swr`, [`13-openapi`](examples/13-openapi) for `@ts-pf/openapi`, and [`14-codegen`](examples/14-codegen) for `@ts-pf/codegen`.
+Runnable apps in [`examples/`](examples/), from the happy path to a contract-first workshop, a [`10-docs`](examples/10-docs) catalog example, an opt-in [`11-message`](examples/11-message) MessagePort example, [`12-swr`](examples/12-swr) for `@ts-pf/swr`, [`13-openapi`](examples/13-openapi) for `@ts-pf/openapi`, [`14-codegen`](examples/14-codegen) for `@ts-pf/codegen`, and [`15-mvc-kit`](examples/15-mvc-kit) for `@ts-pf/mvc-kit`.
 
 See [`examples/README.md`](examples/README.md) for the learning path.
 

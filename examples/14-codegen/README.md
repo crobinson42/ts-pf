@@ -42,3 +42,5 @@ await client.planet.find({ id: 1 })
 
 - `src/contract.ts` — `docs()` plus a stream procedure and a hidden one
 - `src/demo.ts` — `emit(catalog(contract, { prefix: '/rpc' }))`
+
+Next: [15-mvc-kit](../15-mvc-kit) binds that client into an mvc-kit Resource.

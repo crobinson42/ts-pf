@@ -4,12 +4,15 @@ packages:
   - examples/08-workshop/*
   - examples/09-onion-arch/*
   - examples/12-swr/*
+  - examples/15-mvc-kit/*
 
 allowBuilds:
   esbuild: true
+  mvc-kit: false
 
 minimumReleaseAgeExclude:
   - typebox@1.3.24
+  - mvc-kit@4.9.0
 
 overrides:
   esbuild: 0.27.7

@@ -7,4 +7,5 @@ export default [
   'examples/12-swr/api',
   'examples/13-openapi',
   'examples/14-codegen',
+  'examples/15-mvc-kit/api',
 ]
