@@ -1,5 +1,6 @@
 import { procedure, router } from '@ts-pf/contract'
-import { PROTOCOL_HEADER, PROTOCOL_VERSION } from '@ts-pf/protocol'
+import { PROTOCOL_HEADER } from '@ts-pf/http'
+import { PROTOCOL_VERSION } from '@ts-pf/protocol'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import { catalog } from '../src/catalog.js'

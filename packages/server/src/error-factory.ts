@@ -32,7 +32,6 @@ export async function finalizeDeclaredError(
   if (!result.success) {
     throw new PFError({
       code: 'INTERNAL',
-      status: 500,
       message: 'Internal server error',
     })
   }

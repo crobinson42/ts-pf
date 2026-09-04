@@ -7,7 +7,8 @@ This package does **not** wrap `useSWR`, add a React provider, switch RPC to GET
 ## Setup
 
 ```ts
-import { createClient, FetchLink } from '@ts-pf/client'
+import { createClient } from '@ts-pf/client'
+import { FetchLink } from '@ts-pf/client-http'
 import { createSwr } from '@ts-pf/swr'
 import type { contract } from './contract'
 
@@ -28,7 +29,7 @@ const { data, error, isLoading } = useSWR(
 )
 ```
 
-SWR’s `error` is the thrown `PFError`. `error.code` still narrows declared errors; `isLocalFailure(error)` still detects status `0`. Fetchers do not wrap `asResult`.
+SWR’s `error` is the thrown `PFError`. `error.code` still narrows declared errors; `isLocalFailure(error)` is `local === true`. Fetchers do not wrap `asResult`.
 
 Skip a request with a null key: `id ? swr.planet.find.key({ input: { id } }) : null`.
 

@@ -29,6 +29,7 @@
   "dependencies": {
     "@standard-schema/spec": "^1.0.0",
     "@ts-pf/contract": "workspace:*",
+    "@ts-pf/http": "workspace:*",
     "@ts-pf/protocol": "workspace:*"
   },
   "peerDependencies": {

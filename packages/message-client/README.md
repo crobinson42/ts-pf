@@ -1,6 +1,6 @@
 # @ts-pf/message-client
 
-Opt-in `PortLink` / `WsLink` / `StdioLink` for the same `createClient(link)` as `FetchLink`.
+Opt-in `PortLink` / `WsLink` / `StdioLink` for the same `createClient(link)` as `@ts-pf/client-http` `FetchLink`.
 
 ```ts
 import { createClient } from '@ts-pf/client'

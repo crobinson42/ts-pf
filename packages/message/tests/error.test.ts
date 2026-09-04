@@ -2,27 +2,20 @@ import { isPFError } from '@ts-pf/protocol'
 import { describe, expect, it } from 'vitest'
 import { errorFromEnvelope, localFailure } from '../src/error.js'
 
-const PROTOCOL_CODES = {
-  BAD_REQUEST: 400,
-  VALIDATION: 422,
-  NOT_FOUND: 404,
-  INTERNAL: 500,
-  METHOD_NOT_ALLOWED: 405,
-  PAYLOAD_TOO_LARGE: 413,
-} as const
-
 describe('errorFromEnvelope', () => {
-  it('maps protocol codes to the status table', () => {
-    for (const [code, status] of Object.entries(PROTOCOL_CODES)) {
-      const error = errorFromEnvelope({ code, message: code })
-      expect(isPFError(error)).toBe(true)
-      expect(error.code).toBe(code)
-      expect(error.status).toBe(status)
-      expect(error.message).toBe(code)
-    }
+  it('does not reconstruct HTTP status from protocol codes', () => {
+    const error = errorFromEnvelope({
+      code: 'NOT_FOUND',
+      message: 'missing',
+    })
+    expect(isPFError(error)).toBe(true)
+    expect(error.code).toBe('NOT_FOUND')
+    expect(error.status).toBe(400)
+    expect(error.local).toBeUndefined()
+    expect(error.message).toBe('missing')
   })
 
-  it('maps an unknown application code to 400', () => {
+  it('maps an unknown application code to default 400', () => {
     const error = errorFromEnvelope({
       code: 'NOT_EARTH',
       message: 'not a planet',
@@ -81,16 +74,18 @@ describe('errorFromEnvelope', () => {
       code: 'INTERNAL',
       message: 'Internal server error',
     })
-    expect(error.status).toBe(500)
+    expect(error.status).toBe(400)
+    expect(error.local).toBeUndefined()
     expect(error.status).not.toBe(0)
   })
 })
 
 describe('localFailure', () => {
-  it('maps Request aborted to INTERNAL with status 0', () => {
+  it('maps Request aborted to INTERNAL with local true and status 0', () => {
     const error = localFailure('Request aborted')
     expect(isPFError(error)).toBe(true)
     expect(error.code).toBe('INTERNAL')
+    expect(error.local).toBe(true)
     expect(error.status).toBe(0)
     expect(error.message).toBe('Request aborted')
     expect(error.data).toBeUndefined()

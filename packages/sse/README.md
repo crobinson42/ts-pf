@@ -8,6 +8,9 @@ Public exports: `SseCodec`, `SSE_CONTENT_TYPE`.
 import { stream } from '@ts-pf/stream'
 import { SseCodec } from '@ts-pf/sse'
 
+import { FetchHandler } from '@ts-pf/server-http'
+import { FetchLink } from '@ts-pf/client-http'
+
 const codec = new SseCodec() // optional { inner, keepAliveMs } — default 15_000; 0 disables pings
 new FetchHandler(app, { codec })
 new FetchLink({ url: '/rpc', codec })

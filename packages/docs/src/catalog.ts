@@ -1,9 +1,5 @@
-import {
-  joinProcedurePath,
-  PROTOCOL_HEADER,
-  PROTOCOL_VERSION,
-  ProtocolErrorCode,
-} from '@ts-pf/protocol'
+import { joinProcedurePath, PROTOCOL_HEADER } from '@ts-pf/http'
+import { PROTOCOL_VERSION, ProtocolErrorCode } from '@ts-pf/protocol'
 import { getDocs } from './docs.js'
 import { tryToJsonSchema } from './json-schema.js'
 import type {

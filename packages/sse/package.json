@@ -27,13 +27,16 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
+    "@ts-pf/http": "workspace:*",
     "@ts-pf/protocol": "workspace:*",
     "@ts-pf/stream": "workspace:*"
   },
   "devDependencies": {
     "@ts-pf/client": "workspace:*",
+    "@ts-pf/client-http": "workspace:*",
     "@ts-pf/contract": "workspace:*",
     "@ts-pf/server": "workspace:*",
+    "@ts-pf/server-http": "workspace:*",
     "zod": "^4.0.0"
   }
 }

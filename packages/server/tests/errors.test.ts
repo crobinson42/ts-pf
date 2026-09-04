@@ -23,7 +23,7 @@ describe('declared error data', () => {
     const client = createLocalClient(app, { context: {} })
     await expect(client.find({ id: 1 })).rejects.toMatchObject({
       code: 'INTERNAL',
-      status: 500,
+      status: 400,
     })
     await expect(client.find({ id: 1 })).rejects.not.toMatchObject({
       data: { id: 'nope' },
@@ -51,7 +51,7 @@ describe('declared error data', () => {
     })
   })
 
-  it('output schema failure is INTERNAL 500 without issues', async () => {
+  it('output schema failure is INTERNAL without issues', async () => {
     const c = router({ ping: procedure.output(z.string()) })
     const impl = createImplementer(c)
     const app = impl.router({
@@ -62,7 +62,7 @@ describe('declared error data', () => {
       () => undefined,
       (error: unknown) => error,
     )
-    expect(err).toMatchObject({ code: 'INTERNAL', status: 500 })
+    expect(err).toMatchObject({ code: 'INTERNAL', status: 400 })
     expect(err).toBeInstanceOf(PFError)
     expect((err as PFError).data).toBeUndefined()
   })
@@ -88,7 +88,7 @@ describe('declared error data', () => {
       }
     }).rejects.toMatchObject({
       code: 'INTERNAL',
-      status: 500,
+      status: 400,
     })
   })
 })

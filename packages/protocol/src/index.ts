@@ -1,11 +1,6 @@
-export { JSONCodec } from './codec.js'
 export {
   type PFResultPromise,
-  PROTOCOL_HEADER,
   PROTOCOL_VERSION,
-  type RpcBodySource,
-  type RpcCodec,
-  type RpcEncodedBody,
   type RpcFailure,
   type RpcRequest,
   type RpcResponse,
@@ -13,8 +8,8 @@ export {
 } from './envelope.js'
 export {
   isPFError,
+  localFailure,
   PFError,
   type PFErrorInit,
   ProtocolErrorCode,
 } from './error.js'
-export { joinProcedurePath, parseProcedurePath } from './path.js'

@@ -7,7 +7,8 @@ This package does **not** wrap Resource, add React hooks, generate a Service, or
 ## Setup
 
 ```ts
-import { createClient, FetchLink } from '@ts-pf/client'
+import { createClient } from '@ts-pf/client'
+import { FetchLink } from '@ts-pf/client-http'
 import { bindClient, issuesToFieldErrors } from '@ts-pf/mvc-kit'
 import { Resource, type DedupeConfig } from 'mvc-kit'
 import type { InferContractInputs, InferContractOutputs } from '@ts-pf/contract'
@@ -78,7 +79,7 @@ if (!result.ok && result.error.code === 'VALIDATION') {
 
 ## Abort
 
-Pass nothing. `bindClient` injects `host.disposeSignal`. Dispose/unmount aborts the in-flight call. FetchLink maps abort to `PFError { code: 'INTERNAL', status: 0, cause: AbortError }`. mvc-kit walks `cause` one level and **swallows** it — no error flash.
+Pass nothing. `bindClient` injects `host.disposeSignal`. Dispose/unmount aborts the in-flight call. FetchLink maps abort to `PFError { code: 'INTERNAL', local: true, status: 0, cause: AbortError }`. mvc-kit walks `cause` one level and **swallows** it — no error flash.
 
 For Pending / offline-kit, pass the provided signal so it wins:
 

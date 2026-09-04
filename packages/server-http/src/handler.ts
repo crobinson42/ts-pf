@@ -1,20 +1,19 @@
 import {
-  isPFError,
+  httpStatus,
   JSONCodec,
-  PFError,
   PROTOCOL_HEADER,
-  PROTOCOL_VERSION,
   parseProcedurePath,
   type RpcBodySource,
   type RpcCodec,
   type RpcEncodedBody,
-} from '@ts-pf/protocol'
-import type { HandlerPlugin } from './plugins.js'
+} from '@ts-pf/http'
+import { isPFError, PFError, PROTOCOL_VERSION } from '@ts-pf/protocol'
 import {
   type ImplementedRouter,
   lookupProcedure,
   runProcedure,
-} from './runtime.js'
+} from '@ts-pf/server'
+import type { HandlerPlugin } from './plugins.js'
 
 export type HandleResult =
   | { matched: false; response?: undefined }
@@ -70,7 +69,6 @@ export class FetchHandler<TCtx = unknown> {
             await this.errorResponse(
               new PFError({
                 code: 'METHOD_NOT_ALLOWED',
-                status: 405,
                 message: 'Method not allowed',
               }),
             ),
@@ -84,7 +82,6 @@ export class FetchHandler<TCtx = unknown> {
       if (!procedure) {
         throw new PFError({
           code: 'NOT_FOUND',
-          status: 404,
           message: 'Procedure not found',
         })
       }
@@ -129,7 +126,6 @@ export class FetchHandler<TCtx = unknown> {
         ? error
         : new PFError({
             code: 'INTERNAL',
-            status: 500,
             message: 'Internal server error',
           })
       return {
@@ -169,7 +165,7 @@ export class FetchHandler<TCtx = unknown> {
   private async errorResponse(error: PFError): Promise<Response> {
     return encodedResponse(
       await this.codec.encodeFailure(error.toJSON()),
-      error.status,
+      httpStatus(error),
     )
   }
 }

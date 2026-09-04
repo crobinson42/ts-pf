@@ -39,7 +39,7 @@ describe('createImplementer', () => {
     const client = createLocalClient(app, { context: {} })
     await expect(client.echo({ n: 'x' } as never)).rejects.toMatchObject({
       code: 'VALIDATION',
-      status: 422,
+      status: 400,
     })
   })
 

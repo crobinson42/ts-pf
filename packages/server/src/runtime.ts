@@ -71,7 +71,6 @@ export async function runProcedure(
         if (!result.success) {
           throw new PFError({
             code: 'INTERNAL',
-            status: 500,
             message: 'Internal server error',
           })
         }
@@ -105,7 +104,6 @@ export async function runProcedure(
         if (!result.success) {
           throw new PFError({
             code: 'VALIDATION',
-            status: 422,
             message: 'Validation failed',
             data: { issues: result.issues },
           })

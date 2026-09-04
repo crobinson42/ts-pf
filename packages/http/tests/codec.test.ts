@@ -1,5 +1,6 @@
-import { JSONCodec, PFError, type RpcBodySource } from '@ts-pf/protocol'
+import { PFError } from '@ts-pf/protocol'
 import { describe, expect, it } from 'vitest'
+import { JSONCodec, type RpcBodySource } from '../src/index.js'
 
 function source(body: string, contentType = 'application/json'): RpcBodySource {
   return {

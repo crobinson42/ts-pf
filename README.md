@@ -2,7 +2,7 @@
 
 TypeScript Procedure Factory — a contract-first, end-to-end type-safe RPC library.
 
-oRPC-like DX without the dual-protocol platform. You write a contract, implement it on the server, and call it from a client that never imports server code.
+**This procedure model, any pipe.** oRPC-like DX without the dual-protocol platform. You write a contract, implement it on the server, and call it from a client that never imports server code. Fetch is the default adapter, not the runtime.
 
 Requires Node.js 18+.
 
@@ -11,9 +11,12 @@ Requires Node.js 18+.
 | Package | Role |
 |---|---|
 | [`@ts-pf/contract`](packages/contract) | `procedure` / `router`, schema adapters, nested routers, infer types |
-| [`@ts-pf/protocol`](packages/protocol) | Portable JSON RPC envelope, `PFError`, codec |
-| [`@ts-pf/server`](packages/server) | `createImplementer()`, middleware, `FetchHandler`, `createLocalClient()` |
-| [`@ts-pf/client`](packages/client) | `createClient()`, `FetchLink`, `asResult()`, `isLocalFailure()` |
+| [`@ts-pf/protocol`](packages/protocol) | Portable JSON envelope, `PFError`, `PROTOCOL_VERSION` |
+| [`@ts-pf/server`](packages/server) | `createImplementer()`, middleware, `runProcedure`, `lookupProcedure`, `createLocalClient()` |
+| [`@ts-pf/client`](packages/client) | `createClient()`, `Link`, `asResult()`, `isLocalFailure()` |
+| [`@ts-pf/http`](packages/http) | HTTP wire helpers: `JSONCodec`, `RpcCodec`, `PROTOCOL_HEADER`, path helpers, `httpStatus` |
+| [`@ts-pf/server-http`](packages/server-http) | `FetchHandler`, `HandlerPlugin` (CORS / limits / headers) |
+| [`@ts-pf/client-http`](packages/client-http) | `FetchLink`, Fetch interceptors |
 | [`@ts-pf/file`](packages/file) | Opt-in `MultipartCodec` for `File`/`Blob` attachments |
 | [`@ts-pf/stream`](packages/stream) | Opt-in `StreamCodec` for root `AsyncIterable` (JSONL) |
 | [`@ts-pf/sse`](packages/sse) | Opt-in `SseCodec` for SSE output framing of the same envelopes |
@@ -54,7 +57,8 @@ Schemas: any [Standard Schema](https://standardschema.dev/) library (Zod, Valibo
 ## Server
 
 ```ts
-import { createImplementer, FetchHandler } from '@ts-pf/server'
+import { createImplementer } from '@ts-pf/server'
+import { FetchHandler } from '@ts-pf/server-http'
 import { PFError } from '@ts-pf/protocol'
 import { contract } from './contract'
 
@@ -101,6 +105,7 @@ export default {
 `FetchHandler` accepts opt-in `HandlerPlugin`s for origin concerns. Procedure middleware cannot see `Request` / `Response`.
 
 ```ts
+import { createImplementer } from '@ts-pf/server'
 import {
   CORSPlugin,
   FetchHandler,
@@ -109,7 +114,7 @@ import {
   ResponseHeadersPlugin,
   type RequestHeadersPluginContext,
   type ResponseHeadersPluginContext,
-} from '@ts-pf/server'
+} from '@ts-pf/server-http'
 
 const impl = createImplementer(contract).$context<
   { db: Db } & RequestHeadersPluginContext & ResponseHeadersPluginContext
@@ -130,7 +135,8 @@ const handler = new FetchHandler(app, {
 ## Client
 
 ```ts
-import { asResult, createClient, FetchLink } from '@ts-pf/client'
+import { asResult, createClient } from '@ts-pf/client'
+import { FetchLink } from '@ts-pf/client-http'
 import type { ContractClient } from '@ts-pf/contract'
 import type { contract } from './contract'
 
@@ -154,7 +160,7 @@ import { asResult, isLocalFailure } from '@ts-pf/client'
 const result = await asResult(client.planet.find({ id: 1 }))
 if (!result.ok) {
   if (isLocalFailure(result.error)) {
-    // status === 0 — never reached the server
+    // local: true — never reached the server
   } else if (result.error.code === 'NOT_FOUND') {
     result.error.data.id
   }
@@ -190,7 +196,8 @@ Split-repo typed clients are an opt-in projection of that catalog too. Do not pu
 import { writeFileSync } from 'node:fs'
 import { catalog } from '@ts-pf/docs'
 import { emit } from '@ts-pf/codegen'
-import { createClient, FetchLink } from '@ts-pf/client'
+import { createClient } from '@ts-pf/client'
+import { FetchLink } from '@ts-pf/client-http'
 import type { Contract } from './contract.js'
 
 writeFileSync('contract.d.ts', emit(catalog(contract, { prefix: '/rpc' })))
@@ -242,9 +249,7 @@ oRPC is a dual RPC + OpenAPI platform with many adapters, serializers, and integ
 
 ## Examples
 
-Runnable apps in [`examples/`](examples/), from the happy path to a contract-first workshop, a [`10-docs`](examples/10-docs) catalog example, an opt-in [`11-message`](examples/11-message) MessagePort example, [`12-swr`](examples/12-swr) for `@ts-pf/swr`, [`13-openapi`](examples/13-openapi) for `@ts-pf/openapi`, [`14-codegen`](examples/14-codegen) for `@ts-pf/codegen`, and [`15-mvc-kit`](examples/15-mvc-kit) for `@ts-pf/mvc-kit`.
-
-See [`examples/README.md`](examples/README.md) for the learning path.
+Runnable apps in [`examples/`](examples/): [`hello`](examples/hello) (Fetch), [`message`](examples/message) (MessagePort), [`stream`](examples/stream) (`StreamCodec`).
 
 ## Development
 

@@ -4,6 +4,7 @@ export type PFErrorInit<TCode extends string = string, TData = unknown> = {
   message?: string
   data?: TData
   cause?: unknown
+  local?: true
 }
 
 export class PFError<
@@ -13,6 +14,7 @@ export class PFError<
   readonly code: TCode
   readonly status: number
   readonly data?: TData
+  readonly local?: true
 
   constructor(init: PFErrorInit<TCode, TData>) {
     const message = init.message ?? init.code
@@ -26,6 +28,9 @@ export class PFError<
     this.status = init.status ?? 400
     if (init.data !== undefined) {
       this.data = init.data
+    }
+    if (init.local === true) {
+      this.local = true
     }
   }
 
@@ -43,6 +48,16 @@ export class PFError<
 
 export function isPFError(value: unknown): value is PFError {
   return value instanceof PFError
+}
+
+export function localFailure(message: string, cause?: unknown): PFError {
+  return new PFError({
+    code: 'INTERNAL',
+    status: 0,
+    local: true,
+    message,
+    ...(cause !== undefined ? { cause } : {}),
+  })
 }
 
 export const ProtocolErrorCode = {

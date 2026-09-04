@@ -45,7 +45,6 @@ export class RequestLimitPlugin implements HandlerPlugin {
 function tooLarge(): PFError {
   return new PFError({
     code: 'PAYLOAD_TOO_LARGE',
-    status: 413,
     message: 'Request body too large',
   })
 }

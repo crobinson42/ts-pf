@@ -1,11 +1,9 @@
-import { createClient, FetchLink } from '@ts-pf/client'
+import { createClient } from '@ts-pf/client'
+import { FetchLink } from '@ts-pf/client-http'
 import { procedure, router } from '@ts-pf/contract'
 import { MultipartCodec } from '@ts-pf/file'
-import {
-  createImplementer,
-  createLocalClient,
-  FetchHandler,
-} from '@ts-pf/server'
+import { createImplementer, createLocalClient } from '@ts-pf/server'
+import { FetchHandler } from '@ts-pf/server-http'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 

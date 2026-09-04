@@ -1,4 +1,4 @@
-import { JSONCodec, type RpcBodySource } from '@ts-pf/protocol'
+import { JSONCodec, type RpcBodySource } from '@ts-pf/http'
 import { SSE_CONTENT_TYPE, SseCodec } from '@ts-pf/sse'
 import { StreamCodec } from '@ts-pf/stream'
 import { describe, expect, it } from 'vitest'

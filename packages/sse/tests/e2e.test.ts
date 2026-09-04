@@ -1,11 +1,9 @@
-import { createClient, FetchLink } from '@ts-pf/client'
+import { createClient } from '@ts-pf/client'
+import { FetchLink } from '@ts-pf/client-http'
 import { procedure, router } from '@ts-pf/contract'
 import { PFError } from '@ts-pf/protocol'
-import {
-  createImplementer,
-  createLocalClient,
-  FetchHandler,
-} from '@ts-pf/server'
+import { createImplementer, createLocalClient } from '@ts-pf/server'
+import { FetchHandler } from '@ts-pf/server-http'
 import { SSE_CONTENT_TYPE, SseCodec } from '@ts-pf/sse'
 import { StreamCodec, stream } from '@ts-pf/stream'
 import { describe, expect, it } from 'vitest'

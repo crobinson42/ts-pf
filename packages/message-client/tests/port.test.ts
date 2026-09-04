@@ -219,7 +219,7 @@ describe('PortLink', () => {
     expect(isLocalFailure(error)).toBe(false)
     expect(error).toMatchObject({
       code: 'NOT_FOUND',
-      status: 404,
+      status: 400,
       message: 'missing',
       data: { id: 7 },
     })
@@ -745,7 +745,7 @@ describe('PortLink', () => {
     expect(isLocalFailure(error)).toBe(false)
     expect(error).toMatchObject({
       code: 'PAYLOAD_TOO_LARGE',
-      status: 413,
+      status: 400,
       message: 'Frame too large',
     })
     expect(peer.frames.filter((frame) => frame.type === 'call')).toEqual([])

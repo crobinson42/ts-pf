@@ -1,0 +1,11 @@
+# Examples
+
+Thin apps for the procedure model. Fetch is the default adapter; message and stream show other pipes/codecs.
+
+| Example | What |
+|---|---|
+| [`hello`](hello) | Contract, implementer, `FetchHandler`, `createClient` + `FetchLink` |
+| [`message`](message) | `PortHandler` + `PortLink` over `MessageChannel` |
+| [`stream`](stream) | `StreamCodec` + `stream()` on the HTTP adapter |
+
+Implemented routers are named `app`. Clients do not import `@ts-pf/server`.

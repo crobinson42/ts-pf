@@ -1,12 +1,10 @@
 import {
   JSONCodec,
-  PFError,
   type RpcBodySource,
   type RpcCodec,
   type RpcEncodedBody,
-  type RpcRequest,
-  type RpcResponse,
-} from '@ts-pf/protocol'
+} from '@ts-pf/http'
+import { PFError, type RpcRequest, type RpcResponse } from '@ts-pf/protocol'
 import {
   assertNoPlaceholders,
   extractFiles,

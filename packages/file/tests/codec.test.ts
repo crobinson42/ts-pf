@@ -1,5 +1,5 @@
 import { MultipartCodec } from '@ts-pf/file'
-import { JSONCodec, type RpcBodySource } from '@ts-pf/protocol'
+import { JSONCodec, type RpcBodySource } from '@ts-pf/http'
 import { describe, expect, it } from 'vitest'
 
 function jsonSource(body: string): RpcBodySource {

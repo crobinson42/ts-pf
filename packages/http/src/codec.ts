@@ -1,11 +1,5 @@
-import type {
-  RpcBodySource,
-  RpcCodec,
-  RpcEncodedBody,
-  RpcRequest,
-  RpcResponse,
-} from './envelope.js'
-import { PFError } from './error.js'
+import { PFError, type RpcRequest, type RpcResponse } from '@ts-pf/protocol'
+import type { RpcBodySource, RpcCodec, RpcEncodedBody } from './rpc.js'
 
 function parseJson(body: string): unknown {
   try {

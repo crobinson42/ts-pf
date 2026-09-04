@@ -1,5 +1,5 @@
 import type { CallOptions, ContractClient } from '@ts-pf/contract'
-import type { Link } from './fetch-link.js'
+import type { Link } from './link.js'
 
 export function createClient<T>(link: Link): ContractClient<T> {
   const create = (path: string[]): unknown =>

@@ -91,6 +91,7 @@ describe('bindClient + Resource', () => {
             new PFError({
               code: 'INTERNAL',
               status: 0,
+              local: true,
               message: 'Request aborted',
               cause: abort,
             }),

@@ -1,13 +1,12 @@
 import { procedure, router } from '@ts-pf/contract'
+import { createImplementer, createLocalClient } from '@ts-pf/server'
 import {
-  createImplementer,
-  createLocalClient,
   FetchHandler,
   RequestHeadersPlugin,
   type RequestHeadersPluginContext,
   ResponseHeadersPlugin,
   type ResponseHeadersPluginContext,
-} from '@ts-pf/server'
+} from '@ts-pf/server-http'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 

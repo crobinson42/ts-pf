@@ -1,9 +1,6 @@
 import { procedure, router } from '@ts-pf/contract'
-import {
-  createImplementer,
-  FetchHandler,
-  type HandlerPlugin,
-} from '@ts-pf/server'
+import { createImplementer } from '@ts-pf/server'
+import { FetchHandler, type HandlerPlugin } from '@ts-pf/server-http'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 

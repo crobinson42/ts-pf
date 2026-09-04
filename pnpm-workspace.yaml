@@ -1,10 +1,6 @@
 packages:
   - packages/*
   - examples/*
-  - examples/08-workshop/*
-  - examples/09-onion-arch/*
-  - examples/12-swr/*
-  - examples/15-mvc-kit/*
 
 allowBuilds:
   esbuild: true

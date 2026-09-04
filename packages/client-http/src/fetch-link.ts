@@ -1,24 +1,20 @@
+import type { Link } from '@ts-pf/client'
 import {
-  isPFError,
   JSONCodec,
-  PFError,
-  type PFResultPromise,
   PROTOCOL_HEADER,
-  PROTOCOL_VERSION,
   type RpcBodySource,
   type RpcCodec,
   type RpcEncodedBody,
+} from '@ts-pf/http'
+import {
+  isPFError,
+  localFailure,
+  PFError,
+  type PFResultPromise,
+  PROTOCOL_VERSION,
   type RpcResponse,
 } from '@ts-pf/protocol'
 import { type Interceptor, runInterceptors } from './interceptors.js'
-
-export interface Link {
-  call(
-    path: string[],
-    input: unknown,
-    signal?: AbortSignal,
-  ): PFResultPromise<unknown, PFError>
-}
 
 export class FetchLink implements Link {
   private readonly url: string
@@ -92,19 +88,12 @@ export class FetchLink implements Link {
         throw error
       }
       if (isAbortFailure(error, signal)) {
-        throw new PFError({
-          code: 'INTERNAL',
-          status: 0,
-          message: 'Request aborted',
-          cause: error,
-        })
+        throw localFailure('Request aborted', error)
       }
-      throw new PFError({
-        code: 'INTERNAL',
-        status: 0,
-        message: error instanceof Error ? error.message : 'Network error',
-        cause: error,
-      })
+      throw localFailure(
+        error instanceof Error ? error.message : 'Network error',
+        error,
+      )
     }
 
     let decoded: RpcResponse

@@ -1,5 +1,5 @@
-import { joinProcedurePath, parseProcedurePath } from '@ts-pf/protocol'
 import { describe, expect, it } from 'vitest'
+import { joinProcedurePath, parseProcedurePath } from '../src/index.js'
 
 describe('procedure path', () => {
   it('joins prefix and segments', () => {

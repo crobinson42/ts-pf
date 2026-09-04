@@ -5,6 +5,9 @@ Opt-in `StreamCodec` for root `AsyncIterable` input and output. JSON calls stay 
 ```ts
 import { stream, StreamCodec } from '@ts-pf/stream'
 
+import { FetchHandler } from '@ts-pf/server-http'
+import { FetchLink } from '@ts-pf/client-http'
+
 const codec = new StreamCodec()
 new FetchHandler(app, { codec })
 new FetchLink({ url: '/rpc', codec })

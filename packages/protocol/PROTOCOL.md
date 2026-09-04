@@ -1,8 +1,34 @@
 # ts-pf RPC Protocol v1
 
-Portable HTTP RPC. JSON by default. Implementable from TypeScript, Kotlin, Swift, or any HTTP client.
+Canonical JSON envelope language for ts-pf. Same `{ "input" }`, `{ "ok": true, "output" }`, `{ "ok": false, "error": { "code", "message", "data?" } }` on every pipe. Discriminator is `error.code`. Implementable from TypeScript, Kotlin, Swift, or any HTTP client.
 
-## Request
+The default binding is HTTP Fetch (POST JSON). Optional codecs wrap the same envelopes as HTTP bodies. Optional message transports carry the same envelopes as JSON text frames.
+
+## Envelope
+
+Request value:
+
+```json
+{ "input": { "id": 1 } }
+```
+
+Procedures with no input may omit `input` or send `null`.
+
+Success:
+
+```json
+{ "ok": true, "output": { "id": 1, "name": "Earth" } }
+```
+
+Failure:
+
+```json
+{ "ok": false, "error": { "code": "NOT_FOUND", "message": "...", "data": { "id": 1 } } }
+```
+
+The procedure address is the nested router keys as `string[]` (HTTP joins them with `/`; message frames send the array).
+
+## HTTP Fetch binding (default)
 
 ```
 POST {prefix}/{procedure.path}
@@ -14,11 +40,9 @@ x-ts-pf-protocol: 1
 
 Procedure path is the nested router keys joined by `/`. Example: `planet.find` → `/rpc/planet/find` when the prefix is `/rpc`.
 
-Procedures with no input may omit `input` or send `null`.
-
 v1 accepts **POST only**. Other methods return HTTP 405 with `error.code: "METHOD_NOT_ALLOWED"`.
 
-## Success
+Success:
 
 ```
 HTTP 200
@@ -28,7 +52,7 @@ x-ts-pf-protocol: 1
 { "ok": true, "output": { "id": 1, "name": "Earth" } }
 ```
 
-## Failure
+Failure:
 
 ```
 HTTP 4xx/5xx
@@ -61,7 +85,7 @@ TypeScript `PFError`, `instanceof`, and `asResult` are JS conveniences. They are
 
 Contract-declared error codes use the status on the error definition.
 
-The TypeScript FetchLink maps **local** failures to `INTERNAL` with `status: 0`. That status is not on the wire and is not a protocol status. Abort uses message `Request aborted`. Network throws keep `error.message` and set `Error.cause` to the thrown value (Node’s `ECONNREFUSED` is then `error.cause.cause`). HTTP responses **without** `x-ts-pf-protocol` that fail `decodeResponse` become `INTERNAL` with the HTTP status and message `Non-RPC response (HTTP …)` — do not surface codec `BAD_REQUEST` 400 for proxy HTML. Codec `PFError` is rethrown only when `x-ts-pf-protocol` is present (truncated JSONL/SSE at decode time, malformed ts-pf JSON). `toJSON()` still omits `status` and `cause`.
+The TypeScript client maps **local** failures (never got a protocol result) to `INTERNAL` with `local: true` and `status: 0`. `local` and `status` are TypeScript client conventions, not protocol fields, and are **not** on the wire. `isLocalFailure` is `local === true`. Abort uses message `Request aborted`. Network throws keep `error.message` and set `Error.cause` to the thrown value (Node’s `ECONNREFUSED` is then `error.cause.cause`). HTTP responses **without** `x-ts-pf-protocol` that fail `decodeResponse` become `INTERNAL` with the HTTP status and message `Non-RPC response (HTTP …)` — do not surface codec `BAD_REQUEST` 400 for proxy HTML. Codec `PFError` is rethrown only when `x-ts-pf-protocol` is present (truncated JSONL/SSE at decode time, malformed ts-pf JSON). `toJSON()` still omits `status`, `cause`, and `local`.
 
 ## Versioning
 
@@ -395,7 +419,7 @@ Option omitted = **unlimited in both directions** (same as Fetch without a reque
 | Intended outbound frame | If it cannot be sent (oversize or cannot stringify) |
 |---|---|
 | `result` / `item` / `done` for an **open** id, whether or not items have started | Peer sees `{ "type": "result", "id", "ok": false, "error": { "code": "PAYLOAD_TOO_LARGE", "message": "Frame too large" } }` (oversize) or `{ "type": "result", "id", "ok": false, "error": { "code": "INTERNAL", "message": "Internal server error" } }` (stringify). Then stop. **No `done`.** If that error frame also cannot be sent → close. |
-| `hello` / `hello-ok` / `hello-error` / `cancel` / `call` / `in-item` / `in-done` | No substitute frame. A client `call` that cannot be sent fails that call with `PAYLOAD_TOO_LARGE` (413) or `INTERNAL` (stringify; `isLocalFailure` is false for 413). A hello that cannot be sent fails connect as local `Network error`, then close. |
+| `hello` / `hello-ok` / `hello-error` / `cancel` / `call` / `in-item` / `in-done` | No substitute frame. A client `call` that cannot be sent fails that call with `PAYLOAD_TOO_LARGE` or `INTERNAL` (stringify; `isLocalFailure` is false). A hello that cannot be sent fails connect as local `Network error`, then close. |
 
 ### Unary call
 
@@ -547,38 +571,26 @@ The server must accept `in-item` for that id as soon as `call` is accepted (the 
 
 ### Local failure vs protocol failure
 
-The TypeScript client maps **local** failures (never got a protocol result) to `INTERNAL` with `status: 0`. That status is a TypeScript client convention, **not** a protocol status, and is **not** on the wire. Do not add it to the [protocol errors](#protocol-errors) status table.
+The TypeScript client maps **local** failures (never got a protocol result) to `INTERNAL` with `local: true` and `status: 0`. Those fields are TypeScript client conventions, **not** protocol fields, and are **not** on the wire. Do not add them to the [protocol errors](#protocol-errors) status table. `isLocalFailure` is `local === true`.
 
-`examples/02-errors` still distinguishes three ways:
+Clients distinguish three ways:
 
-1. `isLocalFailure` (status 0) — never got a protocol result
+1. `isLocalFailure` (`local: true`) — never got a protocol result
 2. `error.code` — declared / protocol codes from the envelope
-3. `INTERNAL` with **non-zero** status — protocol `INTERNAL`
+3. `INTERNAL` without `local` — protocol `INTERNAL`
 
-Declared `.errors()` `status` is Fetch-only. Mid-stream Fetch JSONL keeps HTTP 200; a message-transport protocol `INTERNAL` reconstructs as 500. That is OK (no HTTP). Do not copy `status: 200`.
+Declared `.errors()` `status` is Fetch-only. Mid-stream Fetch JSONL keeps HTTP 200. Message transports do **not** reconstruct HTTP status from `error.code`; the TypeScript `PFError.status` default is 400. Non-JS clients ignore `status` and switch on `error.code`. Do not copy `status: 200`.
 
 | Event | TypeScript `PFError` | `isLocalFailure` |
 |---|---|---|
-| `AbortSignal` while a `call` is in flight | `INTERNAL`, status `0`, message `Request aborted`, `cause` set; send `{ "type": "cancel", "id" }` | true |
-| `AbortSignal` while waiting on `ready` (no id) | `INTERNAL`, status `0`, message `Request aborted`, `cause` set; no `cancel`; connection stays up | true |
-| Peer disconnect mid-call | `INTERNAL`, status `0`, message `Connection closed`, `cause` set | true |
-| Hello timeout / connect fail / hello stringify fail | `INTERNAL`, status `0`, message `Network error`, `cause` set; close | true |
-| Malformed frame from peer with no usable id (connection closes) | Inflight: `INTERNAL`, status `0`, message `Invalid response` or `Connection closed`, `cause` set | true |
-| First frame for an id is illegal | `INTERNAL`, status `0`, message `Invalid response`; that call only | true |
-| Protocol `result` `{ "ok": false, "error" }` | code / message / data from the envelope; status from the table below or 400 | false |
+| `AbortSignal` while a `call` is in flight | `INTERNAL`, `local: true`, status `0`, message `Request aborted`, `cause` set; send `{ "type": "cancel", "id" }` | true |
+| `AbortSignal` while waiting on `ready` (no id) | `INTERNAL`, `local: true`, status `0`, message `Request aborted`, `cause` set; no `cancel`; connection stays up | true |
+| Peer disconnect mid-call | `INTERNAL`, `local: true`, status `0`, message `Connection closed`, `cause` set | true |
+| Hello timeout / connect fail / hello stringify fail | `INTERNAL`, `local: true`, status `0`, message `Network error`, `cause` set; close | true |
+| Malformed frame from peer with no usable id (connection closes) | Inflight: `INTERNAL`, `local: true`, status `0`, message `Invalid response` or `Connection closed`, `cause` set | true |
+| First frame for an id is illegal | `INTERNAL`, `local: true`, status `0`, message `Invalid response`; that call only | true |
+| Protocol `result` `{ "ok": false, "error" }` | code / message / data from the envelope; `status` defaults to 400 | false |
 | `NOT_FOUND` / `VALIDATION` / `BAD_REQUEST` from the server | as envelope | false |
-| Version mismatch `hello-error` | `BAD_REQUEST` from the envelope (if received) or status `0` if the connection closed first | depends |
-| Client refused to send oversize / could not stringify a `call` | `PAYLOAD_TOO_LARGE` 413 or `INTERNAL` (stringify) | false |
-
-Status reconstruction on protocol results (no HTTP status on the frame). TypeScript clients use this so `PFError.status` matches the Fetch table; non-JS clients ignore it and switch on `error.code`:
-
-| `error.code` | Reconstructed status |
-|---|---|
-| `BAD_REQUEST` | 400 |
-| `VALIDATION` | 422 |
-| `NOT_FOUND` | 404 |
-| `INTERNAL` | 500 |
-| `METHOD_NOT_ALLOWED` | 405 (unused on this transport; still reconstructed so one table) |
-| `PAYLOAD_TOO_LARGE` | 413 |
-| any other (application) code | 400 |
+| Version mismatch `hello-error` | `BAD_REQUEST` from the envelope (if received) or `local: true` if the connection closed first | depends |
+| Client refused to send oversize / could not stringify a `call` | `PAYLOAD_TOO_LARGE` or `INTERNAL` (stringify) | false |
 

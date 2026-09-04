@@ -1,4 +1,4 @@
-import { isPFError, PFError } from '@ts-pf/protocol'
+import { isPFError, localFailure, PFError } from '@ts-pf/protocol'
 import { describe, expect, it } from 'vitest'
 
 describe('PFError', () => {
@@ -43,18 +43,49 @@ describe('PFError', () => {
     const err = new PFError({
       code: 'INTERNAL',
       status: 0,
+      local: true,
       message: 'fetch failed',
       cause,
     })
     expect(err.cause).toBe(cause)
+    expect(err.local).toBe(true)
     expect(err.toJSON()).toEqual({
       code: 'INTERNAL',
       message: 'fetch failed',
     })
+    expect('local' in err.toJSON()).toBe(false)
   })
 
   it('omits cause when not provided', () => {
     const err = new PFError({ code: 'INTERNAL', message: 'x' })
     expect(err.cause).toBeUndefined()
+  })
+
+  it('omits local when not provided', () => {
+    const err = new PFError({ code: 'INTERNAL', message: 'x' })
+    expect(err.local).toBeUndefined()
+  })
+})
+
+describe('localFailure', () => {
+  it('is INTERNAL with local true and status 0', () => {
+    const err = localFailure('Request aborted')
+    expect(isPFError(err)).toBe(true)
+    expect(err.code).toBe('INTERNAL')
+    expect(err.local).toBe(true)
+    expect(err.status).toBe(0)
+    expect(err.message).toBe('Request aborted')
+    expect(err.toJSON()).toEqual({
+      code: 'INTERNAL',
+      message: 'Request aborted',
+    })
+    expect('local' in err.toJSON()).toBe(false)
+    expect('status' in err.toJSON()).toBe(false)
+  })
+
+  it('sets cause when provided', () => {
+    const cause = new Error('socket hang up')
+    const err = localFailure('Connection closed', cause)
+    expect(err.cause).toBe(cause)
   })
 })

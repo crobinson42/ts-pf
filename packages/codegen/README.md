@@ -15,7 +15,8 @@ writeFileSync('contract.d.ts', emit(spec))
 ```
 
 ```ts
-import { createClient, FetchLink, asResult } from '@ts-pf/client'
+import { asResult, createClient } from '@ts-pf/client'
+import { FetchLink } from '@ts-pf/client-http'
 import type { Contract } from './contract.js'
 
 const client = createClient<Contract>(new FetchLink({ url: '/rpc' }))
