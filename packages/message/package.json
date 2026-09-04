@@ -7,6 +7,10 @@
     ".": {
       "types": "./src/index.ts",
       "import": "./src/index.ts"
+    },
+    "./stdio": {
+      "types": "./src/stdio.ts",
+      "import": "./src/stdio.ts"
     }
   },
   "publishConfig": {
@@ -14,6 +18,10 @@
       ".": {
         "types": "./dist/index.d.ts",
         "import": "./dist/index.js"
+      },
+      "./stdio": {
+        "types": "./dist/stdio.d.ts",
+        "import": "./dist/stdio.js"
       }
     }
   },

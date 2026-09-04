@@ -14,6 +14,9 @@ Contract-first TypeScript RPC library (`@ts-pf/*`). oRPC-like DX is the bar; oRP
                                                               @ts-pf/message-client
 
 @ts-pf/docs  (contract + protocol; not imported by core)
+@ts-pf/openapi (docs; not imported by core)
+@ts-pf/codegen (docs; not imported by core)
+@ts-pf/swr   (contract; peer swr; not imported by core)
 ```
 
 - `contract` and `protocol` are siblings. Neither depends on the other.
@@ -22,6 +25,9 @@ Contract-first TypeScript RPC library (`@ts-pf/*`). oRPC-like DX is the bar; oRP
 - `@ts-pf/file` depends on `protocol` only. `@ts-pf/stream` depends on `protocol` and `contract` (`stream()` schema). `@ts-pf/sse` depends on `stream` and `protocol`. All three are opt-in; default handler/link stay JSON.
 - `@ts-pf/message` depends on `protocol` only. `@ts-pf/message-server` depends on `message` + `server` (never client, prod or dev). `@ts-pf/message-client` depends on `message` + `client` (never server in prod; one-way `message-server` **devDependency** for e2e). All three are opt-in; default handler/link stay Fetch.
 - `@ts-pf/docs` depends on `contract` and `protocol`. Not imported by core. Optional; not a handler, codec, or HTTP route.
+- `@ts-pf/openapi` depends on `docs`. Not imported by core. Optional; `catalog()` → OpenAPI 3.1. No HTTP, no UI, no REST.
+- `@ts-pf/codegen` depends on `docs`. Not imported by core. Optional; `catalog()` → nested `Contract` `.d.ts`. No HTTP, no second client runtime.
+- `@ts-pf/swr` depends on `contract` only (peer `swr`). Wraps a `ContractClient`. Not imported by core. Optional; not a React provider or hook wrapper.
 - Routers are nested objects, not a package.
 
 | Package | Owns |
@@ -33,10 +39,13 @@ Contract-first TypeScript RPC library (`@ts-pf/*`). oRPC-like DX is the bar; oRP
 | `file` | `MultipartCodec` only. Do not add `PFFile`, `file()`, or export walk helpers. Not imported by contract/server/client. |
 | `stream` | `StreamCodec` + `stream()`. Root `AsyncIterable` as JSONL envelopes. Not imported by contract/server/client. |
 | `sse` | `SseCodec` + `SSE_CONTENT_TYPE`. Output-only `text/event-stream` wrapping the same envelopes. Input streams stay JSONL. Not imported by contract/server/client. |
-| `docs` | `catalog()`, `docs()` meta helper, `walkContract`, `registerJsonSchemaConverter`. Optional. Contract-first. No OpenAPI, no UI, no HTTP. |
-| `message` | JSON text frames + `MessageSession` / `Duplex`. Not an HTTP codec. Not imported by contract/server/client. |
-| `message-server` | `PortHandler`, `WsHandler`, `StdioHandler` (`./stdio` only). Calls `lookupProcedure` + `runProcedure`. Never depends on client. |
-| `message-client` | `PortLink`, `WsLink`, `StdioLink` (`./stdio` only). Implements `Link`. Never depends on server (prod). |
+| `docs` | `catalog()`, `docs()` meta helper, `walkContract`, `registerJsonSchemaConverter`. Optional. Contract-first. No OpenAPI document type, no codegen, no UI, no HTTP. |
+| `openapi` | `openapi(catalog, options)` → OpenAPI 3.1. POST JSON RPC only. Optional. Do not fold into docs/server. No Scalar/Swagger, no FetchHandler route, no REST. |
+| `codegen` | `emit(catalog)`, `catalogHash()`, `EmitOptions`, CLI `ts-pf-codegen`. Nested `Contract` `.d.ts` from `catalog()`. Optional. Do not fold into client/docs. No `createClientFromCatalog`, no FetchHandler route. |
+| `swr` | `createSwr(client)` helpers for SWR (`key` / `fetcher` / `mutator` / `matcher` / `subscriber` / `liveSubscriber` / `call`). Optional. Do not fold into client. |
+| `message` | JSON text frames + `MessageSession` / `Duplex` + port/ws/stdio duplex adapters. Not an HTTP codec. Not imported by contract/server/client. |
+| `message-server` | `PortHandler`, `WsHandler`, `StdioHandler` (`./stdio` only), `HandlerOptions`, type `WebSocketLike`. Calls `lookupProcedure` + `runProcedure`. Never depends on client. Do not re-export duplex factories. |
+| `message-client` | `PortLink`, `WsLink`, `StdioLink` (`./stdio` only), type `LinkOptions`, type `WebSocketLike`. Implements `Link`. Never depends on server (prod). Do not re-export duplex factories. |
 
 ## Public names
 
@@ -53,6 +62,10 @@ Do not resurrect oRPC names in code, docs, or examples.
 | `FetchLink` / `PortLink` / `WsLink` / `StdioLink` | `RPCLink` |
 | `bind` | `upgrade` |
 | `stream()` | `eventIterator` |
+| `createSwr` | `createSWRUtils` / `createRouterUtils` / `swrUtils` |
+| `emit` / `catalogHash` | `generate` / `compile` as the only names; `digest` as the only hash name |
+| `ts-pf-codegen` | `pf` |
+| generated `Contract` | `AppRouter` |
 
 Implemented routers in examples: `app`, not `router` (that name is the contract helper).
 
@@ -69,7 +82,7 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 - FetchLink maps local network/abort failures to `INTERNAL` with `status: 0` and sets `Error.cause`. Abort message is `Request aborted`. That status is not on the wire and is not a protocol status. `isLocalFailure` is `status === 0` on `@ts-pf/client`.
 - Keep `ProtocolErrorCode` duplicated as a private union in `packages/contract/src/infer.ts`. Do not import `@ts-pf/protocol` from contract.
 
-**Not in core:** OpenAPI/REST, error-catalog RPC, Node `IncomingMessage` adapters, framework adapters, TanStack Query, lazy routers, Map/Set on the wire, EventSource clients, Last-Event-ID, EventPublisher. File/Blob is `@ts-pf/file`. Message streams are `@ts-pf/stream`. SSE output framing is `@ts-pf/sse`. Procedure catalogs are `@ts-pf/docs`. Message transports are `@ts-pf/message` / `message-server` / `message-client`. Do not add `.docs()` to the contract builder. None of these are core defaults. Do not redeclare `VALIDATION`, `INTERNAL`, `BAD_REQUEST`, `METHOD_NOT_ALLOWED`, or `PAYLOAD_TOO_LARGE` on `.errors()`.
+**Not in core:** OpenAPI runtime / REST / Scalar, error-catalog RPC, Node `IncomingMessage` adapters, framework adapters, TanStack Query, lazy routers, Map/Set on the wire, EventSource clients, Last-Event-ID, EventPublisher. File/Blob is `@ts-pf/file`. Message streams are `@ts-pf/stream`. SSE output framing is `@ts-pf/sse`. Procedure catalogs are `@ts-pf/docs`. OpenAPI 3.1 documents are `@ts-pf/openapi` (`catalog()` projection; POST JSON RPC; not a handler). Typed-client `.d.ts` codegen is `@ts-pf/codegen` (`catalog()` projection; not a handler; still no catalog RPC, no FetchHandler GET). Message transports are `@ts-pf/message` / `message-server` / `message-client`. SWR is `@ts-pf/swr`. Do not add `.docs()` to the contract builder. None of these are core defaults. Do not redeclare `VALIDATION`, `INTERNAL`, `BAD_REQUEST`, `METHOD_NOT_ALLOWED`, or `PAYLOAD_TOO_LARGE` on `.errors()`.
 
 ## Extension (hooks, not a plugin framework)
 
@@ -82,6 +95,9 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 | `RpcCodec` | protocol (`JSONCodec` is the v1 impl) |
 | `Link` / interceptors | client |
 | `docs()` / `catalog()` / `registerJsonSchemaConverter` | docs |
+| `openapi()` | openapi |
+| `emit` / `catalogHash` | codegen |
+| `createSwr` | swr |
 
 `RpcCodec` encode returns `{ contentType, body }` (`string | Blob | FormData | ReadableStream<Uint8Array> | null`). Decode takes `RpcBodySource` (`contentType`, `text()`, `formData()`, `body()`). `JSONCodec` still emits `application/json` and the JSON envelope. `MultipartCodec`, `StreamCodec`, and `SseCodec` wrap it without changing contracts. `SseCodec` maps output JSONL envelopes to `text/event-stream` (`event: message` / `event: error` / `event: close`). Keep `x-ts-pf-protocol: 1` until the JSON envelope actually breaks.
 
@@ -107,11 +123,14 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 - Do not `await runProcedure` inside `MessageSession` (`onFrame` must return without awaiting it).
 - Context factory is `onHello`, not `onFrame`.
 - Do not rewrite oversize payloads in `session.send`.
+- Do not re-export `createPortDuplex` / `createWsDuplex` / `createStdioDuplex` from `@ts-pf/message-server` or `@ts-pf/message-client`.
 - Do not add a published Node HTTP upgrade helper or `child_process.spawn` adapter; user owns listen/upgrade/spawn/Worker bootstrap. Do not turn `examples/_shared` into a published WS listen API.
+- Do not serve REST or OpenAPI from `FetchHandler`. Do not add GET/PUT/path params to `@ts-pf/openapi` documents. Scalar/Swagger stay userland.
+- Do not serve `catalog.json` from `FetchHandler`. Do not emit `.d.ts` of the live router, `FromSchema` over JSON, or OpenAPI-TS as the first-party typed client. Codegen stays in `@ts-pf/codegen`.
 
 ## Examples
 
-Live in `examples/`, numbered `01-hello` … `08-workshop`, `10-docs`, and `11-message`. They are private workspace packages, not published.
+Live in `examples/`, numbered `01-hello` … `08-workshop`, `10-docs`, `11-message`, `12-swr`, `13-openapi`, and `14-codegen`. They are private workspace packages, not published.
 
 - Implemented routers are named `app` (not `router` — that name is the contract helper).
 - Example `client.ts` / workshop `web` must not import `@ts-pf/server`.

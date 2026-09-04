@@ -19,8 +19,11 @@ export type {
   WireError,
 } from './frame.js'
 export { decodeFrame, encodeFrame } from './frame.js'
+export { createPortDuplex } from './port.js'
 export {
   frameByteLength,
   MessageSession,
   type SendResult,
 } from './session.js'
+export type { WebSocketLike } from './ws.js'
+export { createWsDuplex } from './ws.js'

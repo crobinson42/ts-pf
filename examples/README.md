@@ -9,7 +9,7 @@ pnpm install
 pnpm --filter @ts-pf/example-01-hello demo
 ```
 
-Override the listen port with `PORT`. Defaults are `3101`–`3108` so several demos can run at once.
+Override the listen port with `PORT`. Defaults are `3101`–`3108` and `3112` so several HTTP demos can run at once. `10-docs`, `13-openapi`, and `14-codegen` print to stdout and do not listen.
 
 ## Learning path
 
@@ -23,8 +23,11 @@ Override the listen port with `PORT`. Defaults are `3101`–`3108` so several de
 | [06-streams](06-streams) | Opt-in `StreamCodec` + `stream()` (JSONL) | + `@ts-pf/stream` |
 | [07-sse](07-sse) | Opt-in `SseCodec` output framing | + `@ts-pf/sse` |
 | [08-workshop](08-workshop) | Contract-first monorepo: contract / api / Vite web | contract, server, client, stream, sse, protocol |
-| [10-docs](10-docs) | Opt-in `@ts-pf/docs` catalog from the contract | + `@ts-pf/docs` |
+| [10-docs](10-docs) | Opt-in `@ts-pf/docs` catalog from the contract (projects to 13 / 14) | + `@ts-pf/docs` |
 | [11-message](11-message) | Opt-in MessagePort (`PortHandler` / `PortLink`) | + `@ts-pf/message-server`, `@ts-pf/message-client` |
+| [12-swr](12-swr) | Opt-in `@ts-pf/swr` with React `useSWR` | + `@ts-pf/swr` |
+| [13-openapi](13-openapi) | Opt-in `@ts-pf/openapi` from `catalog()` (POST JSON RPC) | + `@ts-pf/openapi` |
+| [14-codegen](14-codegen) | Opt-in `@ts-pf/codegen` `.d.ts` from `catalog()` | + `@ts-pf/codegen` |
 
 The domain is **planet** in every example so the README snippets transfer.
 

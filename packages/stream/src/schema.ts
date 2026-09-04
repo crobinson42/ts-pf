@@ -9,7 +9,10 @@ export function stream<S>(
   AsyncIterable<InferSchemaOutput<S>>,
   AsyncIterable<InferSchemaOutput<S>>
 > {
-  return {
+  const schema: StandardSchemaV1<
+    AsyncIterable<InferSchemaOutput<S>>,
+    AsyncIterable<InferSchemaOutput<S>>
+  > & { '~pfStream': { item: S } } = {
     '~standard': {
       version: 1,
       vendor: 'ts-pf',
@@ -24,7 +27,9 @@ export function stream<S>(
         return { value: wrap(value, item) }
       },
     },
+    '~pfStream': { item },
   }
+  return schema
 }
 
 async function* wrap<S>(

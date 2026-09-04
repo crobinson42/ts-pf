@@ -18,9 +18,12 @@ Requires Node.js 18+.
 | [`@ts-pf/stream`](packages/stream) | Opt-in `StreamCodec` for root `AsyncIterable` (JSONL) |
 | [`@ts-pf/sse`](packages/sse) | Opt-in `SseCodec` for SSE output framing of the same envelopes |
 | [`@ts-pf/docs`](packages/docs) | Opt-in procedure catalog from a contract (`docs()`, `catalog()`) |
+| [`@ts-pf/openapi`](packages/openapi) | Opt-in OpenAPI 3.1 from `catalog()` (POST JSON RPC) |
+| [`@ts-pf/codegen`](packages/codegen) | Opt-in `.d.ts` from `catalog()` for split repos |
 | [`@ts-pf/message`](packages/message) | Opt-in JSON text frames + `MessageSession` (not an HTTP codec) |
 | [`@ts-pf/message-server`](packages/message-server) | Opt-in `PortHandler` / `WsHandler` / `StdioHandler` |
 | [`@ts-pf/message-client`](packages/message-client) | Opt-in `PortLink` / `WsLink` / `StdioLink` |
+| [`@ts-pf/swr`](packages/swr) | Opt-in SWR keys, fetchers, mutators, and matchers |
 
 Wire spec: [packages/protocol/PROTOCOL.md](packages/protocol/PROTOCOL.md).
 
@@ -168,6 +171,31 @@ procedure.meta(docs({ description: 'Find a planet by id' }))
 const spec = catalog(contract, { prefix: '/rpc' })
 ```
 
+OpenAPI 3.1 is an opt-in projection of that catalog. Do not put this in the default happy path:
+
+```ts
+import { catalog, docs } from '@ts-pf/docs'
+import { openapi } from '@ts-pf/openapi'
+
+procedure.meta(docs({ description: 'Find a planet by id' }))
+const spec = openapi(catalog(contract, { prefix: '/rpc' }), {
+  info: { title: 'Planet API', version: '1.0.0' },
+})
+```
+
+Split-repo typed clients are an opt-in projection of that catalog too. Do not put this in the default happy path:
+
+```ts
+import { writeFileSync } from 'node:fs'
+import { catalog } from '@ts-pf/docs'
+import { emit } from '@ts-pf/codegen'
+import { createClient, FetchLink } from '@ts-pf/client'
+import type { Contract } from './contract.js'
+
+writeFileSync('contract.d.ts', emit(catalog(contract, { prefix: '/rpc' })))
+const client = createClient<Contract>(new FetchLink({ url: '/rpc' }))
+```
+
 Message transports are opt-in too. Do not put this in the default happy path:
 
 ```ts
@@ -180,13 +208,26 @@ new PortHandler(app).bind(port1, { context: { db } })
 const client = createClient<typeof contract>(new PortLink({ port: port2 }))
 ```
 
+SWR is opt-in too. Do not put this in the default happy path:
+
+```ts
+import { createSwr } from '@ts-pf/swr'
+import useSWR from 'swr'
+
+const swr = createSwr(client)
+const { data } = useSWR(
+  swr.planet.find.key({ input: { id: 1 } }),
+  swr.planet.find.fetcher(),
+)
+```
+
 ## Why not oRPC?
 
-oRPC is a dual RPC + OpenAPI platform with many adapters, serializers, and integrations. ts-pf keeps the contract-first DX and typed middleware, and leaves OpenAPI, extra adapters, and TanStack Query to later packages.
+oRPC is a dual RPC + OpenAPI platform with many adapters, serializers, and integrations. ts-pf keeps the contract-first DX and typed middleware. The catalog is the portable contract. `@ts-pf/openapi` is a document projection of `catalog()` (POST JSON RPC), not an OpenAPI runtime or REST handler. `@ts-pf/codegen` prints a `.d.ts` from that catalog for split-repo `createClient<Contract>` — not an OpenAPI runtime. TanStack Query and extra adapters stay later packages. SWR lives in `@ts-pf/swr`.
 
 ## Examples
 
-Runnable apps in [`examples/`](examples/), from the happy path to a contract-first workshop, a [`10-docs`](examples/10-docs) catalog example, and an opt-in [`11-message`](examples/11-message) MessagePort example.
+Runnable apps in [`examples/`](examples/), from the happy path to a contract-first workshop, a [`10-docs`](examples/10-docs) catalog example, an opt-in [`11-message`](examples/11-message) MessagePort example, [`12-swr`](examples/12-swr) for `@ts-pf/swr`, [`13-openapi`](examples/13-openapi) for `@ts-pf/openapi`, and [`14-codegen`](examples/14-codegen) for `@ts-pf/codegen`.
 
 See [`examples/README.md`](examples/README.md) for the learning path.
 

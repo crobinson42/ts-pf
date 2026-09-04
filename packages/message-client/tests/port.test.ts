@@ -1,13 +1,13 @@
 import type { Link } from '@ts-pf/client'
 import { isLocalFailure } from '@ts-pf/client'
 import {
-  type Duplex,
+  createPortDuplex,
   frameByteLength,
   type MessageFrame,
   MessageSession,
 } from '@ts-pf/message'
 import { describe, expect, expectTypeOf, it } from 'vitest'
-import { PortLink } from '../src/index.js'
+import { type LinkOptions, PortLink } from '../src/index.js'
 
 function nextTurn(): Promise<void> {
   return new Promise((resolve) => {
@@ -29,59 +29,6 @@ async function waitFor(
   throw new Error(`timed out waiting for frame: ${JSON.stringify(frames)}`)
 }
 
-function portDuplex(port: MessagePort): Duplex {
-  const closeHandlers = new Set<(reason?: unknown) => void>()
-  let closed = false
-
-  const close = (reason?: unknown): void => {
-    if (closed) {
-      return
-    }
-    closed = true
-    try {
-      port.close()
-    } catch {
-      // already disconnected
-    }
-    for (const handler of [...closeHandlers]) {
-      if (reason === undefined) {
-        handler()
-      } else {
-        handler(reason)
-      }
-    }
-  }
-
-  return {
-    send(text) {
-      if (closed) {
-        return
-      }
-      port.postMessage(text)
-    },
-    onMessage(handler) {
-      const listener = (event: MessageEvent) => {
-        if (typeof event.data !== 'string') {
-          close()
-          return
-        }
-        handler(event.data)
-      }
-      port.addEventListener('message', listener)
-      return () => {
-        port.removeEventListener('message', listener)
-      }
-    },
-    onClose(handler) {
-      closeHandlers.add(handler)
-      return () => {
-        closeHandlers.delete(handler)
-      }
-    },
-    close,
-  }
-}
-
 function openPeer(
   port: MessagePort,
   options: {
@@ -91,7 +38,7 @@ function openPeer(
 ): { session: MessageSession; frames: MessageFrame[] } {
   const frames: MessageFrame[] = []
   const sessionOpts: ConstructorParameters<typeof MessageSession>[0] = {
-    duplex: portDuplex(port),
+    duplex: createPortDuplex(port),
     role: 'server',
     onFrame: (frame) => {
       frames.push(frame)
@@ -115,6 +62,17 @@ describe('PortLink', () => {
     expect(exported).not.toHaveProperty('StdioLink')
     expect(exported).not.toHaveProperty('attachClient')
     expect(exported).not.toHaveProperty('RPCLink')
+    expect(exported).not.toHaveProperty('createPortDuplex')
+    expect(exported).not.toHaveProperty('createWsDuplex')
+    expect(exported).not.toHaveProperty('createStdioDuplex')
+  })
+
+  it('exports LinkOptions from the package index', () => {
+    expectTypeOf<LinkOptions>().toMatchTypeOf<{
+      meta?: unknown
+      maxFrameBytes?: number
+      helloTimeoutMs?: number
+    }>()
   })
 
   it('implements Link without widening it with close', () => {

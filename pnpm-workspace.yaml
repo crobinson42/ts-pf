@@ -2,6 +2,8 @@ packages:
   - packages/*
   - examples/*
   - examples/08-workshop/*
+  - examples/09-onion-arch/*
+  - examples/12-swr/*
 
 allowBuilds:
   esbuild: true

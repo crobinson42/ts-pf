@@ -30,4 +30,4 @@ Default bearer token is `demo` (create is protected). Clear it to see `UNAUTHORI
 - `api/src/app.ts` — `createImplementer(contract)`, middleware, generator handler
 - `web/src/client.ts` — `createClient<typeof contract>`; no `@ts-pf/server`
 
-Next: [10-docs](../10-docs) builds a procedure catalog from a contract and renders it as markdown.
+Next: [10-docs](../10-docs) builds a procedure catalog from a contract. Project it with [13-openapi](../13-openapi) or [14-codegen](../14-codegen) when the frontend is a separate repo (this workshop shares the contract package instead).

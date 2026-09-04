@@ -1,5 +1,9 @@
 import { procedure, router } from '@ts-pf/contract'
-import { type Duplex, type MessageFrame, MessageSession } from '@ts-pf/message'
+import {
+  createWsDuplex,
+  type MessageFrame,
+  MessageSession,
+} from '@ts-pf/message'
 import { createImplementer, type ImplementedRouter } from '@ts-pf/server'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
@@ -124,63 +128,6 @@ async function waitFor(
   throw new Error(`timed out waiting for frame: ${JSON.stringify(frames)}`)
 }
 
-function socketDuplex(socket: FakeWebSocket): Duplex {
-  const closeHandlers = new Set<(reason?: unknown) => void>()
-  let closed = false
-
-  const close = (reason?: unknown): void => {
-    if (closed) {
-      return
-    }
-    closed = true
-    try {
-      socket.close()
-    } catch {
-      // already disconnected
-    }
-    for (const handler of [...closeHandlers]) {
-      if (reason === undefined) {
-        handler()
-      } else {
-        handler(reason)
-      }
-    }
-  }
-
-  socket.addEventListener('close', () => {
-    close()
-  })
-
-  return {
-    send(text) {
-      if (closed) {
-        return
-      }
-      socket.send(text)
-    },
-    onMessage(handler) {
-      const listener = (event: { data?: unknown }) => {
-        if (typeof event.data !== 'string') {
-          close()
-          return
-        }
-        handler(event.data)
-      }
-      socket.addEventListener('message', listener)
-      return () => {
-        socket.removeEventListener('message', listener)
-      }
-    },
-    onClose(handler) {
-      closeHandlers.add(handler)
-      return () => {
-        closeHandlers.delete(handler)
-      }
-    },
-    close,
-  }
-}
-
 const contract = router({
   planet: {
     find: procedure
@@ -212,7 +159,7 @@ function openClient(
 ): { client: MessageSession; frames: MessageFrame[] } {
   const frames: MessageFrame[] = []
   const session: ConstructorParameters<typeof MessageSession>[0] = {
-    duplex: socketDuplex(socket),
+    duplex: createWsDuplex(socket),
     role: 'client',
     onFrame: (frame) => {
       frames.push(frame)

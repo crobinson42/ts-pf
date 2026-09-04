@@ -30,7 +30,6 @@ export type AttachRouterOptions<TCtx = unknown> = HandlerOptions & {
 type ServerInflight = {
   ac: AbortController
   cancelled: boolean
-  startedItems: boolean
   iterator?: AsyncIterator<unknown>
   inputQueue?: PushQueue<unknown>
 }
@@ -182,9 +181,6 @@ export function attachRouter<TCtx = unknown>(
     }
     const sent = session.send(frame)
     if (sent.ok) {
-      if (frame.type === 'item') {
-        rec.startedItems = true
-      }
       if (frame.type === 'result' || frame.type === 'done') {
         inflight.delete(id)
       }
@@ -219,7 +215,6 @@ export function attachRouter<TCtx = unknown>(
       const rec: ServerInflight = {
         ac: new AbortController(),
         cancelled: false,
-        startedItems: false,
       }
       if (frame.stream === true) {
         rec.inputQueue = createPushQueue()

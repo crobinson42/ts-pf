@@ -1,0 +1,14 @@
+{
+  "name": "@ts-pf/example-12-swr",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c blue,green \"pnpm --filter @ts-pf/example-swr-api start\" \"pnpm --filter @ts-pf/example-swr-web dev\"",
+    "type-check": "pnpm --filter @ts-pf/example-swr-contract type-check && pnpm --filter @ts-pf/example-swr-api type-check && pnpm --filter @ts-pf/example-swr-web type-check",
+    "test": "pnpm --filter @ts-pf/example-swr-api test",
+    "lint": "pnpm --filter @ts-pf/example-swr-contract lint && pnpm --filter @ts-pf/example-swr-api lint && pnpm --filter @ts-pf/example-swr-web lint"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0"
+  }
+}

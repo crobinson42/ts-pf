@@ -10,6 +10,7 @@ import type {
   CatalogError,
   CatalogProcedure,
   CatalogSchema,
+  JsonSchema,
   ProcedureCatalog,
 } from './types.js'
 import { walkContract } from './walk.js'
@@ -23,9 +24,41 @@ export type CatalogOptions = {
   }) => boolean
 }
 
-const PROTOCOL_ERRORS: ReadonlyArray<{ code: string; status: number }> = [
+// Must match packages/protocol/PROTOCOL.md (VALIDATION data.issues).
+const VALIDATION_DATA_SCHEMA: JsonSchema = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['issues'],
+  properties: {
+    issues: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['message', 'path'],
+        properties: {
+          message: { type: 'string' },
+          path: {
+            type: 'array',
+            items: { type: ['string', 'number'] },
+          },
+        },
+      },
+    },
+  },
+}
+
+const PROTOCOL_ERRORS: ReadonlyArray<{
+  code: string
+  status: number
+  data?: CatalogSchema
+}> = [
   { code: ProtocolErrorCode.BAD_REQUEST, status: 400 },
-  { code: ProtocolErrorCode.VALIDATION, status: 422 },
+  {
+    code: ProtocolErrorCode.VALIDATION,
+    status: 422,
+    data: { kind: 'json', jsonSchema: VALIDATION_DATA_SCHEMA },
+  },
   { code: ProtocolErrorCode.NOT_FOUND, status: 404 },
   { code: ProtocolErrorCode.INTERNAL, status: 500 },
   { code: ProtocolErrorCode.METHOD_NOT_ALLOWED, status: 405 },
@@ -131,12 +164,32 @@ function isTsPfStream(schema: unknown): boolean {
   )
 }
 
+function streamItem(schema: unknown): unknown | undefined {
+  if (
+    typeof schema !== 'object' ||
+    schema === null ||
+    !('~pfStream' in schema)
+  ) {
+    return undefined
+  }
+  const brand = (schema as { '~pfStream'?: { item?: unknown } })['~pfStream']
+  if (typeof brand !== 'object' || brand === null || !('item' in brand)) {
+    return undefined
+  }
+  return brand.item
+}
+
 function toCatalogSchema(
   schema: unknown,
   io: 'input' | 'output',
 ): CatalogSchema {
   if (isTsPfStream(schema)) {
-    return { kind: 'stream', vendor: 'ts-pf' }
+    const result: CatalogSchema = { kind: 'stream', vendor: 'ts-pf' }
+    const item = streamItem(schema)
+    if (item !== undefined) {
+      result.item = toCatalogSchema(item, io)
+    }
+    return result
   }
   const converted = tryToJsonSchema(schema, { io })
   if (converted.ok) {

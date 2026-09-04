@@ -1,5 +1,9 @@
 import { procedure, router } from '@ts-pf/contract'
-import { type Duplex, type MessageFrame, MessageSession } from '@ts-pf/message'
+import {
+  createPortDuplex,
+  type MessageFrame,
+  MessageSession,
+} from '@ts-pf/message'
 import { createImplementer, type ImplementedRouter } from '@ts-pf/server'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
@@ -23,59 +27,6 @@ async function waitFor(
     await nextTurn()
   }
   throw new Error(`timed out waiting for frame: ${JSON.stringify(frames)}`)
-}
-
-function portDuplex(port: MessagePort): Duplex {
-  const closeHandlers = new Set<(reason?: unknown) => void>()
-  let closed = false
-
-  const close = (reason?: unknown): void => {
-    if (closed) {
-      return
-    }
-    closed = true
-    try {
-      port.close()
-    } catch {
-      // already disconnected
-    }
-    for (const handler of [...closeHandlers]) {
-      if (reason === undefined) {
-        handler()
-      } else {
-        handler(reason)
-      }
-    }
-  }
-
-  return {
-    send(text) {
-      if (closed) {
-        return
-      }
-      port.postMessage(text)
-    },
-    onMessage(handler) {
-      const listener = (event: MessageEvent) => {
-        if (typeof event.data !== 'string') {
-          close()
-          return
-        }
-        handler(event.data)
-      }
-      port.addEventListener('message', listener)
-      return () => {
-        port.removeEventListener('message', listener)
-      }
-    },
-    onClose(handler) {
-      closeHandlers.add(handler)
-      return () => {
-        closeHandlers.delete(handler)
-      }
-    },
-    close,
-  }
 }
 
 const contract = router({
@@ -109,7 +60,7 @@ function openClient(
 ): { client: MessageSession; frames: MessageFrame[] } {
   const frames: MessageFrame[] = []
   const session: ConstructorParameters<typeof MessageSession>[0] = {
-    duplex: portDuplex(port),
+    duplex: createPortDuplex(port),
     role: 'client',
     onFrame: (frame) => {
       frames.push(frame)
@@ -129,6 +80,9 @@ describe('PortHandler', () => {
     expect(Object.keys(exported).sort()).toEqual(['PortHandler', 'WsHandler'])
     expect(exported).not.toHaveProperty('attachRouter')
     expect(exported).not.toHaveProperty('TransportHandler')
+    expect(exported).not.toHaveProperty('createPortDuplex')
+    expect(exported).not.toHaveProperty('createWsDuplex')
+    expect(exported).not.toHaveProperty('createStdioDuplex')
   })
 
   it('roundtrips planet.find over a MessageChannel with JSON strings', async () => {

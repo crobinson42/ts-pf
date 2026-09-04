@@ -4,7 +4,7 @@ export type JsonSchema = Record<string, unknown>
 
 export type CatalogSchema =
   | { kind: 'json'; jsonSchema: JsonSchema; vendor?: string }
-  | { kind: 'stream'; vendor: 'ts-pf' }
+  | { kind: 'stream'; vendor: 'ts-pf'; item?: CatalogSchema }
   | { kind: 'unavailable'; reason: string; vendor?: string }
 
 export type CatalogError = {
@@ -34,6 +34,10 @@ export type ProcedureCatalog = {
     method: 'POST'
   }
   prefix?: string
-  protocolErrors: ReadonlyArray<{ code: string; status: number }>
+  protocolErrors: ReadonlyArray<{
+    code: string
+    status: number
+    data?: CatalogSchema
+  }>
   procedures: CatalogProcedure[]
 }

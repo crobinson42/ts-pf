@@ -79,6 +79,30 @@ describe('catalog', () => {
       'METHOD_NOT_ALLOWED',
       'PAYLOAD_TOO_LARGE',
     ])
+    const validation = result.protocolErrors.find(
+      (e) => e.code === 'VALIDATION',
+    )
+    expect(validation?.data?.kind).toBe('json')
+    if (validation?.data?.kind === 'json') {
+      expect(validation.data.jsonSchema).toMatchObject({
+        type: 'object',
+        required: ['issues'],
+        properties: {
+          issues: {
+            type: 'array',
+            items: {
+              type: 'object',
+              required: ['message', 'path'],
+            },
+          },
+        },
+      })
+    }
+    for (const err of result.protocolErrors) {
+      if (err.code !== 'VALIDATION') {
+        expect(err).not.toHaveProperty('data')
+      }
+    }
   })
 
   it('attaches JSON Schema for input, output, and error data', () => {
@@ -112,6 +136,32 @@ describe('catalog', () => {
     const { stream } = await import('@ts-pf/stream')
     const streamed = router({
       chat: procedure.output(stream(z.object({ token: z.string() }))),
+    })
+    const result = catalog(streamed)
+    const output = result.procedures[0]?.output
+    expect(output?.kind).toBe('stream')
+    if (output?.kind === 'stream') {
+      expect(output.vendor).toBe('ts-pf')
+      expect(output.item?.kind).toBe('json')
+      if (output.item?.kind === 'json') {
+        expect(output.item.jsonSchema).toMatchObject({
+          type: 'object',
+          properties: { token: { type: 'string' } },
+        })
+      }
+    }
+  })
+
+  it('omits stream item when the brand is missing', () => {
+    const branded = {
+      '~standard': {
+        version: 1,
+        vendor: 'ts-pf',
+        validate: async () => ({ value: undefined }),
+      },
+    }
+    const streamed = router({
+      chat: procedure.output(branded),
     })
     const result = catalog(streamed)
     expect(result.procedures[0]?.output).toEqual({

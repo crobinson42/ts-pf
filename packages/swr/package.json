@@ -1,0 +1,48 @@
+{
+  "name": "@ts-pf/swr",
+  "version": "0.0.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    }
+  },
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "type-check": "tsc --noEmit",
+    "lint": "biome check src tests"
+  },
+  "dependencies": {
+    "@ts-pf/contract": "workspace:*"
+  },
+  "peerDependencies": {
+    "swr": ">=2.2.0"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.3.0",
+    "@ts-pf/client": "workspace:*",
+    "@ts-pf/server": "workspace:*",
+    "@ts-pf/stream": "workspace:*",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "jsdom": "^26.1.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "swr": "^2.3.0",
+    "zod": "^4.0.0"
+  }
+}
