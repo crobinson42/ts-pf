@@ -111,5 +111,5 @@ const same = await swr.planet.find.call({ id: 123 })
 - TanStack Query
 - GET vs POST / client operation context
 - Wrapping `useSWR` as `swr.planet.find.useSWR(input)`
-- Retry (userland interceptors)
+- Retry (`RetryPlugin` on `createClient`)
 - React components or an `SWRConfig` provider

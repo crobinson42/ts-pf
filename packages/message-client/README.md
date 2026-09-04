@@ -3,10 +3,12 @@
 Opt-in `PortLink` / `WsLink` / `StdioLink` for the same `createClient(link)` as `@ts-pf/client-http` `FetchLink`.
 
 ```ts
-import { createClient } from '@ts-pf/client'
+import { createClient, RetryPlugin } from '@ts-pf/client'
 import { PortLink } from '@ts-pf/message-client'
 
-const client = createClient<typeof contract>(new PortLink({ port }))
+const client = createClient<typeof contract>(new PortLink({ port }), {
+  plugins: [new RetryPlugin()],
+})
 ```
 
 Stdio is a subpath, not on the main index:

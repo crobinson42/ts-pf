@@ -9,8 +9,10 @@ import {
 } from '@ts-pf/http'
 import { isPFError, PFError, PROTOCOL_VERSION } from '@ts-pf/protocol'
 import {
+  type CallInterceptor,
   type ImplementedRouter,
   lookupProcedure,
+  type RunProcedureOptions,
   runProcedure,
 } from '@ts-pf/server'
 import type { HandlerPlugin } from './plugins.js'
@@ -22,13 +24,19 @@ export type HandleResult =
 export class FetchHandler<TCtx = unknown> {
   private readonly codec: RpcCodec
   private readonly plugins: HandlerPlugin[]
+  private readonly interceptors: readonly CallInterceptor[]
 
   constructor(
     private readonly router: ImplementedRouter,
-    options?: { codec?: RpcCodec; plugins?: HandlerPlugin[] },
+    options?: {
+      codec?: RpcCodec
+      plugins?: HandlerPlugin[]
+      interceptors?: readonly CallInterceptor[]
+    },
   ) {
     this.codec = options?.codec ?? new JSONCodec()
     this.plugins = options?.plugins ?? []
+    this.interceptors = options?.interceptors ?? []
   }
 
   async handle(
@@ -103,11 +111,15 @@ export class FetchHandler<TCtx = unknown> {
         }
       }
 
+      const runOpts: RunProcedureOptions = { signal: inbound.signal }
+      if (this.interceptors.length > 0) {
+        runOpts.interceptors = this.interceptors
+      }
       const output = await runProcedure(
         procedure,
         decoded.input,
         context,
-        inbound.signal,
+        runOpts,
       )
       const response = await this.successResponse(output)
       return {

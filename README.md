@@ -12,8 +12,8 @@ Requires Node.js 18+.
 |---|---|
 | [`@ts-pf/contract`](packages/contract) | `procedure` / `router`, schema adapters, nested routers, infer types |
 | [`@ts-pf/protocol`](packages/protocol) | Portable JSON envelope, `PFError`, `PROTOCOL_VERSION` |
-| [`@ts-pf/server`](packages/server) | `createImplementer()`, middleware, `runProcedure`, `lookupProcedure`, `createLocalClient()` |
-| [`@ts-pf/client`](packages/client) | `createClient()`, `Link`, `asResult()`, `isLocalFailure()` |
+| [`@ts-pf/server`](packages/server) | `createImplementer()`, middleware, `runProcedure`, `lookupProcedure`, `createLocalClient()`, call interceptors / `DedupePlugin` |
+| [`@ts-pf/client`](packages/client) | `createClient()`, `Link`, `intercept()` / `CallPlugin`, `RetryPlugin` / `DedupePlugin` / `CachePlugin`, `asResult()`, `isLocalFailure()` |
 | [`@ts-pf/http`](packages/http) | HTTP wire helpers: `JSONCodec`, `RpcCodec`, `PROTOCOL_HEADER`, path helpers, `httpStatus` |
 | [`@ts-pf/server-http`](packages/server-http) | `FetchHandler`, `HandlerPlugin` (CORS / limits / headers) |
 | [`@ts-pf/client-http`](packages/client-http) | `FetchLink`, Fetch interceptors |
@@ -132,16 +132,45 @@ const handler = new FetchHandler(app, {
 
 `CORSPlugin` answers `OPTIONS` preflight (browsers will preflight: JSON + `x-ts-pf-protocol` are not CORS-safelisted). `RequestLimitPlugin` caps the HTTP body; multipart file caps stay on `MultipartCodec`. Header plugins inject optional `context.reqHeaders` / `context.resHeaders`.
 
+`FetchHandler.plugins` are HTTP `HandlerPlugin`s. Server call interceptors (`CallInterceptor` / `DedupePlugin` / `onStart` from `@ts-pf/server`) go on `{ interceptors }` — a different list. Client retry/cache live on `createClient`.
+
+```ts
+import { applyPlugins, DedupePlugin, onStart } from '@ts-pf/server'
+import { CORSPlugin, FetchHandler } from '@ts-pf/server-http'
+
+const interceptors = applyPlugins(
+  [new DedupePlugin()],
+  [onStart(({ path }) => console.log(path.join('.')))],
+)
+
+new FetchHandler(app, {
+  plugins: [new CORSPlugin({ origin: ['https://app.example.com'] })],
+  interceptors,
+})
+```
+
+`createLocalClient(app, { context, plugins, interceptors })` accepts `CallPlugin`s directly. `FetchHandler` / `PortHandler` take `{ interceptors }` only — pass `applyPlugins([new DedupePlugin()], …)` for plugins. They do not take `HandlerPlugin` as call interceptors.
+
 ## Client
 
 ```ts
-import { asResult, createClient } from '@ts-pf/client'
+import {
+  asResult,
+  createClient,
+  DedupePlugin,
+  onStart,
+  RetryPlugin,
+} from '@ts-pf/client'
 import { FetchLink } from '@ts-pf/client-http'
 import type { ContractClient } from '@ts-pf/contract'
 import type { contract } from './contract'
 
 export const client: ContractClient<typeof contract> = createClient(
   new FetchLink({ url: '/rpc' }),
+  {
+    plugins: [new RetryPlugin(), new DedupePlugin()],
+    interceptors: [onStart(({ path }) => console.log(path.join('.')))],
+  },
 )
 
 const planet = await client.planet.find({ id: 1 })
@@ -249,7 +278,7 @@ oRPC is a dual RPC + OpenAPI platform with many adapters, serializers, and integ
 
 ## Examples
 
-Runnable apps in [`examples/`](examples/): [`hello`](examples/hello) (Fetch), [`message`](examples/message) (MessagePort), [`stream`](examples/stream) (`StreamCodec`).
+Runnable apps in [`examples/`](examples/): [`hello`](examples/hello) (Fetch), [`message`](examples/message) (MessagePort), [`stream`](examples/stream) (`StreamCodec`), [`plugins`](examples/plugins) (`CallPlugin` / `CallInterceptor`).
 
 ## Development
 

@@ -63,6 +63,9 @@ export class StdioHandler<TCtx = unknown> {
       ...(this.options?.onError !== undefined
         ? { onError: this.options.onError }
         : {}),
+      ...(this.options?.interceptors !== undefined
+        ? { interceptors: this.options.interceptors }
+        : {}),
     })
 
     let closed = false

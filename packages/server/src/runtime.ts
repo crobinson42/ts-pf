@@ -5,6 +5,10 @@ import {
   validateSchema,
 } from '@ts-pf/contract'
 import { PFError } from '@ts-pf/protocol'
+import {
+  type CallInterceptor,
+  runCallInterceptors,
+} from './call-interceptor.js'
 import { createErrorFactory, finalizeDeclaredError } from './error-factory.js'
 import type { MiddlewareFn } from './middleware.js'
 
@@ -44,16 +48,22 @@ export function isImplementedProcedure(
   )
 }
 
+export type RunProcedureOptions = {
+  signal?: AbortSignal
+  interceptors?: readonly CallInterceptor[]
+}
+
 export async function runProcedure(
   proc: ImplementedProcedure,
   rawInput: unknown,
   context: unknown,
-  signal?: AbortSignal,
+  options?: RunProcedureOptions,
 ): Promise<unknown> {
   const def = proc['~pf']
   const errors = createErrorFactory(def.contract['~pf'].errors)
   let ctx: Record<string, unknown> = { ...(context as Record<string, unknown>) }
   let input = rawInput
+  let signal = options?.signal
 
   const runUseAfter = async (index: number): Promise<unknown> => {
     const mw = def.useAfter[index]
@@ -130,12 +140,37 @@ export async function runProcedure(
   }
 
   const map = def.contract['~pf'].errors
-  try {
-    const output = await runUse(0)
-    return wrapIfAsyncIterable(output, map)
-  } catch (error) {
-    return await finalizeDeclaredError(error, map)
+  const interceptors = options?.interceptors
+  if (!interceptors?.length) {
+    try {
+      const output = await runUse(0)
+      return wrapIfAsyncIterable(output, map)
+    } catch (error) {
+      return await finalizeDeclaredError(error, map)
+    }
   }
+
+  return runCallInterceptors(
+    interceptors,
+    {
+      procedure: proc,
+      path: def.path,
+      input: rawInput,
+      context,
+      ...(signal ? { signal } : {}),
+    },
+    async (current) => {
+      input = current.input
+      ctx = { ...(current.context as Record<string, unknown>) }
+      signal = current.signal
+      try {
+        const output = await runUse(0)
+        return wrapIfAsyncIterable(output, map)
+      } catch (error) {
+        return await finalizeDeclaredError(error, map)
+      }
+    },
+  )
 }
 
 function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {

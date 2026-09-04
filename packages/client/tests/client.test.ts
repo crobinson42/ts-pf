@@ -4,7 +4,7 @@ import {
   isLocalFailure,
   type Link,
 } from '@ts-pf/client'
-import { procedure, router } from '@ts-pf/contract'
+import { type ContractClient, procedure, router } from '@ts-pf/contract'
 import { PFError } from '@ts-pf/protocol'
 import { describe, expect, expectTypeOf, it } from 'vitest'
 import { z } from 'zod'
@@ -69,6 +69,48 @@ describe('createClient', () => {
 
   it('asResult preserves ClientError narrowing', async () => {
     const result = await asResult(client.planet.find({ id: -1 }))
+    expect(result.ok).toBe(false)
+    if (!result.ok && result.error.code === 'NOT_FOUND') {
+      expectTypeOf(result.error.data).toEqualTypeOf<{ id: number }>()
+      expect(result.error.data).toEqual({ id: -1 })
+    }
+  })
+
+  it('accepts interceptors and still calls through the Link', async () => {
+    const order: string[] = []
+    const withInterceptors = createClient<typeof contract>(memoryLink(), {
+      interceptors: [
+        async (ctx) => {
+          order.push('before')
+          const output = await ctx.next()
+          order.push('after')
+          return output
+        },
+      ],
+    })
+    expect(await withInterceptors.planet.find({ id: 1 })).toEqual({
+      id: 1,
+      name: 'Earth',
+    })
+    expect(order).toEqual(['before', 'after'])
+  })
+
+  it('keeps ContractClient when plugins and interceptors are provided', () => {
+    const withOpts = createClient<typeof contract>(memoryLink(), {
+      plugins: [],
+      interceptors: [],
+    })
+    expectTypeOf(withOpts).toEqualTypeOf(
+      createClient<typeof contract>(memoryLink()),
+    )
+    expectTypeOf(withOpts).toEqualTypeOf<ContractClient<typeof contract>>()
+  })
+
+  it('asResult still narrows ClientError through a next() interceptor', async () => {
+    const withInterceptor = createClient<typeof contract>(memoryLink(), {
+      interceptors: [(ctx) => ctx.next()],
+    })
+    const result = await asResult(withInterceptor.planet.find({ id: -1 }))
     expect(result.ok).toBe(false)
     if (!result.ok && result.error.code === 'NOT_FOUND') {
       expectTypeOf(result.error.data).toEqualTypeOf<{ id: number }>()

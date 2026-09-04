@@ -45,7 +45,7 @@ class PlanetsResource extends Resource<Planet> {
 }
 ```
 
-`createClient` / `FetchLink` (codec, interceptors, headers) stay yours. `bindClient` only injects `{ signal: host.disposeSignal }` at **call time**. A caller-provided `{ signal }` wins.
+`createClient` / `FetchLink` stay yours: Fetch interceptors, codec, and headers on `FetchLink`; call plugins (`RetryPlugin`, …) on `createClient`. `bindClient` only injects `{ signal: host.disposeSignal }` at **call time**. A caller-provided `{ signal }` wins.
 
 App tsconfigs should use `moduleResolution: "bundler"` (Vite’s default) or `"nodenext"` when subclassing mvc-kit `Resource`. `Node16` does not inherit Resource members onto subclasses.
 
@@ -141,7 +141,7 @@ Entity `id` is `string`. Procedure-shaped non-CRUD writes do not belong there.
 - Pass-through Service (call the client from the Resource)
 - Wrapping `useLocal` / `useSingleton`
 - Channel / WsLink wrapper
-- Retry (userland interceptors)
+- Retry (`RetryPlugin` on `createClient`)
 - Mapping `NOT_FOUND` → `'not_found'`
 - `instanceof HttpError` for RPC
 - Walking `app` instead of the contract

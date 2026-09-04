@@ -1,6 +1,6 @@
 ---
 name: ts-pf
-description: Use when implementing, reviewing, refactoring, or extending the ts-pf library — @ts-pf/contract, protocol, server, client, http, server-http, client-http, file, stream, sse, docs, openapi, codegen, message, message-server, message-client, swr, or mvc-kit; procedure/router builders; FetchHandler; createClient; schema adapters; middleware; JSON RPC; MultipartCodec; StreamCodec; SseCodec; catalog()/docs(); openapi(); emit()/catalogHash(); PortHandler/WsHandler/StdioHandler; PortLink/WsLink/StdioLink; createSwr; bindClient.
+description: Use when implementing, reviewing, refactoring, or extending the ts-pf library — @ts-pf/contract, protocol, server, client, http, server-http, client-http, file, stream, sse, docs, openapi, codegen, message, message-server, message-client, swr, or mvc-kit; procedure/router builders; FetchHandler; createClient; schema adapters; middleware; JSON RPC; MultipartCodec; StreamCodec; SseCodec; catalog()/docs(); openapi(); emit()/catalogHash(); PortHandler/WsHandler/StdioHandler; PortLink/WsLink/StdioLink; createSwr; bindClient; CallInterceptor; CallPlugin; intercept(); RetryPlugin; DedupePlugin; CachePlugin; Fetch vs call interceptors.
 ---
 
 # ts-pf
@@ -19,6 +19,7 @@ examples/
   hello/              contract, implementer, FetchHandler, FetchLink, createClient
   message/            PortHandler + PortLink over MessageChannel
   stream/             StreamCodec + stream()
+  plugins/            CallPlugin / CallInterceptor; first-party retry/cache/dedupe; local TimeoutPlugin / AuditPlugin; CORSPlugin is HTTP-only
 packages/contract/src/
   builder.ts          procedure singleton, router()
   procedure.ts        ContractProcedure brand
@@ -38,21 +39,32 @@ packages/http/src/
 packages/server/src/
   implement.ts        createImplementer proxy tree
   error-factory.ts    createErrorFactory, finalizeDeclaredError (internal; not exported)
-  runtime.ts          runProcedure, lookupProcedure, HandlerFn.signal
-  caller.ts           createLocalClient
+  runtime.ts          runProcedure, lookupProcedure, HandlerFn.signal, RunProcedureOptions.interceptors
+  caller.ts           createLocalClient (optional interceptors/plugins)
   middleware.ts       MiddlewareFn, ErrorFactory (handler typed; middleware loose)
+  call-interceptor.ts CallInterceptor (`runCallInterceptors` not exported)
+  plugin.ts           CallPlugin, applyPlugins
+  events.ts           onStart / onSuccess / onError / onFinish
+  dedupe-plugin.ts    DedupePlugin (in-flight; pass `key` to restrict to reads)
 packages/server-http/src/
-  handler.ts          FetchHandler (anti-buffering headers on ReadableStream bodies; httpStatus on errors)
+  handler.ts          FetchHandler (anti-buffering headers on ReadableStream bodies; httpStatus on errors; `interceptors` around runProcedure)
   plugins.ts          HandlerPlugin
   cors-plugin.ts      CORSPlugin / CORSPluginOptions
   request-limit-plugin.ts RequestLimitPlugin / RequestLimitPluginOptions
   request-headers-plugin.ts RequestHeadersPlugin / RequestHeadersPluginContext
   response-headers-plugin.ts ResponseHeadersPlugin / ResponseHeadersPluginContext
 packages/client/src/
-  client.ts           createClient proxy
+  client.ts           createClient proxy (optional interceptors/plugins)
   link.ts             Link
   as-result.ts        asResult, CallResult
   is-local-failure.ts isLocalFailure (local === true)
+  call-interceptor.ts CallInterceptor (`runCallInterceptors` not exported)
+  plugin.ts           CallPlugin, applyPlugins
+  intercept.ts        intercept(link, opts) — empty lists are identity
+  events.ts           onStart / onSuccess / onError / onFinish
+  retry-plugin.ts     RetryPlugin (default isLocalFailure; skip abort)
+  dedupe-plugin.ts    DedupePlugin (in-flight)
+  cache-plugin.ts     CachePlugin (ttl required; success only)
 packages/client-http/src/
   fetch-link.ts       FetchLink (binds fetch to globalThis; signal, duplex: 'half'; protocol-header rethrow; localFailure on network/abort)
   interceptors.ts     raw fetch throws, not mapped PFError
@@ -84,7 +96,7 @@ packages/message-server/src/
   port.ts             PortHandler
   ws.ts               WsHandler
   stdio.ts            StdioHandler — ./stdio only
-  shared.ts           HandlerOptions (exported); attachRouter / AttachRouterOptions (internal)
+  shared.ts           HandlerOptions (exported, `interceptors`); attachRouter / AttachRouterOptions (internal)
 packages/message-client/src/
   index.ts            PortLink, WsLink, type WebSocketLike, type LinkOptions (no stdio)
   port.ts             PortLink
@@ -136,7 +148,7 @@ await client.planet.find({ id: 1 })
 // asResult(client.planet.find({ id: 1 })) — result.error.code === 'NOT_FOUND' narrows data
 ```
 
-Runnable form of this happy path: `examples/hello`. Message: `examples/message`. Streams: `examples/stream`.
+Runnable form of this happy path: `examples/hello`. Message: `examples/message`. Streams: `examples/stream`. Plugins: `examples/plugins`.
 
 Files are opt-in. Do not put this in the default happy path:
 
@@ -194,22 +206,26 @@ const client = createClient<typeof contract>(new PortLink({ port: port2 }))
 
 0. `HandlerPlugin.onRequest` — optional `Request` wrap or `Response` short-circuit (CORS preflight). Prefix miss skips plugins.
 1. Decode body (`RpcCodec`; JSONCodec is JSON, MultipartCodec may be multipart, StreamCodec may be JSONL, SseCodec may be JSONL input / SSE output)
-2. `HandlerPlugin.onContext` — replace context (header bags)
-3. `.use()` middleware — `input` is unvalidated
-4. Input schema (`VALIDATION` on fail)
-5. `.useAfter()` middleware — typed `input`
-6. Handler
-7. Output schema (`INTERNAL` — server bug; no issues leaked)
-8. `runProcedure` runs `finalizeDeclaredError` on any throw from `.use` / validate / `.useAfter` / handler / output (invalid declared `data` → `INTERNAL`, no payload)
-9. Encode body (`RpcCodec`)
-10. On throw: `HandlerPlugin.onError` (side-effect only), then encode failure. HTTP status from `httpStatus(error)`.
-11. `HandlerPlugin.onResponse` — every matched `Response` (success, 405, errors, short-circuit)
+2. Lookup procedure. Miss → `NOT_FOUND` (no call interceptors). Non-POST → `METHOD_NOT_ALLOWED` (Fetch; no call interceptors).
+3. Context factory, then `HandlerPlugin.onContext` — replace context (header bags)
+4. CallInterceptor onion around `runProcedure` (`FetchHandler({ interceptors })`, `HandlerOptions.interceptors`, `createLocalClient` `{ interceptors, plugins }`). `[0]` outermost. Inside `next()`:
+   - `.use()` middleware — `input` is unvalidated
+   - Input schema (`VALIDATION` on fail)
+   - `.useAfter()` middleware — typed `input`
+   - Handler
+   - Output schema (`INTERNAL` — server bug; no issues leaked)
+   - `finalizeDeclaredError` on any throw (invalid declared `data` → `INTERNAL`, no payload)
+5. Encode body (`RpcCodec`)
+6. On throw: `HandlerPlugin.onError` (side-effect only), then encode failure. HTTP status from `httpStatus(error)`.
+7. `HandlerPlugin.onResponse` — every matched `Response` (success, 405, errors, short-circuit)
 
 `createImplementer(contract).use(mw).router({...})` prepends `mw` onto every procedure in that tree.
 
-`createLocalClient(app, { context })` runs procedure middleware → validate → handler in-process. No `HandlerPlugin`, no `RpcCodec` / HTTP. `runProcedure` validates declared error `data` (invalid → `INTERNAL`) and wraps async iterables so mid-stream throws get the same check.
+`createLocalClient(app, { context, interceptors?, plugins? })` runs call interceptors around `runProcedure` (middleware → validate → handler) in-process. Interceptors attach per caller, not on `createImplementer`. `[0]` is outermost. `next({ context })` replaces context (does not merge). Client `intercept()` with empty lists returns the same `Link`. Server adapters omit empty `interceptors`; `runProcedure` no-ops on a missing/empty array. Interceptors see finalized throws from `finalizeDeclaredError`. Do not consume AsyncIterable output; return the wrapped iterator. No `HandlerPlugin`, no `RpcCodec` / HTTP. `runProcedure` validates declared error `data` (invalid → `INTERNAL`) and wraps async iterables so mid-stream throws get the same check. Duplicate `CallInterceptor` types — do not import from `@ts-pf/client`.
 
-Steps 0–2 and 9–11 are Fetch (`HandlerPlugin` + `RpcCodec` + `Request`/`Response`) in `@ts-pf/server-http`. Message adapters replace those with JSON text frames and still run `lookupProcedure` + `runProcedure` for steps 3–8. Do not await `runProcedure` inside `MessageSession.onFrame`.
+Steps 0–3 and 5–7 are Fetch (`HandlerPlugin` + `RpcCodec` + `Request`/`Response`) in `@ts-pf/server-http`. Message adapters replace those with JSON text frames and still run `lookupProcedure` + `runProcedure` for steps 2–4. Do not await `runProcedure` inside `MessageSession.onFrame`.
+
+Client: `createClient` / `intercept()` call interceptors (path + input + signal) → `Link.call` → (Fetch only) encode → Fetch `Interceptor` onion → fetch → decode → mapped `PFError`. Fetch interceptors see raw throws / `Response`s, not `PFError`.
 
 ## Schemas
 
@@ -241,7 +257,7 @@ Runtime `validateSchema`: user `registerSchemaAdapter` (first `accept` match) �
 | mvc-kit (MVVM) | `@ts-pf/mvc-kit` `bindClient(client, host)` + `issuesToFieldErrors`. |
 | TanStack Query, Node HTTP, EventPublisher | **new package** under `packages/`. Do not fold into contract/server/client. |
 | Typed errors on a procedure | `.errors({ CODE: { status?, message, data? } })`. `status` is optional HTTP / OpenAPI metadata. Handler: `throw errors.CODE(data)`. `ClientError<E>` is declared variants plus remaining protocol codes. `asResult` → `CallResult<T, E>`. Non-JS clients switch on JSON `error.code`. `isLocalFailure` is `local === true`. Do not put `status` or `cause` in `{ ok: false, error }`. |
-| Retry / in-flight dedupe | wrap `Link.call` (userland). Not FetchLink internals. Not Fetch interceptors (they cannot see structured input without cloning body). |
+| Retry / in-flight dedupe / cache | `RetryPlugin` / `DedupePlugin` / `CachePlugin` on `createClient(link, { plugins })`. Server `DedupePlugin` via `createLocalClient` `{ plugins }` or `applyPlugins` into `FetchHandler`/`HandlerOptions` `{ interceptors }`. Not FetchLink internals. Not Fetch interceptors (they cannot see structured input without cloning body). Skip `AsyncIterable` input; `CachePlugin` also does not cache iterable output. Server default dedupe keys every unary call — pass `key` to restrict to reads (unsafe for non-idempotent writes). Batch still refuse. |
 | Timeout | `AbortSignal.timeout` — userland. |
 | Batch | refuse. Out of scope. |
 
@@ -262,8 +278,9 @@ New packages: same `exports` (source for workspace, `publishConfig` → `dist`),
 - Reconstructing HTTP status from `error.code` on message transports
 - `OpenAPIHandler` / GET/PUT/path params; serving the spec from `FetchHandler`
 - `createClientFromCatalog` in v1
-- A catch-all plugin manager; oRPC `*HandlerPlugin` names; ClientContext bags
-- Adding retry to FetchLink; using `isLocalFailure` inside interceptors
+- A catch-all plugin manager; ClientContext bags. Keep interface `HandlerPlugin`; class names stay `CORSPlugin` / `RetryPlugin` / `DedupePlugin`, never oRPC `*HandlerPlugin`. `CallPlugin` ≠ `HandlerPlugin`; `FetchHandler.plugins` is HTTP-only.
+- Adding retry to FetchLink; using `isLocalFailure` inside Fetch interceptors
+- Exporting `runCallInterceptors` from `@ts-pf/client` or `@ts-pf/server`; exporting Fetch `Interceptor` from `@ts-pf/client`; adding `close()` to `Link`; putting `path` on `next()` opts
 - Putting `status` / `cause` / `local` on `PFError.toJSON()` / the wire envelope
 - Widening `asResult` to `CallResult<T, E | PFError>`
 - Exporting `createErrorFactory` / `finalizeDeclaredError`
@@ -273,7 +290,7 @@ New packages: same `exports` (source for workspace, `publishConfig` → `dist`),
 
 - Names match the table in `.agents/rules.md`
 - DAG still acyclic; client never depends on server; server never depends on client; server-http never depends on client-http; client-http never depends on server-http (prod); `@ts-pf/http` not imported by contract/server/client (prod); file = http + protocol; stream = http + protocol + contract; sse = stream + http + protocol; docs = contract + protocol + http; openapi = docs; codegen = docs; swr = contract (peer swr); mvc-kit = contract (peer mvc-kit >= 4.9.0); message = protocol; message-server = message + server + protocol (never client); message-client = message + client (never server prod). No `TransportHandler`. Stdio is not on the main index.
-- Public exports: protocol = `PFError`, `PFErrorInit`, `isPFError`, `localFailure`, `ProtocolErrorCode`, `PROTOCOL_VERSION`, envelope types, `PFResultPromise`. Not `JSONCodec` / `RpcCodec` / `PROTOCOL_HEADER` / path helpers. server = implementer, local client, `runProcedure`, `lookupProcedure`, middleware types. Not `FetchHandler` / plugins. client = `createClient`, `Link`, `asResult`, `CallResult`, `isLocalFailure`. Not `FetchLink` / `Interceptor`. http = `JSONCodec`, `RpcCodec`, `RpcEncodedBody`, `RpcBodySource`, `PROTOCOL_HEADER`, path helpers, `httpStatus`, `PROTOCOL_HTTP_STATUS`. server-http = `FetchHandler`, `HandleResult`, `HandlerPlugin`, CORS/limit/header plugins + option/context types. client-http = `FetchLink`, `Interceptor`. file = `MultipartCodec`. stream = `StreamCodec` + `stream()`. sse = `SseCodec` + `SSE_CONTENT_TYPE`. Server does **not** export `createErrorFactory` / `finalizeDeclaredError`. Links have `close()` on message-client impls; do **not** add `close()` to `Link`.
+- Public exports: protocol = `PFError`, `PFErrorInit`, `isPFError`, `localFailure`, `ProtocolErrorCode`, `PROTOCOL_VERSION`, envelope types, `PFResultPromise`. Not `JSONCodec` / `RpcCodec` / `PROTOCOL_HEADER` / path helpers. server = implementer, local client, `runProcedure`, `lookupProcedure`, middleware types, `CallInterceptor`, `CallPlugin`, `applyPlugins`, `onStart` / `onSuccess` / `onError` / `onFinish`, `RunProcedureOptions`, `DedupePlugin`, `DedupePluginOptions`. Not `FetchHandler` / `HandlerPlugin` / `runCallInterceptors`. client = `createClient`, `Link`, `asResult`, `CallResult`, `isLocalFailure`, `intercept`, `CallInterceptor`, `CallPlugin`, `applyPlugins`, `onStart` / `onSuccess` / `onError` / `onFinish`, `RetryPlugin`, `RetryPluginOptions`, `DedupePlugin`, `DedupePluginOptions`, `CachePlugin`, `CachePluginOptions`. Not `FetchLink` / Fetch `Interceptor` / `runCallInterceptors`. http = `JSONCodec`, `RpcCodec`, `RpcEncodedBody`, `RpcBodySource`, `PROTOCOL_HEADER`, path helpers, `httpStatus`, `PROTOCOL_HTTP_STATUS`. server-http = `FetchHandler`, `HandleResult`, `HandlerPlugin`, CORS/limit/header plugins + option/context types. client-http = `FetchLink`, `Interceptor`. file = `MultipartCodec`. stream = `StreamCodec` + `stream()`. sse = `SseCodec` + `SSE_CONTENT_TYPE`. Server does **not** export `createErrorFactory` / `finalizeDeclaredError`. Links have `close()` on message-client impls; do **not** add `close()` to `Link`.
 - `isLocalFailure` is `local === true`, not `status === 0`.
 - `FetchHandler` uses `httpStatus(error)` for `Response.status`. Protocol codes map to the HTTP table. `METHOD_NOT_ALLOWED` is Fetch-only emission.
 - `FetchLink` rethrows `PFError` from `decodeResponse` only when `x-ts-pf-protocol` is present. Non-RPC decode wrap uses HTTP status, not `local: true`. `FetchLink` binds fetch to `globalThis`. Streamed `ReadableStream` responses get anti-buffering headers.

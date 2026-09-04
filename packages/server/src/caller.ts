@@ -1,14 +1,35 @@
 import type { ContractClient } from '@ts-pf/contract'
+import type { CallInterceptor } from './call-interceptor.js'
+import { applyPlugins, type CallPlugin } from './plugin.js'
 import {
   type ImplementedProcedure,
   type ImplementedRouter,
   isImplementedProcedure,
+  type RunProcedureOptions,
   runProcedure,
 } from './runtime.js'
+
+function buildRunOptions(
+  signal: AbortSignal | undefined,
+  interceptors: readonly CallInterceptor[],
+): RunProcedureOptions | undefined {
+  if (!signal && interceptors.length === 0) {
+    return undefined
+  }
+  const options: RunProcedureOptions = {}
+  if (signal) {
+    options.signal = signal
+  }
+  if (interceptors.length > 0) {
+    options.interceptors = interceptors
+  }
+  return options
+}
 
 function createNode(
   node: ImplementedProcedure | ImplementedRouter<unknown>,
   context: unknown,
+  interceptors: readonly CallInterceptor[],
 ): unknown {
   if (isImplementedProcedure(node)) {
     return (...args: unknown[]) => {
@@ -22,11 +43,14 @@ function createNode(
         (first as { signal?: unknown }).signal instanceof AbortSignal
       ) {
         const signal = (first as { signal: AbortSignal }).signal
-        return runProcedure(node, undefined, context, signal)
+        const options = buildRunOptions(signal, interceptors)
+        return options
+          ? runProcedure(node, undefined, context, options)
+          : runProcedure(node, undefined, context)
       }
-      const signal = second?.signal
-      return signal
-        ? runProcedure(node, first, context, signal)
+      const options = buildRunOptions(second?.signal, interceptors)
+      return options
+        ? runProcedure(node, first, context, options)
         : runProcedure(node, first, context)
     }
   }
@@ -36,7 +60,7 @@ function createNode(
       continue
     }
     if (child) {
-      nested[key] = createNode(child, context)
+      nested[key] = createNode(child, context, interceptors)
     }
   }
   return nested
@@ -44,7 +68,12 @@ function createNode(
 
 export function createLocalClient<T>(
   router: ImplementedRouter<T>,
-  opts: { context: unknown },
+  opts: {
+    context: unknown
+    interceptors?: readonly CallInterceptor[]
+    plugins?: readonly CallPlugin[]
+  },
 ): ContractClient<T> {
-  return createNode(router, opts.context) as ContractClient<T>
+  const interceptors = applyPlugins(opts.plugins ?? [], opts.interceptors)
+  return createNode(router, opts.context, interceptors) as ContractClient<T>
 }

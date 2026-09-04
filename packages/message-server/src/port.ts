@@ -46,6 +46,9 @@ export class PortHandler<TCtx = unknown> {
       ...(this.options?.onError !== undefined
         ? { onError: this.options.onError }
         : {}),
+      ...(this.options?.interceptors !== undefined
+        ? { interceptors: this.options.interceptors }
+        : {}),
     })
     port.start()
 

@@ -1,12 +1,24 @@
 import type { CallOptions, ContractClient } from '@ts-pf/contract'
+import type { CallInterceptor } from './call-interceptor.js'
+import { intercept } from './intercept.js'
 import type { Link } from './link.js'
+import type { CallPlugin } from './plugin.js'
 
-export function createClient<T>(link: Link): ContractClient<T> {
+export function createClient<T>(
+  link: Link,
+  options?: {
+    interceptors?: readonly CallInterceptor[]
+    plugins?: readonly CallPlugin[]
+  },
+): ContractClient<T> {
+  const resolved = intercept(link, options)
   const create = (path: string[]): unknown =>
     new Proxy(
       (...args: unknown[]) => {
         const { input, signal } = splitCallArgs(args)
-        return link.call(path, input, signal)
+        return signal
+          ? resolved.call(path, input, signal)
+          : resolved.call(path, input)
       },
       {
         get(_, key) {

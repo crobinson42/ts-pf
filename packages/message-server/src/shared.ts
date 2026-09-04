@@ -8,8 +8,10 @@ import {
 } from '@ts-pf/message'
 import { isPFError, PFError } from '@ts-pf/protocol'
 import {
+  type CallInterceptor,
   type ImplementedRouter,
   lookupProcedure,
+  type RunProcedureOptions,
   runProcedure,
 } from '@ts-pf/server'
 import { isAsyncIterable } from './is-async-iterable.js'
@@ -19,6 +21,7 @@ export type HandlerOptions = {
   maxFrameBytes?: number
   helloTimeoutMs?: number
   onError?: (error: unknown) => void | Promise<void>
+  interceptors?: readonly CallInterceptor[]
 }
 
 export type AttachRouterOptions<TCtx = unknown> = HandlerOptions & {
@@ -60,6 +63,7 @@ async function dispatchCall(
   frame: CallFrame,
   rec: ServerInflight,
   context: unknown,
+  interceptors?: readonly CallInterceptor[],
 ): Promise<unknown> {
   const procedure = lookupProcedure(router, frame.path)
   if (!procedure) {
@@ -75,7 +79,11 @@ async function dispatchCall(
       : frame.input === null
         ? undefined
         : frame.input
-  return runProcedure(procedure, rawInput, context, rec.ac.signal)
+  const runOpts: RunProcedureOptions = { signal: rec.ac.signal }
+  if (interceptors !== undefined && interceptors.length > 0) {
+    runOpts.interceptors = interceptors
+  }
+  return runProcedure(procedure, rawInput, context, runOpts)
 }
 
 export function attachRouter<TCtx = unknown>(
@@ -337,7 +345,13 @@ export function attachRouter<TCtx = unknown>(
 
   async function runCall(frame: CallFrame, rec: ServerInflight): Promise<void> {
     try {
-      const output = await dispatchCall(options.router, frame, rec, context)
+      const output = await dispatchCall(
+        options.router,
+        frame,
+        rec,
+        context,
+        options.interceptors,
+      )
       if (rec.cancelled) {
         return
       }

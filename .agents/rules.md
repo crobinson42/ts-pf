@@ -41,10 +41,10 @@ Contract-first TypeScript RPC library (`@ts-pf/*`). oRPC-like DX is the bar; oRP
 |---|---|
 | `contract` | `procedure`, `router`, schema adapters, typed errors (`ClientError` discriminated union, `InferErrorData`, `InferContractErrors`), infer types |
 | `protocol` | `PFError`, JSON envelope types, `PROTOCOL_VERSION`, `localFailure`. No HTTP server. No schemas. No `RpcCodec`. Failure JSON is `{ code, message, data? }` only (`toJSON` omits `status`, `cause`, and `local`). `ProtocolErrorCode` is a closed set. |
-| `server` | `createImplementer`, middleware, `runProcedure`, `lookupProcedure`, `createLocalClient`. `ErrorFactory` is typed on `ProcedureBuilder.handler` from that procedure’s map; `MiddlewareFn.errors` stays the default/loose factory. `finalizeDeclaredError` is internal (`runProcedure` only, not exported). |
-| `client` | `createClient`, `Link`, `asResult` / `CallResult<T, E>` (do not widen with `E \| PFError`), `isLocalFailure` (`local === true`) |
+| `server` | `createImplementer`, middleware, `runProcedure`, `lookupProcedure`, `createLocalClient`, `CallInterceptor` / `CallPlugin` / `applyPlugins`, event helpers (`onStart` / `onSuccess` / `onError` / `onFinish`), `DedupePlugin`. Interceptors attach per caller, not on `createImplementer`. Duplicate `CallInterceptor` types — do not import from client. `ErrorFactory` is typed on `ProcedureBuilder.handler` from that procedure’s map; `MiddlewareFn.errors` stays the default/loose factory. `finalizeDeclaredError` is internal (`runProcedure` only, not exported). Not `runCallInterceptors`. |
+| `client` | `createClient`, `Link`, `intercept` / `CallInterceptor` / `CallPlugin` / `applyPlugins`, event helpers (`onStart` / `onSuccess` / `onError` / `onFinish`), `RetryPlugin` / `DedupePlugin` / `CachePlugin`, `asResult` / `CallResult<T, E>` (do not widen with `E \| PFError`), `isLocalFailure` (`local === true`). Not Fetch `Interceptor`. Not `runCallInterceptors`. |
 | `http` | `JSONCodec`, `RpcCodec`, `RpcEncodedBody`, `RpcBodySource`, `PROTOCOL_HEADER`, `joinProcedurePath`, `parseProcedurePath`, `httpStatus`, `PROTOCOL_HTTP_STATUS` |
-| `server-http` | `FetchHandler`, `HandlerPlugin` (`CORSPlugin`, `RequestLimitPlugin`, `RequestHeadersPlugin`, `ResponseHeadersPlugin`) |
+| `server-http` | `FetchHandler`, `HandlerPlugin` (`CORSPlugin`, `RequestLimitPlugin`, `RequestHeadersPlugin`, `ResponseHeadersPlugin`). `FetchHandler` accepts `interceptors?: CallInterceptor[]` (from `@ts-pf/server`) separate from `plugins?: HandlerPlugin[]`. |
 | `client-http` | `FetchLink`, Fetch `Interceptor` |
 | `file` | `MultipartCodec` only. Do not add `PFFile`, `file()`, or export walk helpers. |
 | `stream` | `StreamCodec` + `stream()`. Root `AsyncIterable` as JSONL envelopes. |
@@ -55,7 +55,7 @@ Contract-first TypeScript RPC library (`@ts-pf/*`). oRPC-like DX is the bar; oRP
 | `swr` | `createSwr(client)` helpers for SWR. |
 | `mvc-kit` | `bindClient(client, host)` / `issuesToFieldErrors` / `DisposeSignalHost`. |
 | `message` | JSON text frames + `MessageSession` / `Duplex` + port/ws/stdio duplex adapters. |
-| `message-server` | `PortHandler`, `WsHandler`, `StdioHandler` (`./stdio` only). Calls `lookupProcedure` + `runProcedure`. |
+| `message-server` | `PortHandler`, `WsHandler`, `StdioHandler` (`./stdio` only). Calls `lookupProcedure` + `runProcedure`. `HandlerOptions` may include `interceptors`. |
 | `message-client` | `PortLink`, `WsLink`, `StdioLink` (`./stdio` only). Implements `Link`. |
 
 ## Public names
@@ -67,7 +67,7 @@ Do not resurrect oRPC names in code, docs, or examples.
 | `procedure` / `router` | `oc` |
 | `createImplementer` / local `impl` | `implement` / `os` |
 | `FetchHandler` / `PortHandler` / `WsHandler` / `StdioHandler` | `RPCHandler` |
-| `CORSPlugin` / `RequestLimitPlugin` / `RequestHeadersPlugin` / `ResponseHeadersPlugin` | `*HandlerPlugin` |
+| `CORSPlugin` / `RequestLimitPlugin` / `RequestHeadersPlugin` / `ResponseHeadersPlugin` / `RetryPlugin` / `DedupePlugin` / `CachePlugin` | `*HandlerPlugin` / `*LinkPlugin`. Keep interface `HandlerPlugin`; `CallPlugin` is a different type. |
 | `createLocalClient` | `createRouterClient` |
 | `asResult` | `safe` |
 | `FetchLink` / `PortLink` / `WsLink` / `StdioLink` | `RPCLink` |
@@ -108,8 +108,8 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 | `.use()` / `.useAfter()` | server |
 | `HandlerPlugin` | server-http (`CORSPlugin`, `RequestLimitPlugin`, `RequestHeadersPlugin`, `ResponseHeadersPlugin`) |
 | `RpcCodec` | http (`JSONCodec` is the v1 impl) |
-| `Link` | client (userland wrap of `Link.call`; no first-party call interceptor catalog) |
-| Fetch interceptors | client-http |
+| `CallInterceptor` / `CallPlugin` | server (`createLocalClient({ plugins, interceptors })`; `FetchHandler` `{ interceptors }`; message `HandlerOptions.interceptors`; `DedupePlugin`) and client (`createClient(link, { plugins, interceptors })` / `intercept()` around `Link.call`; `RetryPlugin` / `DedupePlugin` / `CachePlugin`). Duplicate types — do not import across the DAG. `onStart` / `onSuccess` / `onError` / `onFinish`. Plugin `name` is debugging, not a registry. Array order only — no `order`/`before`/`after`. Server `next({ context })` replaces. Do not add `close()` to `Link`. First-party plugins skip `AsyncIterable` input. |
+| Fetch interceptors | client-http (Fetch `Interceptor`; do not export from `@ts-pf/client`) |
 | `docs()` / `catalog()` / `registerJsonSchemaConverter` | docs |
 | `openapi()` | openapi |
 | `emit` / `catalogHash` | codegen |
@@ -118,7 +118,7 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 
 `RpcCodec` encode returns `{ contentType, body }` (`string | Blob | FormData | ReadableStream<Uint8Array> | null`). Decode takes `RpcBodySource` (`contentType`, `text()`, `formData()`, `body()`). `JSONCodec` still emits `application/json` and the JSON envelope. `MultipartCodec`, `StreamCodec`, and `SseCodec` wrap it without changing contracts.
 
-`CallOptions` is `{ signal?: AbortSignal }` on `ProcedureClient`. Do not add an oRPC-style ClientContext bag. `createClient` / `createLocalClient` forward it; `FetchLink` sets `RequestInit.signal`; `FetchHandler` passes `request.signal` into `runProcedure` → `HandlerFn` only (not middleware). Typed `ProcedureBuilder.handler` opts include `signal?: AbortSignal`. `FetchLink` sets `duplex: 'half'` when `encoded.body instanceof ReadableStream`. Streamed `ReadableStream` responses also get `Cache-Control: no-cache, no-transform` and `X-Accel-Buffering: no`. `FetchLink` binds `opts.fetch ?? globalThis.fetch` to `globalThis`. Fetch/interceptor catch: rethrow an existing `PFError`; abort/network → `localFailure(...)`. `decodeResponse` catch: rethrow a codec `PFError` only when `x-ts-pf-protocol` is present; no protocol header → `INTERNAL` + HTTP status + `Non-RPC response (HTTP …)` + `cause` (`isLocalFailure` is false). Interceptors see raw fetch throws / `Response`s, not mapped `PFError`; `isLocalFailure` is after the call. Do not add retry to `FetchLink`. Retry/dedupe wrap `Link.call`.
+`CallOptions` is `{ signal?: AbortSignal }` on `ProcedureClient`. Do not add an oRPC-style ClientContext bag. `createClient` / `createLocalClient` forward it; `FetchLink` sets `RequestInit.signal`; `FetchHandler` passes `request.signal` into `runProcedure` → `HandlerFn` only (not middleware). Typed `ProcedureBuilder.handler` opts include `signal?: AbortSignal`. `FetchLink` sets `duplex: 'half'` when `encoded.body instanceof ReadableStream`. Streamed `ReadableStream` responses also get `Cache-Control: no-cache, no-transform` and `X-Accel-Buffering: no`. `FetchLink` binds `opts.fetch ?? globalThis.fetch` to `globalThis`. Fetch/interceptor catch: rethrow an existing `PFError`; abort/network → `localFailure(...)`. `decodeResponse` catch: rethrow a codec `PFError` only when `x-ts-pf-protocol` is present; no protocol header → `INTERNAL` + HTTP status + `Non-RPC response (HTTP …)` + `cause` (`isLocalFailure` is false). Fetch interceptors see raw fetch throws / `Response`s, not mapped `PFError`; `isLocalFailure` is after the call. Client call interceptors wrap `Link.call` (`path` / `input` / `signal`; `next` may replace `input`/`signal`, not `path`). Server call interceptors wrap `runProcedure` (`procedure` / `path` / `input` / `context` / `signal`; `next` may replace `input`/`context`/`signal`; `context` replaces, does not merge). Empty plugin/interceptor lists are identity (server: a length check on `runProcedure`). Do not add retry to `FetchLink`. Retry/dedupe/cache are `CallPlugin`s wrapping `Link.call` (`RetryPlugin`, `DedupePlugin`, `CachePlugin`). Server in-flight dedupe is `@ts-pf/server` `DedupePlugin`. Fetch `Interceptor`s still must not use `isLocalFailure`. `RetryPlugin` may; it is a call interceptor.
 
 ## Code
 
@@ -151,7 +151,7 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 
 ## Examples
 
-Live in `examples/`: `hello` (Fetch), `message` (MessagePort), `stream` (`StreamCodec`). They are private workspace packages, not published.
+Live in `examples/`: `hello` (Fetch), `message` (MessagePort), `stream` (`StreamCodec`), `plugins` (`CallPlugin` / `CallInterceptor`). They are private workspace packages, not published.
 
 - Implemented routers are named `app` (not `router` — that name is the contract helper).
 - Example `client.ts` must not import `@ts-pf/server`.

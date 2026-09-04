@@ -85,6 +85,9 @@ function openPair(
   if (options.onError !== undefined) {
     attach.onError = options.onError
   }
+  if (options.interceptors !== undefined) {
+    attach.interceptors = options.interceptors
+  }
   const server = attachRouter(attach)
   const client = new MessageSession({
     duplex: b,
@@ -120,6 +123,87 @@ describe('shared unary dispatch', () => {
       ok: true,
       output: { id: 1, name: 'Earth' },
     })
+    server.close()
+  })
+
+  it('runs call interceptors in onion order on a successful call', async () => {
+    const order: string[] = []
+    const app = planetApp(async ({ input }) => {
+      order.push('handler')
+      return { id: input.id, name: 'Earth' }
+    })
+    const { client, frames, server } = openPair(app, {
+      interceptors: [
+        async ({ next }) => {
+          order.push('in-0')
+          const result = await next()
+          order.push('out-0')
+          return result
+        },
+        async ({ next }) => {
+          order.push('in-1')
+          const result = await next()
+          order.push('out-1')
+          return result
+        },
+      ],
+    })
+    await Promise.all([server.ready, client.ready])
+
+    expect(
+      client.send({
+        type: 'call',
+        id: '1',
+        path: ['planet', 'find'],
+        input: { id: 1 },
+      }).ok,
+    ).toBe(true)
+
+    const result = await waitFor(
+      frames,
+      (frame) => frame.type === 'result' && frame.id === '1',
+    )
+    expect(result).toEqual({
+      type: 'result',
+      id: '1',
+      ok: true,
+      output: { id: 1, name: 'Earth' },
+    })
+    expect(order).toEqual(['in-0', 'in-1', 'handler', 'out-1', 'out-0'])
+    server.close()
+  })
+
+  it('does not run call interceptors on lookup NOT_FOUND', async () => {
+    let interceptorRan = false
+    const { client, frames, server } = openPair(defaultApp, {
+      interceptors: [
+        async ({ next }) => {
+          interceptorRan = true
+          return next()
+        },
+      ],
+    })
+    await Promise.all([server.ready, client.ready])
+
+    expect(
+      client.send({
+        type: 'call',
+        id: '1',
+        path: ['planet', 'missing'],
+      }).ok,
+    ).toBe(true)
+
+    const result = await waitFor(
+      frames,
+      (frame) => frame.type === 'result' && frame.id === '1',
+    )
+    expect(result).toEqual({
+      type: 'result',
+      id: '1',
+      ok: false,
+      error: { code: 'NOT_FOUND', message: 'Procedure not found' },
+    })
+    expect(interceptorRan).toBe(false)
     server.close()
   })
 

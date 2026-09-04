@@ -78,6 +78,27 @@ importers:
         specifier: ^4.0.0
         version: 4.5.4
 
+  examples/plugins:
+    dependencies:
+      '@ts-pf/client':
+        specifier: workspace:*
+        version: link:../../packages/client
+      '@ts-pf/client-http':
+        specifier: workspace:*
+        version: link:../../packages/client-http
+      '@ts-pf/contract':
+        specifier: workspace:*
+        version: link:../../packages/contract
+      '@ts-pf/server':
+        specifier: workspace:*
+        version: link:../../packages/server
+      '@ts-pf/server-http':
+        specifier: workspace:*
+        version: link:../../packages/server-http
+      zod:
+        specifier: ^4.0.0
+        version: 4.5.4
+
   examples/stream:
     dependencies:
       '@ts-pf/client':
