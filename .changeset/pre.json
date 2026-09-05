@@ -21,5 +21,11 @@
     "@ts-pf/stream": "0.0.0",
     "@ts-pf/swr": "0.0.0"
   },
-  "changesets": []
+  "changesets": [
+    "agent-skills",
+    "codegen-from-catalog",
+    "first-public-beta",
+    "mvc-kit-bind-client",
+    "openapi-from-catalog"
+  ]
 }

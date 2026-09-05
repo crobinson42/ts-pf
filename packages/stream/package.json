@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/stream",
-  "version": "0.0.0",
+  "version": "0.1.0-beta.0",
   "description": "Opt-in StreamCodec and stream() for root AsyncIterable (JSONL)",
   "license": "MIT",
   "repository": {
@@ -41,15 +41,15 @@
   },
   "dependencies": {
     "@standard-schema/spec": "^1.0.0",
-    "@ts-pf/contract": "*",
-    "@ts-pf/http": "*",
-    "@ts-pf/protocol": "*"
+    "@ts-pf/contract": "0.1.0-beta.0",
+    "@ts-pf/http": "0.1.0-beta.0",
+    "@ts-pf/protocol": "0.1.0-beta.0"
   },
   "devDependencies": {
-    "@ts-pf/client": "*",
-    "@ts-pf/client-http": "*",
-    "@ts-pf/server": "*",
-    "@ts-pf/server-http": "*",
+    "@ts-pf/client": "0.1.0-beta.0",
+    "@ts-pf/client-http": "0.1.0-beta.0",
+    "@ts-pf/server": "0.1.0-beta.0",
+    "@ts-pf/server-http": "0.1.0-beta.0",
     "zod": "^4.0.0"
   }
 }

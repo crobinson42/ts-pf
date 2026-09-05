@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/message-client",
-  "version": "0.0.0",
+  "version": "0.1.0-beta.0",
   "description": "Opt-in PortLink, WsLink, and StdioLink",
   "license": "MIT",
   "repository": {
@@ -48,14 +48,14 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/client": "*",
-    "@ts-pf/message": "*"
+    "@ts-pf/client": "0.1.0-beta.0",
+    "@ts-pf/message": "0.1.0-beta.0"
   },
   "devDependencies": {
-    "@ts-pf/contract": "*",
-    "@ts-pf/message-server": "*",
-    "@ts-pf/server": "*",
-    "@ts-pf/stream": "*",
+    "@ts-pf/contract": "0.1.0-beta.0",
+    "@ts-pf/message-server": "0.1.0-beta.0",
+    "@ts-pf/server": "0.1.0-beta.0",
+    "@ts-pf/stream": "0.1.0-beta.0",
     "typebox": "^1.3.24",
     "zod": "^4.0.0"
   }

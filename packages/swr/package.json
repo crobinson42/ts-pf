@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/swr",
-  "version": "0.0.0",
+  "version": "0.1.0-beta.0",
   "description": "Opt-in SWR keys, fetchers, mutators, and matchers",
   "license": "MIT",
   "repository": {
@@ -40,16 +40,16 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/contract": "*"
+    "@ts-pf/contract": "0.1.0-beta.0"
   },
   "peerDependencies": {
     "swr": ">=2.2.0"
   },
   "devDependencies": {
     "@testing-library/react": "^16.3.0",
-    "@ts-pf/client": "*",
-    "@ts-pf/server": "*",
-    "@ts-pf/stream": "*",
+    "@ts-pf/client": "0.1.0-beta.0",
+    "@ts-pf/server": "0.1.0-beta.0",
+    "@ts-pf/stream": "0.1.0-beta.0",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "jsdom": "^26.1.0",
