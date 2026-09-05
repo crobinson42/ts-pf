@@ -45,7 +45,13 @@ The GitHub Action does **not** run `version` / `publish` through a shell. Use an
 ## First publish
 
 1. Reserve is already done (`@ts-pf` on npm).
-2. After the first version exists on npm, add a [trusted publisher](https://docs.npmjs.com/trusted-publishers) on each package: GitHub user `crobinson42`, repo `ts-pf`, workflow filename `release.yml`, and **allow `npm publish`**. Do not set `NPM_TOKEN`, and do not pass `registry-url` to `actions/setup-node` (an empty `_authToken` makes npm skip OIDC and fail with `ENEEDAUTH`). `id-token: write` is enough. New trusted-publisher configs default to stage-only; Changesets needs direct `npm publish`.
+2. After the first version exists on npm, add a [trusted publisher](https://docs.npmjs.com/trusted-publishers) on **each** `@ts-pf/*` package. Fields are case-sensitive and cannot be edited later (delete + recreate):
+   - Organization or user: `crobinson42`
+   - Repository: `ts-pf`
+   - Workflow filename: `release.yml` (filename only, including `.yml` — not `release`, not `.github/workflows/release.yml`)
+   - Environment: leave empty
+   - **Allow `npm publish`**. Configs created after 3 Sep 2026 default to `npm stage publish` only; Changesets runs `npm publish` and npm reports that mismatch as `ENEEDAUTH`.
+   Do not set `NPM_TOKEN`. Do not pass `registry-url` to `actions/setup-node` (an empty `_authToken` makes npm skip OIDC). `id-token: write` is enough. The release job runs `scripts/probe-npm-oidc.mjs` before publish so a failed exchange prints the registry message instead of a bare `ENEEDAUTH`.
 3. Enable **Settings → Actions → General → Workflow permissions**: **Read and write permissions** and **Allow GitHub Actions to create and approve pull requests** (`https://github.com/crobinson42/ts-pf/settings/actions`).
 4. Push / merge to `main`. The release workflow opens the version PR. Re-run **release** if it failed before that setting was on.
 5. Merge the version PR. Packages publish as `0.1.0-beta.N` with tag `beta`.

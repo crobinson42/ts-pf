@@ -5,8 +5,9 @@ name: release
 #   - Allow GitHub Actions to create and approve pull requests
 # https://github.com/crobinson42/ts-pf/settings/actions
 #
-# npm trusted publisher on each package:
-#   user crobinson42, repo ts-pf, workflow release.yml, allow npm publish
+# npm trusted publisher on each @ts-pf/* package (filename only, case-sensitive):
+#   user crobinson42, repo ts-pf, workflow release.yml, environment empty,
+#   allow npm publish (not stage-only — that is the default after 3 Sep 2026).
 # Do not set registry-url on setup-node: it writes an empty _authToken and
 # npm then skips OIDC (ENEEDAUTH).
 
@@ -53,13 +54,11 @@ jobs:
           version: npm run changeset:version
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/github-script@v7
-        with:
-          script: |
-            const token = await core.getIDToken('npm:registry.npmjs.org')
-            core.setSecret(token)
-            core.exportVariable('NPM_ID_TOKEN', token)
-            core.info(`OIDC token acquired (${token.length} chars)`)
+      - run: |
+          unset NODE_AUTH_TOKEN NPM_TOKEN
+          node scripts/probe-npm-oidc.mjs
       - run: |
           unset NODE_AUTH_TOKEN NPM_TOKEN
           npm run changeset:publish
+        env:
+          NPM_CONFIG_LOGLEVEL: verbose
