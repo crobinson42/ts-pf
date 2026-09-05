@@ -2,6 +2,19 @@
   "name": "@ts-pf/http",
   "version": "0.1.0-beta.1",
   "description": "HTTP wire helpers: JSONCodec, RpcCodec, PROTOCOL_HEADER, path helpers, httpStatus",
+  "keywords": [
+    "ts-pf",
+    "typescript",
+    "rpc",
+    "typesafe",
+    "typed-rpc",
+    "api",
+    "contract-first",
+    "http",
+    "json-rpc",
+    "codec",
+    "json"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",

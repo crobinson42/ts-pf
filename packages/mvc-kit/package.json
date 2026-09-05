@@ -2,6 +2,17 @@
   "name": "@ts-pf/mvc-kit",
   "version": "0.1.0-beta.1",
   "description": "Opt-in bindClient and issuesToFieldErrors for mvc-kit Resources",
+  "keywords": [
+    "ts-pf",
+    "typescript",
+    "rpc",
+    "typesafe",
+    "typed-rpc",
+    "api",
+    "contract-first",
+    "mvc-kit",
+    "mvvm"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",

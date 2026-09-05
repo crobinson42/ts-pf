@@ -2,6 +2,18 @@
   "name": "@ts-pf/docs",
   "version": "0.1.0-beta.1",
   "description": "Opt-in procedure catalog from a contract (docs, catalog)",
+  "keywords": [
+    "ts-pf",
+    "typescript",
+    "rpc",
+    "typesafe",
+    "typed-rpc",
+    "api",
+    "contract-first",
+    "catalog",
+    "json-schema",
+    "documentation"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",

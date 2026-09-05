@@ -2,6 +2,17 @@
   "name": "@ts-pf/client",
   "version": "0.1.0-beta.1",
   "description": "Typed createClient, Link, call plugins, asResult, and isLocalFailure",
+  "keywords": [
+    "ts-pf",
+    "typescript",
+    "rpc",
+    "typesafe",
+    "typed-rpc",
+    "api",
+    "contract-first",
+    "client",
+    "typed-client"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",

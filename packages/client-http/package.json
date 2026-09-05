@@ -2,6 +2,19 @@
   "name": "@ts-pf/client-http",
   "version": "0.1.0-beta.1",
   "description": "FetchLink and Fetch interceptors",
+  "keywords": [
+    "ts-pf",
+    "typescript",
+    "rpc",
+    "typesafe",
+    "typed-rpc",
+    "api",
+    "contract-first",
+    "fetch",
+    "http",
+    "client",
+    "json-rpc"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",

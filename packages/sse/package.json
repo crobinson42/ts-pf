@@ -2,6 +2,18 @@
   "name": "@ts-pf/sse",
   "version": "0.1.0-beta.1",
   "description": "Opt-in SseCodec for SSE output framing of the same envelopes",
+  "keywords": [
+    "ts-pf",
+    "typescript",
+    "rpc",
+    "typesafe",
+    "typed-rpc",
+    "api",
+    "contract-first",
+    "sse",
+    "server-sent-events",
+    "streaming"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",

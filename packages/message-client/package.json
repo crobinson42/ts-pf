@@ -2,6 +2,19 @@
   "name": "@ts-pf/message-client",
   "version": "0.1.0-beta.1",
   "description": "Opt-in PortLink, WsLink, and StdioLink",
+  "keywords": [
+    "ts-pf",
+    "typescript",
+    "rpc",
+    "typesafe",
+    "typed-rpc",
+    "api",
+    "contract-first",
+    "websocket",
+    "stdio",
+    "messageport",
+    "client"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",

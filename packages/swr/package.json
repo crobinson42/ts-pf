@@ -2,6 +2,18 @@
   "name": "@ts-pf/swr",
   "version": "0.1.0-beta.1",
   "description": "Opt-in SWR keys, fetchers, mutators, and matchers",
+  "keywords": [
+    "ts-pf",
+    "typescript",
+    "rpc",
+    "typesafe",
+    "typed-rpc",
+    "api",
+    "contract-first",
+    "swr",
+    "react",
+    "hooks"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",

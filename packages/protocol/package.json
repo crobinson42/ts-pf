@@ -2,6 +2,18 @@
   "name": "@ts-pf/protocol",
   "version": "0.1.0-beta.1",
   "description": "Portable JSON RPC envelope, PFError, and PROTOCOL_VERSION",
+  "keywords": [
+    "ts-pf",
+    "typescript",
+    "rpc",
+    "typesafe",
+    "typed-rpc",
+    "api",
+    "contract-first",
+    "json-rpc",
+    "protocol",
+    "envelope"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",

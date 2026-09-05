@@ -2,6 +2,19 @@
   "name": "@ts-pf/server-http",
   "version": "0.1.0-beta.1",
   "description": "Fetch Request/Response handler and HTTP HandlerPlugins",
+  "keywords": [
+    "ts-pf",
+    "typescript",
+    "rpc",
+    "typesafe",
+    "typed-rpc",
+    "api",
+    "contract-first",
+    "fetch",
+    "http",
+    "handler",
+    "json-rpc"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",

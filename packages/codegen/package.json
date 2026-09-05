@@ -2,6 +2,18 @@
   "name": "@ts-pf/codegen",
   "version": "0.1.0-beta.1",
   "description": "Opt-in .d.ts codegen from catalog() for split-repo createClient",
+  "keywords": [
+    "ts-pf",
+    "typescript",
+    "rpc",
+    "typesafe",
+    "typed-rpc",
+    "api",
+    "contract-first",
+    "codegen",
+    "dts",
+    "typed-client"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",

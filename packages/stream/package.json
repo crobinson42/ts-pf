@@ -2,6 +2,18 @@
   "name": "@ts-pf/stream",
   "version": "0.1.0-beta.1",
   "description": "Opt-in StreamCodec and stream() for root AsyncIterable (JSONL)",
+  "keywords": [
+    "ts-pf",
+    "typescript",
+    "rpc",
+    "typesafe",
+    "typed-rpc",
+    "api",
+    "contract-first",
+    "streaming",
+    "jsonl",
+    "async-iterable"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",

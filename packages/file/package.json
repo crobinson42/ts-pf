@@ -2,6 +2,19 @@
   "name": "@ts-pf/file",
   "version": "0.1.0-beta.1",
   "description": "Opt-in MultipartCodec for File/Blob attachments",
+  "keywords": [
+    "ts-pf",
+    "typescript",
+    "rpc",
+    "typesafe",
+    "typed-rpc",
+    "api",
+    "contract-first",
+    "multipart",
+    "file-upload",
+    "blob",
+    "form-data"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",

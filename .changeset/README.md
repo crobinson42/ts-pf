@@ -18,7 +18,7 @@ Pick the packages, the bump (`patch` / `minor` / `major`), and a changelog summa
 
 The first public beta is a **minor** bump from `0.0.0` → `0.1.0-beta.N`. Later betas on that minor stay **patch**. A **minor** or **major** changeset starts `0.2.0-beta.0` or `1.0.0-beta.0`.
 
-New published packages while pre mode is on must be added to `pre.json` `initialVersions` (at `0.0.0`) and get a changeset. They also ship `skills/ts-pf-<pkg>/SKILL.md` with `"files"` including `skills`. New examples must be added to `config.json` `ignore`.
+New published packages while pre mode is on must be added to `pre.json` `initialVersions` (at `0.0.0`) and get a changeset. They also ship `skills/ts-pf-<pkg>/SKILL.md` with `"files"` including `skills`, and a `keywords` array (shared family terms plus package-specific). New examples must be added to `config.json` `ignore`.
 
 ## Release (beta)
 

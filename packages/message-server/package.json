@@ -2,6 +2,19 @@
   "name": "@ts-pf/message-server",
   "version": "0.1.0-beta.1",
   "description": "Opt-in PortHandler, WsHandler, and StdioHandler",
+  "keywords": [
+    "ts-pf",
+    "typescript",
+    "rpc",
+    "typesafe",
+    "typed-rpc",
+    "api",
+    "contract-first",
+    "websocket",
+    "stdio",
+    "messageport",
+    "server"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",

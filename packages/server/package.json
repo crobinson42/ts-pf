@@ -2,6 +2,18 @@
   "name": "@ts-pf/server",
   "version": "0.1.0-beta.1",
   "description": "Implementer, middleware, runProcedure, and in-process local client",
+  "keywords": [
+    "ts-pf",
+    "typescript",
+    "rpc",
+    "typesafe",
+    "typed-rpc",
+    "api",
+    "contract-first",
+    "server",
+    "middleware",
+    "procedure"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
