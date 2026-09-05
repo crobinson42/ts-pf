@@ -1,5 +1,14 @@
 # @ts-pf/server
 
+## 0.1.0-beta.2
+
+### Patch Changes
+
+- e85f033: Add npm `keywords` on every published package so the family is discoverable (typescript, rpc, typesafe, contract-first) with per-package terms for the pipe or adapter.
+- Updated dependencies [e85f033]
+  - @ts-pf/contract@0.1.0-beta.2
+  - @ts-pf/protocol@0.1.0-beta.2
+
 ## 0.1.0-beta.1
 
 ### Patch Changes

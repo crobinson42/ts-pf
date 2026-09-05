@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/protocol",
-  "version": "0.1.0-beta.1",
+  "version": "0.1.0-beta.2",
   "description": "Portable JSON RPC envelope, PFError, and PROTOCOL_VERSION",
   "keywords": [
     "ts-pf",

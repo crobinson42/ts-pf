@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/docs",
-  "version": "0.1.0-beta.1",
+  "version": "0.1.0-beta.2",
   "description": "Opt-in procedure catalog from a contract (docs, catalog)",
   "keywords": [
     "ts-pf",
@@ -53,9 +53,9 @@
   },
   "dependencies": {
     "@standard-schema/spec": "^1.0.0",
-    "@ts-pf/contract": "0.1.0-beta.1",
-    "@ts-pf/http": "0.1.0-beta.1",
-    "@ts-pf/protocol": "0.1.0-beta.1"
+    "@ts-pf/contract": "0.1.0-beta.2",
+    "@ts-pf/http": "0.1.0-beta.2",
+    "@ts-pf/protocol": "0.1.0-beta.2"
   },
   "peerDependencies": {
     "typebox": "^1.0.0"
@@ -66,7 +66,7 @@
     }
   },
   "devDependencies": {
-    "@ts-pf/stream": "0.1.0-beta.1",
+    "@ts-pf/stream": "0.1.0-beta.2",
     "typebox": "^1.3.24",
     "zod": "^4.0.0"
   }

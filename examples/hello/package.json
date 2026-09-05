@@ -8,11 +8,11 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/client": "0.1.0-beta.1",
-    "@ts-pf/client-http": "0.1.0-beta.1",
-    "@ts-pf/contract": "0.1.0-beta.1",
-    "@ts-pf/server": "0.1.0-beta.1",
-    "@ts-pf/server-http": "0.1.0-beta.1",
+    "@ts-pf/client": "0.1.0-beta.2",
+    "@ts-pf/client-http": "0.1.0-beta.2",
+    "@ts-pf/contract": "0.1.0-beta.2",
+    "@ts-pf/server": "0.1.0-beta.2",
+    "@ts-pf/server-http": "0.1.0-beta.2",
     "typebox": "^1.3.24",
     "zod": "^4.0.0"
   }
