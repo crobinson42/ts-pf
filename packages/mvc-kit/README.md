@@ -2,6 +2,8 @@
 
 Opt-in [mvc-kit](https://www.npmjs.com/package/mvc-kit) helpers for a ts-pf **client**. Inject `disposeSignal` on every call and map `VALIDATION` issues onto `FormModel.setErrors` — you still write Resource methods and still call `useLocal` / `useSingleton` yourself.
 
+Agent skill: [`skills/ts-pf-mvc-kit/`](skills/ts-pf-mvc-kit/). Sync with `npx skills experimental_sync -y`.
+
 This package does **not** wrap Resource, add React hooks, generate a Service, or fold into `@ts-pf/client`. Pass the client from `createClient<typeof contract>(link)` or `createClient<Contract>(link)` with a generated `Contract` from [`@ts-pf/codegen`](../codegen). Requires **mvc-kit >= 4.9.0**.
 
 ## Setup

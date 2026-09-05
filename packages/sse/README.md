@@ -2,6 +2,8 @@
 
 Opt-in `SseCodec` that frames root `AsyncIterable` **output** as `text/event-stream`. JSON calls stay JSON. Input streams stay `application/jsonl`. Contracts still use `stream()` from `@ts-pf/stream` — this package does not re-export it.
 
+Agent skill: [`skills/ts-pf-sse/`](skills/ts-pf-sse/). Sync with `npx skills experimental_sync -y`.
+
 Public exports: `SseCodec`, `SSE_CONTENT_TYPE`.
 
 ```ts

@@ -2,6 +2,8 @@
 
 Print a nested `Contract` `.d.ts` from a `@ts-pf/docs` `catalog()`. The frontend uses today's `createClient<Contract>(link)` — no second runtime, no `as typeof contract`, no `tsc --dts` of the backend.
 
+Agent skill: [`skills/ts-pf-codegen/`](skills/ts-pf-codegen/). Sync with `npx skills experimental_sync -y`.
+
 Types never come from `fetch()` or `JSON.parse` casts. The catalog is the spec; the `.d.ts` is the TypeScript contract.
 
 ```ts

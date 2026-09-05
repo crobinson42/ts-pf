@@ -2,6 +2,8 @@
 
 Opt-in `StreamCodec` for root `AsyncIterable` input and output. JSON calls stay JSON. Streams are `application/jsonl` — one existing RPC envelope per line.
 
+Agent skill: [`skills/ts-pf-stream/`](skills/ts-pf-stream/). Sync with `npx skills experimental_sync -y`.
+
 ```ts
 import { stream, StreamCodec } from '@ts-pf/stream'
 

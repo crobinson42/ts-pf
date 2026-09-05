@@ -2,6 +2,8 @@
 
 Opt-in procedure catalog for a ts-pf **contract**. Walks procedures into JSON you can render, snapshot, project to OpenAPI with [`@ts-pf/openapi`](../openapi), or print a portable `Contract` `.d.ts` with [`@ts-pf/codegen`](../codegen).
 
+Agent skill: [`skills/ts-pf-docs/`](skills/ts-pf-docs/). Sync with `npx skills experimental_sync -y`.
+
 This package does **not** serve HTTP, embed Scalar/Swagger, or invent REST paths. The protocol stays POST JSON RPC.
 
 ## Attach descriptions

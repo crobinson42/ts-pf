@@ -2,6 +2,8 @@
 
 `FetchLink` and Fetch `Interceptor`s. Implements `Link` from [`@ts-pf/client`](../client). Analog of [`@ts-pf/message-client`](../message-client).
 
+Agent skill: [`skills/ts-pf-client-http/`](skills/ts-pf-client-http/). Sync with `npx skills experimental_sync -y`.
+
 Fetch interceptors wrap `Request` / `Response` inside `FetchLink` (headers, raw HTTP). They do not see structured RPC input or mapped `PFError`. Retry, cache, and in-flight dedupe belong on `createClient` as call interceptors / `CallPlugin`s (`RetryPlugin`, `DedupePlugin`, `CachePlugin`).
 
 ```ts

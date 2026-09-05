@@ -1,6 +1,17 @@
 {
   "name": "@ts-pf/protocol",
   "version": "0.0.0",
+  "description": "Portable JSON RPC envelope, PFError, and PROTOCOL_VERSION",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/crobinson42/ts-pf.git",
+    "directory": "packages/protocol"
+  },
+  "homepage": "https://github.com/crobinson42/ts-pf/tree/main/packages/protocol#readme",
+  "bugs": {
+    "url": "https://github.com/crobinson42/ts-pf/issues"
+  },
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -10,6 +21,7 @@
     }
   },
   "publishConfig": {
+    "access": "public",
     "exports": {
       ".": {
         "types": "./dist/index.d.ts",
@@ -19,7 +31,8 @@
   },
   "files": [
     "dist",
-    "PROTOCOL.md"
+    "PROTOCOL.md",
+    "skills"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

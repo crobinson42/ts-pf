@@ -1,6 +1,17 @@
 {
   "name": "@ts-pf/contract",
   "version": "0.0.0",
+  "description": "Contract-first procedure and router builders, schema adapters, and infer types",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/crobinson42/ts-pf.git",
+    "directory": "packages/contract"
+  },
+  "homepage": "https://github.com/crobinson42/ts-pf/tree/main/packages/contract#readme",
+  "bugs": {
+    "url": "https://github.com/crobinson42/ts-pf/issues"
+  },
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -10,6 +21,7 @@
     }
   },
   "publishConfig": {
+    "access": "public",
     "exports": {
       ".": {
         "types": "./dist/index.d.ts",
@@ -18,7 +30,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "skills"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

@@ -1,6 +1,17 @@
 {
   "name": "@ts-pf/codegen",
   "version": "0.0.0",
+  "description": "Opt-in .d.ts codegen from catalog() for split-repo createClient",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/crobinson42/ts-pf.git",
+    "directory": "packages/codegen"
+  },
+  "homepage": "https://github.com/crobinson42/ts-pf/tree/main/packages/codegen#readme",
+  "bugs": {
+    "url": "https://github.com/crobinson42/ts-pf/issues"
+  },
   "type": "module",
   "sideEffects": false,
   "bin": {
@@ -13,6 +24,7 @@
     }
   },
   "publishConfig": {
+    "access": "public",
     "exports": {
       ".": {
         "types": "./dist/index.d.ts",
@@ -21,7 +33,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "skills"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

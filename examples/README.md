@@ -10,3 +10,5 @@ Thin apps for the procedure model. Fetch is the default adapter; message, stream
 | [`plugins`](plugins) | `CallPlugin` / `CallInterceptor`, retry / cache / dedupe, custom plugins |
 
 Implemented routers are named `app`. Clients do not import `@ts-pf/server`.
+
+Each `@ts-pf/*` package ships a consumer agent skill under `skills/`. After install: `npx skills experimental_sync -y`.

@@ -2,9 +2,19 @@
 
 TypeScript Procedure Factory — a contract-first, end-to-end type-safe RPC library.
 
+Source: [github.com/crobinson42/ts-pf](https://github.com/crobinson42/ts-pf)
+
 **This procedure model, any pipe.** oRPC-like DX without the dual-protocol platform. You write a contract, implement it on the server, and call it from a client that never imports server code. Fetch is the default adapter, not the runtime.
 
 Requires Node.js 18+.
+
+## Install
+
+Packages publish to the npm `beta` dist-tag until the first stable `0.1.0`.
+
+```sh
+npm install @ts-pf/contract@beta @ts-pf/server@beta @ts-pf/server-http@beta @ts-pf/client@beta @ts-pf/client-http@beta
+```
 
 ## Packages
 
@@ -30,6 +40,16 @@ Requires Node.js 18+.
 | [`@ts-pf/mvc-kit`](packages/mvc-kit) | Opt-in `bindClient` + `issuesToFieldErrors` for mvc-kit Resources |
 
 Wire spec: [packages/protocol/PROTOCOL.md](packages/protocol/PROTOCOL.md).
+
+## Agent skills
+
+Each `@ts-pf/*` package ships `skills/ts-pf-<name>/` (plus `ts-pf-app` on `@ts-pf/contract`). After install or `npm update`:
+
+```sh
+npx skills experimental_sync -y
+```
+
+That links the skills into the project's agent skill dirs. Put the command on the **app** `postinstall` if you want it automatic — never on `@ts-pf/*`.
 
 ## Contract
 
@@ -284,5 +304,9 @@ Runnable apps in [`examples/`](examples/): [`hello`](examples/hello) (Fetch), [`
 
 ```sh
 npm install
-npm run lint && npm run type-check && npm test && npm run build
+npm run lint && npm run check:skills && npm run type-check && npm test && npm run build
 ```
+
+A public API / name / happy-path change updates `packages/<pkg>/skills/ts-pf-<pkg>/SKILL.md` in the same PR (`npm run check:skills`).
+
+Releases use [Changesets](https://github.com/changesets/changesets) on the **beta** track (`0.1.0-beta.N`, npm dist-tag `beta`). See [`.changeset/README.md`](.changeset/README.md). A PR that changes a published `packages/*` package must include a changeset (`npx changeset`).

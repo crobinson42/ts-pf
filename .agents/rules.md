@@ -125,7 +125,9 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 - ESM-only, TypeScript strict (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`).
 - One job per file. No HTTP in `contract`. No schemas in `protocol`. No `Request`/`Response` in `server` or `client`.
 - Tests: Vitest. Type tests: `expectTypeOf` plus `tsc --noEmit`.
-- Workspace: npm + Turborepo (`packages/*`, `examples/*`). Internal `@ts-pf/*` deps: `"*"`. Lockfile: `package-lock.json`. Build: `tsc -p tsconfig.build.json`.
+- Workspace: npm + Turborepo (`packages/*`, `examples/*`). Internal `@ts-pf/*` deps: `"*"` until `changeset version` rewrites them for npm; do not restore `"*"` after a bump. New published packages: `license: "MIT"`, `publishConfig.access: "public"`, `files: ["dist", "skills"]`, a `skills/ts-pf-<pkg>/SKILL.md` consumer skill (same PR as the package), and (while pre mode is on) `.changeset/pre.json` `initialVersions`. Lockfile: `package-lock.json`. Build: `tsc -p tsconfig.build.json`.
+- Consumer skills live in `packages/<pkg>/skills/ts-pf-<pkg>/SKILL.md` (hub `ts-pf-app` is in `contract`). Update the matching skill in the same PR as a public API / name / happy-path change. Do not copy this file into them. Downstream install: `npx skills experimental_sync -y`. No library `postinstall`.
+- Releases: Changesets **pre mode** `beta` (`0.1.0-beta.N`, npm dist-tag `beta`). PRs that change a published `packages/*` package include a `.changeset/*.md`. First public beta is **minor**; later betas on `0.1.0` stay **patch** unless breaking. Do not `changeset pre exit` until stable `0.1.0`. Examples are private and listed in `.changeset/config.json` `ignore` (add new example names there).
 
 ## Anti-patterns
 
@@ -151,7 +153,7 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 
 ## Examples
 
-Live in `examples/`: `hello` (Fetch), `message` (MessagePort), `stream` (`StreamCodec`), `plugins` (`CallPlugin` / `CallInterceptor`). They are private workspace packages, not published.
+Live in `examples/`: `hello` (Fetch), `message` (MessagePort), `stream` (`StreamCodec`), `plugins` (`CallPlugin` / `CallInterceptor`). They are private workspace packages, not published. New examples: `private: true` and append the package name to `.changeset/config.json` `ignore`.
 
 - Implemented routers are named `app` (not `router` — that name is the contract helper).
 - Example `client.ts` must not import `@ts-pf/server`.
@@ -161,7 +163,7 @@ Live in `examples/`: `hello` (Fetch), `message` (MessagePort), `stream` (`Stream
 ## Done means verified
 
 ```
-npm run lint && npm run type-check && npm test && npm run build
+npm run lint && npm run check:skills && npm run type-check && npm test && npm run build
 ```
 
-Wire changes must update `packages/protocol/PROTOCOL.md`.
+Wire changes must update `packages/protocol/PROTOCOL.md`. Public API / name / happy-path changes must update `packages/<pkg>/skills/ts-pf-<pkg>/SKILL.md`.

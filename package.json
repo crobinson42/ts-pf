@@ -3,6 +3,14 @@
   "private": true,
   "type": "module",
   "packageManager": "npm@11.12.1",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/crobinson42/ts-pf.git"
+  },
+  "homepage": "https://github.com/crobinson42/ts-pf#readme",
+  "bugs": {
+    "url": "https://github.com/crobinson42/ts-pf/issues"
+  },
   "workspaces": [
     "packages/*",
     "examples/*"
@@ -11,7 +19,11 @@
     "build": "turbo run build",
     "test": "turbo run test",
     "type-check": "turbo run type-check",
-    "lint": "turbo run lint"
+    "lint": "turbo run lint",
+    "check:skills": "node scripts/check-skills.mjs",
+    "changeset": "changeset",
+    "changeset:version": "changeset version",
+    "changeset:publish": "changeset publish"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.0",

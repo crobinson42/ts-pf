@@ -1,6 +1,17 @@
 {
   "name": "@ts-pf/message-server",
   "version": "0.0.0",
+  "description": "Opt-in PortHandler, WsHandler, and StdioHandler",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/crobinson42/ts-pf.git",
+    "directory": "packages/message-server"
+  },
+  "homepage": "https://github.com/crobinson42/ts-pf/tree/main/packages/message-server#readme",
+  "bugs": {
+    "url": "https://github.com/crobinson42/ts-pf/issues"
+  },
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -14,6 +25,7 @@
     }
   },
   "publishConfig": {
+    "access": "public",
     "exports": {
       ".": {
         "types": "./dist/index.d.ts",
@@ -26,7 +38,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "skills"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

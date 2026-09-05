@@ -1,6 +1,17 @@
 {
   "name": "@ts-pf/message",
   "version": "0.0.0",
+  "description": "Opt-in JSON text frames and MessageSession for WS, stdio, and MessagePort",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/crobinson42/ts-pf.git",
+    "directory": "packages/message"
+  },
+  "homepage": "https://github.com/crobinson42/ts-pf/tree/main/packages/message#readme",
+  "bugs": {
+    "url": "https://github.com/crobinson42/ts-pf/issues"
+  },
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -14,6 +25,7 @@
     }
   },
   "publishConfig": {
+    "access": "public",
     "exports": {
       ".": {
         "types": "./dist/index.d.ts",
@@ -25,7 +37,10 @@
       }
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist",
+    "skills"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "test": "vitest run",

@@ -2,6 +2,8 @@
 
 Opt-in [SWR](https://swr.vercel.app/) helpers for a ts-pf **client**. Typed keys, fetchers, mutators, matchers, and stream subscribers — you still call `useSWR` yourself.
 
+Agent skill: [`skills/ts-pf-swr/`](skills/ts-pf-swr/). Sync with `npx skills experimental_sync -y`.
+
 This package does **not** wrap `useSWR`, add a React provider, switch RPC to GET, or fold into `@ts-pf/client`. Pass the client from `createClient<typeof contract>(link)` or `createClient<Contract>(link)` with a generated `Contract` from [`@ts-pf/codegen`](../codegen).
 
 ## Setup

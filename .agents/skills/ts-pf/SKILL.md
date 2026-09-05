@@ -1,11 +1,13 @@
 ---
 name: ts-pf
 description: Use when implementing, reviewing, refactoring, or extending the ts-pf library — @ts-pf/contract, protocol, server, client, http, server-http, client-http, file, stream, sse, docs, openapi, codegen, message, message-server, message-client, swr, or mvc-kit; procedure/router builders; FetchHandler; createClient; schema adapters; middleware; JSON RPC; MultipartCodec; StreamCodec; SseCodec; catalog()/docs(); openapi(); emit()/catalogHash(); PortHandler/WsHandler/StdioHandler; PortLink/WsLink/StdioLink; createSwr; bindClient; CallInterceptor; CallPlugin; intercept(); RetryPlugin; DedupePlugin; CachePlugin; Fetch vs call interceptors.
+metadata:
+  internal: true
 ---
 
 # ts-pf
 
-Follow [`.agents/rules.md`](../../rules.md) for locks and public names. This skill is the architecture map and the "how to change it" guide.
+Follow [`.agents/rules.md`](../../rules.md) for locks and public names. This skill is the architecture map and the "how to change it" guide. Consumer usage docs live in `packages/<pkg>/skills/` (hub: `packages/contract/skills/ts-pf-app`). Do not publish this file. Downstream install is `npx skills experimental_sync -y` — never a library `postinstall`.
 
 Wire format: `packages/protocol/PROTOCOL.md`. DX overview: `README.md`.
 
@@ -20,6 +22,8 @@ examples/
   message/            PortHandler + PortLink over MessageChannel
   stream/             StreamCodec + stream()
   plugins/            CallPlugin / CallInterceptor; first-party retry/cache/dedupe; local TimeoutPlugin / AuditPlugin; CORSPlugin is HTTP-only
+scripts/check-skills.mjs
+packages/*/skills/ts-pf-<pkg>/SKILL.md   consumer usage (hub ts-pf-app on contract)
 packages/contract/src/
   builder.ts          procedure singleton, router()
   procedure.ts        ContractProcedure brand
@@ -255,13 +259,14 @@ Runtime `validateSchema`: user `registerSchemaAdapter` (first `accept` match) �
 | A new **paradigm** (gRPC, GraphQL, REST) | projection like `@ts-pf/openapi`, not an adapter of `runProcedure`. |
 | SWR (React) | `@ts-pf/swr` `createSwr(client)`. |
 | mvc-kit (MVVM) | `@ts-pf/mvc-kit` `bindClient(client, host)` + `issuesToFieldErrors`. |
-| TanStack Query, Node HTTP, EventPublisher | **new package** under `packages/`. Do not fold into contract/server/client. |
+| TanStack Query, Node HTTP, EventPublisher | **new package** under `packages/`. Do not fold into contract/server/client. Same PR: `skills/ts-pf-<pkg>/SKILL.md` and `"files"` includes `skills`. |
+| Consumer usage skill | `packages/<pkg>/skills/ts-pf-<pkg>/SKILL.md` in the same PR as a public API / name / happy-path change. Hub is `ts-pf-app` on contract. `npm run check:skills`. |
 | Typed errors on a procedure | `.errors({ CODE: { status?, message, data? } })`. `status` is optional HTTP / OpenAPI metadata. Handler: `throw errors.CODE(data)`. `ClientError<E>` is declared variants plus remaining protocol codes. `asResult` → `CallResult<T, E>`. Non-JS clients switch on JSON `error.code`. `isLocalFailure` is `local === true`. Do not put `status` or `cause` in `{ ok: false, error }`. |
 | Retry / in-flight dedupe / cache | `RetryPlugin` / `DedupePlugin` / `CachePlugin` on `createClient(link, { plugins })`. Server `DedupePlugin` via `createLocalClient` `{ plugins }` or `applyPlugins` into `FetchHandler`/`HandlerOptions` `{ interceptors }`. Not FetchLink internals. Not Fetch interceptors (they cannot see structured input without cloning body). Skip `AsyncIterable` input; `CachePlugin` also does not cache iterable output. Server default dedupe keys every unary call — pass `key` to restrict to reads (unsafe for non-idempotent writes). Batch still refuse. |
 | Timeout | `AbortSignal.timeout` — userland. |
 | Batch | refuse. Out of scope. |
 
-New packages: same `exports` (source for workspace, `publishConfig` → `dist`), `tsc -p tsconfig.build.json`, Vitest, Biome. Internal `@ts-pf/*` deps: `"*"` (not `workspace:*`). Depend downward only (no client↔server, no server-http↔client-http).
+New **published** packages: `version` `0.0.0`, `license: "MIT"`, `files: ["dist", "skills"]`, `skills/ts-pf-<pkg>/SKILL.md`, workspace `exports` → `src` with matching `publishConfig.exports` → `dist` (mirror extra paths such as `./stdio`), `publishConfig.access: "public"`, `tsc -p tsconfig.build.json`, Vitest, Biome, a `.changeset/*.md`. While pre mode is on, add the name at `0.0.0` to `.changeset/pre.json` `initialVersions`. Internal `@ts-pf/*` deps: `"*"` (not `workspace:*`). `changeset version` rewrites `"*"` for the tarball; do not restore `"*"` on packages that already have a versioned range. Depend downward only (no client↔server, no server-http↔client-http). Repo is Changesets **pre mode** `beta` (`0.1.0-beta.N`, npm dist-tag `beta`); do not `changeset pre exit` until stable `0.1.0`. First public beta is a **minor** changeset; later betas on the same minor stay **patch** unless the change is breaking (`minor` → `0.2.0-beta.0`, `major` → `1.0.0-beta.0`). New **example** packages are `private: true` and should be appended to `.changeset/config.json` `ignore`.
 
 ## Anti-patterns
 
@@ -297,4 +302,6 @@ New packages: same `exports` (source for workspace, `publishConfig` → `dist`),
 - Procedure completeness: `impl.router()` rejects missing/extra keys (types + runtime)
 - Errors: unknown throws → `INTERNAL`, no stack in JSON. Unary output schema failure → `INTERNAL`, no issues. Invalid declared error `data` → `INTERNAL`, never serialize the bad payload. `ClientError` narrows `data` from `code`. `asResult` is `CallResult<T, E>`.
 - Protocol edits update `PROTOCOL.md`, `ProtocolErrorCode` in `packages/protocol/src/error.ts`, and the duplicated **private** `ProtocolErrorCode` union in `packages/contract/src/infer.ts`
-- `npm run lint && npm run type-check && npm test && npm run build`
+- `npm run lint && npm run check:skills && npm run type-check && npm test && npm run build`
+- Published-package changes include a `.changeset/*.md`. First beta: **minor**; later `0.1.0` betas: **patch** unless breaking. Releases stay on dist-tag `beta` until `changeset pre exit`. New published packages: `pre.json` `initialVersions`, `license` / `publishConfig.access` / `files: ["dist", "skills"]` / `skills/ts-pf-<pkg>/SKILL.md`. Do not restore `"*"` after a version bump.
+- Matching `packages/<pkg>/skills/ts-pf-<pkg>` still matches public exports and names. `npm run check:skills`.

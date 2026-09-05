@@ -2,6 +2,8 @@
 
 Opt-in `PortLink` / `WsLink` / `StdioLink` for the same `createClient(link)` as `@ts-pf/client-http` `FetchLink`.
 
+Agent skill: [`skills/ts-pf-message-client/`](skills/ts-pf-message-client/). Sync with `npx skills experimental_sync -y`.
+
 ```ts
 import { createClient, RetryPlugin } from '@ts-pf/client'
 import { PortLink } from '@ts-pf/message-client'
