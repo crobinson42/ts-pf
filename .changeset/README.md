@@ -22,7 +22,9 @@ New published packages while pre mode is on must be added to `pre.json` `initial
 
 ## Release (beta)
 
-On `main`, the [release workflow](../.github/workflows/release.yml) opens a **Version packages (beta)** PR when unpublished changesets exist. Merging that PR publishes to npm:
+On `main`, the [release workflow](../.github/workflows/release.yml) opens a **Version packages (beta)** PR when unpublished changesets exist. Merging that PR publishes to npm.
+
+`GITHUB_TOKEN` can only open that PR if the repo allows it: **Settings → Actions → General → Workflow permissions → Allow GitHub Actions to create and approve pull requests**. Also set **Read and write permissions**. After changing this, re-run the `release` workflow.
 
 ```sh
 npm install @ts-pf/contract@beta
@@ -43,8 +45,9 @@ npx changeset publish   # npm dist-tag `beta`
 
 1. Reserve is already done (`@ts-pf` on npm).
 2. Add `NPM_TOKEN` as a GitHub Actions secret (automation token with publish rights on `@ts-pf`), **or** configure [trusted publishing](https://docs.npmjs.com/trusted-publishers) for workflow `release.yml` once the packages exist.
-3. Push / merge to `main` (`https://github.com/crobinson42/ts-pf`). The release workflow opens the version PR.
-4. Merge the version PR. Packages publish as `0.1.0-beta.N` with tag `beta`.
+3. Enable **Settings → Actions → General → Workflow permissions**: **Read and write permissions** and **Allow GitHub Actions to create and approve pull requests** (`https://github.com/crobinson42/ts-pf/settings/actions`).
+4. Push / merge to `main`. The release workflow opens the version PR. Re-run **release** if it failed before that setting was on.
+5. Merge the version PR. Packages publish as `0.1.0-beta.N` with tag `beta`.
 
 Until a stable release, `npm install @ts-pf/contract` (no tag) will not resolve. Always use `@beta`.
 
