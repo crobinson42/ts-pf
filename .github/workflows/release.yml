@@ -4,6 +4,11 @@ name: release
 #   - Read and write permissions
 #   - Allow GitHub Actions to create and approve pull requests
 # https://github.com/crobinson42/ts-pf/settings/actions
+#
+# npm trusted publisher on each package:
+#   user crobinson42, repo ts-pf, workflow release.yml, allow npm publish
+# Do not set registry-url on setup-node: it writes an empty _authToken and
+# npm then skips OIDC (ENEEDAUTH).
 
 on:
   push:
@@ -13,6 +18,11 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
 
 jobs:
   release:
@@ -28,16 +38,12 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-          registry-url: https://registry.npmjs.org
           package-manager-cache: false
       - run: npm install -g npm@11.12.1
-      # setup-node writes `_authToken=${NODE_AUTH_TOKEN}`. An empty token makes
-      # npm skip OIDC and fail with ENEEDAUTH. Trusted publishing needs no token.
       - run: |
-          npmrc="${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}"
-          if [ -f "$npmrc" ]; then
-            sed -i '/_authToken/d' "$npmrc"
-          fi
+          unset NODE_AUTH_TOKEN NPM_TOKEN
+          echo "npm $(npm --version)"
+          echo "OIDC request URL set: ${ACTIONS_ID_TOKEN_REQUEST_URL:+yes}"
       - run: npm ci
       - run: npm run build
       - uses: changesets/action@v1
@@ -47,5 +53,6 @@ jobs:
           version: npm run changeset:version
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # Publish outside the action so npm OIDC errors show up in the step log.
-      - run: npm run changeset:publish
+      - run: |
+          unset NODE_AUTH_TOKEN NPM_TOKEN
+          npm run changeset:publish
