@@ -22,7 +22,7 @@
     "lint": "turbo run lint",
     "check:skills": "node scripts/check-skills.mjs",
     "changeset": "changeset",
-    "changeset:version": "changeset version",
+    "changeset:version": "changeset version && npm install --package-lock-only",
     "changeset:publish": "changeset publish"
   },
   "devDependencies": {

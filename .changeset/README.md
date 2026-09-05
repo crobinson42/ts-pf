@@ -33,10 +33,11 @@ npm install @ts-pf/contract@beta
 Local equivalent:
 
 ```sh
-npx changeset version   # consumes .changeset/*.md, writes 0.1.0-beta.N + CHANGELOG.md
-npm install             # refresh the lockfile
+npm run changeset:version   # consumes .changeset/*.md, writes 0.1.0-beta.N + CHANGELOG.md, refreshes the lockfile
 npm run build
-npx changeset publish   # npm dist-tag `beta`
+npm run changeset:publish   # npm dist-tag `beta`
+
+The GitHub Action does **not** run `version` / `publish` through a shell. Use an npm script (`npm run changeset:version`), not `cmd && other`.
 ```
 
 `changeset version` rewrites internal `"*"` `@ts-pf/*` dependencies to the prerelease version so the published tarball is installable. Do not restore `"*"` by hand after a version bump.
