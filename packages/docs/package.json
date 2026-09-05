@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/docs",
-  "version": "0.0.0",
+  "version": "0.1.0-beta.0",
   "description": "Opt-in procedure catalog from a contract (docs, catalog)",
   "license": "MIT",
   "repository": {
@@ -41,9 +41,9 @@
   },
   "dependencies": {
     "@standard-schema/spec": "^1.0.0",
-    "@ts-pf/contract": "*",
-    "@ts-pf/http": "*",
-    "@ts-pf/protocol": "*"
+    "@ts-pf/contract": "0.1.0-beta.0",
+    "@ts-pf/http": "0.1.0-beta.0",
+    "@ts-pf/protocol": "0.1.0-beta.0"
   },
   "peerDependencies": {
     "typebox": "^1.0.0"
@@ -54,7 +54,7 @@
     }
   },
   "devDependencies": {
-    "@ts-pf/stream": "*",
+    "@ts-pf/stream": "0.1.0-beta.0",
     "typebox": "^1.3.24",
     "zod": "^4.0.0"
   }

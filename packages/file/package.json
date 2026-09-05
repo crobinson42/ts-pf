@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/file",
-  "version": "0.0.0",
+  "version": "0.1.0-beta.0",
   "description": "Opt-in MultipartCodec for File/Blob attachments",
   "license": "MIT",
   "repository": {
@@ -40,15 +40,15 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/http": "*",
-    "@ts-pf/protocol": "*"
+    "@ts-pf/http": "0.1.0-beta.0",
+    "@ts-pf/protocol": "0.1.0-beta.0"
   },
   "devDependencies": {
-    "@ts-pf/client": "*",
-    "@ts-pf/client-http": "*",
-    "@ts-pf/contract": "*",
-    "@ts-pf/server": "*",
-    "@ts-pf/server-http": "*",
+    "@ts-pf/client": "0.1.0-beta.0",
+    "@ts-pf/client-http": "0.1.0-beta.0",
+    "@ts-pf/contract": "0.1.0-beta.0",
+    "@ts-pf/server": "0.1.0-beta.0",
+    "@ts-pf/server-http": "0.1.0-beta.0",
     "zod": "^4.0.0"
   }
 }

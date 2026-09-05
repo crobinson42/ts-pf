@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/client",
-  "version": "0.0.0",
+  "version": "0.1.0-beta.0",
   "description": "Typed createClient, Link, call plugins, asResult, and isLocalFailure",
   "license": "MIT",
   "repository": {
@@ -40,8 +40,8 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/contract": "*",
-    "@ts-pf/protocol": "*"
+    "@ts-pf/contract": "0.1.0-beta.0",
+    "@ts-pf/protocol": "0.1.0-beta.0"
   },
   "devDependencies": {
     "zod": "^4.0.0"

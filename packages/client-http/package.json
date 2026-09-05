@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/client-http",
-  "version": "0.0.0",
+  "version": "0.1.0-beta.0",
   "description": "FetchLink and Fetch interceptors",
   "license": "MIT",
   "repository": {
@@ -40,14 +40,14 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/client": "*",
-    "@ts-pf/http": "*",
-    "@ts-pf/protocol": "*"
+    "@ts-pf/client": "0.1.0-beta.0",
+    "@ts-pf/http": "0.1.0-beta.0",
+    "@ts-pf/protocol": "0.1.0-beta.0"
   },
   "devDependencies": {
-    "@ts-pf/contract": "*",
-    "@ts-pf/server": "*",
-    "@ts-pf/server-http": "*",
+    "@ts-pf/contract": "0.1.0-beta.0",
+    "@ts-pf/server": "0.1.0-beta.0",
+    "@ts-pf/server-http": "0.1.0-beta.0",
     "typebox": "^1.3.24",
     "zod": "^4.0.0"
   }
