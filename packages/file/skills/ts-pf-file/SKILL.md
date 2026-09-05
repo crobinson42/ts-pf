@@ -7,7 +7,7 @@ description: Use when sending File or Blob attachments over ts-pf HTTP with Mult
 
 Opt-in `MultipartCodec` for binary attachments. JSON calls stay JSON.
 
-Install: `npm i @ts-pf/file@beta`
+Install: `npm i @ts-pf/file`
 
 Link for agents: `npx skills experimental_sync -y`
 

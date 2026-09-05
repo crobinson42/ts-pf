@@ -7,7 +7,7 @@ description: Use when framing ts-pf stream output as text/event-stream with SseC
 
 Opt-in `SseCodec`: root `AsyncIterable` **output** as `text/event-stream`. JSON calls stay JSON. Input streams stay JSONL.
 
-Install: `npm i @ts-pf/sse@beta`
+Install: `npm i @ts-pf/sse`
 
 Link for agents: `npx skills experimental_sync -y`
 

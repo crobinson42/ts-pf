@@ -7,7 +7,7 @@ description: Use when calling ts-pf over MessagePort, WebSocket, or stdio with P
 
 `PortLink` / `WsLink` / `StdioLink` for the same `createClient(link)` as `FetchLink`.
 
-Install: `npm i @ts-pf/message-client@beta`
+Install: `npm i @ts-pf/message-client`
 
 Link for agents: `npx skills experimental_sync -y`
 

@@ -7,7 +7,7 @@ description: Use when projecting a ts-pf catalog() to OpenAPI 3.1 with openapi()
 
 OpenAPI 3.1 projection of `catalog()`. POST JSON RPC only. Not a runtime.
 
-Install: `npm i @ts-pf/openapi@beta`
+Install: `npm i @ts-pf/openapi`
 
 Link for agents: `npx skills experimental_sync -y`
 

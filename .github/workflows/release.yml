@@ -49,7 +49,7 @@ jobs:
       - run: npm run build
       - uses: changesets/action@v1
         with:
-          title: Version packages (beta)
+          title: Version packages
           commit: 'chore: version packages'
           version: npm run changeset:version
         env:

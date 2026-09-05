@@ -7,7 +7,7 @@ description: Use when serving ts-pf over Fetch with FetchHandler, CORSPlugin, Re
 
 `FetchHandler` and HTTP `HandlerPlugin`s. Calls `lookupProcedure` + `runProcedure`.
 
-Install: `npm i @ts-pf/server-http@beta`
+Install: `npm i @ts-pf/server-http`
 
 Link for agents: `npx skills experimental_sync -y`
 

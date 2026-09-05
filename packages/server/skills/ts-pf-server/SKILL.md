@@ -7,7 +7,7 @@ description: Use when implementing a ts-pf contract with createImplementer, midd
 
 Implementer, middleware, `runProcedure`. No `Request` / `Response`.
 
-Install: `npm i @ts-pf/server@beta` (needs `@ts-pf/contract` + `@ts-pf/protocol`)
+Install: `npm i @ts-pf/server` (needs `@ts-pf/contract` + `@ts-pf/protocol`)
 
 Link for agents: `npx skills experimental_sync -y`
 

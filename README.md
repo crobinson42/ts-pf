@@ -10,10 +10,8 @@ Requires Node.js 18+.
 
 ## Install
 
-Packages publish to the npm `beta` dist-tag until the first stable `0.1.0`.
-
 ```sh
-npm install @ts-pf/contract@beta @ts-pf/server@beta @ts-pf/server-http@beta @ts-pf/client@beta @ts-pf/client-http@beta
+npm install @ts-pf/contract @ts-pf/server @ts-pf/server-http @ts-pf/client @ts-pf/client-http
 ```
 
 ## Packages
@@ -309,4 +307,4 @@ npm run lint && npm run check:skills && npm run type-check && npm test && npm ru
 
 A public API / name / happy-path change updates `packages/<pkg>/skills/ts-pf-<pkg>/SKILL.md` in the same PR (`npm run check:skills`).
 
-Releases use [Changesets](https://github.com/changesets/changesets) on the **beta** track (`0.1.0-beta.N`, npm dist-tag `beta`). See [`.changeset/README.md`](.changeset/README.md). A PR that changes a published `packages/*` package must include a changeset (`npx changeset`).
+Releases use [Changesets](https://github.com/changesets/changesets) (`latest` on npm). See [`.changeset/README.md`](.changeset/README.md). A PR that changes a published `packages/*` package must include a changeset (`npx changeset`).

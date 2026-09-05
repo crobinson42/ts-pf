@@ -7,7 +7,7 @@ description: Use when calling a ts-pf contract with createClient, asResult, isLo
 
 Typed client over a `Link`. No Fetch.
 
-Install: `npm i @ts-pf/client@beta` (needs `@ts-pf/contract` + `@ts-pf/protocol`)
+Install: `npm i @ts-pf/client` (needs `@ts-pf/contract` + `@ts-pf/protocol`)
 
 Link for agents: `npx skills experimental_sync -y`
 

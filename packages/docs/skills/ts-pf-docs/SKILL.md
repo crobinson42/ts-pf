@@ -7,7 +7,7 @@ description: Use when building a ts-pf procedure catalog with docs(), catalog(),
 
 Opt-in procedure catalog from a **contract**. Does not serve HTTP.
 
-Install: `npm i @ts-pf/docs@beta`
+Install: `npm i @ts-pf/docs`
 
 Link for agents: `npx skills experimental_sync -y`
 

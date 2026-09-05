@@ -1,5 +1,13 @@
 # @ts-pf/mvc-kit
 
+## 0.1.0
+
+### Patch Changes
+
+- First stable `0.1.0` release. Exit Changesets pre mode and publish to the npm `latest` dist-tag.
+- Updated dependencies
+  - @ts-pf/contract@0.1.0
+
 ## 0.1.0-beta.2
 
 ### Patch Changes

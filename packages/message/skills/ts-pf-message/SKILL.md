@@ -7,7 +7,7 @@ description: Use when framing ts-pf over JSON text frames with MessageSession, D
 
 Opt-in JSON text frames and `MessageSession`. Not an HTTP codec.
 
-Install: `npm i @ts-pf/message@beta`
+Install: `npm i @ts-pf/message`
 
 Link for agents: `npx skills experimental_sync -y`
 

@@ -7,7 +7,7 @@ description: Use when binding a ts-pf client to mvc-kit Resources with bindClien
 
 Opt-in mvc-kit helpers for a ts-pf **client**. You still write Resource methods. Requires **mvc-kit >= 4.9.0**.
 
-Install: `npm i @ts-pf/mvc-kit@beta`
+Install: `npm i @ts-pf/mvc-kit`
 
 Link for agents: `npx skills experimental_sync -y`
 

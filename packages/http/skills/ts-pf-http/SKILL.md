@@ -7,7 +7,7 @@ description: Use when writing or configuring a ts-pf HTTP codec — JSONCodec, R
 
 HTTP wire helpers. No `FetchHandler`, no `FetchLink`.
 
-Install: `npm i @ts-pf/http@beta`
+Install: `npm i @ts-pf/http`
 
 Link for agents: `npx skills experimental_sync -y`
 

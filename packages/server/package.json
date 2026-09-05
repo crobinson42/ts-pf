@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/server",
-  "version": "0.1.0-beta.2",
+  "version": "0.1.0",
   "description": "Implementer, middleware, runProcedure, and in-process local client",
   "keywords": [
     "ts-pf",
@@ -52,8 +52,8 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/contract": "0.1.0-beta.2",
-    "@ts-pf/protocol": "0.1.0-beta.2"
+    "@ts-pf/contract": "0.1.0",
+    "@ts-pf/protocol": "0.1.0"
   },
   "devDependencies": {
     "zod": "^4.0.0"

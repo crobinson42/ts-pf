@@ -7,7 +7,7 @@ description: Use when serving ts-pf over MessagePort, WebSocket, or stdio with P
 
 `PortHandler` / `WsHandler` / `StdioHandler` for the same implemented `app` as `FetchHandler`.
 
-Install: `npm i @ts-pf/message-server@beta`
+Install: `npm i @ts-pf/message-server`
 
 Link for agents: `npx skills experimental_sync -y`
 

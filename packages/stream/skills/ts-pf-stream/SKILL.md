@@ -7,7 +7,7 @@ description: Use when streaming root AsyncIterable over ts-pf with stream() and 
 
 Opt-in `StreamCodec` for root `AsyncIterable` input and output. JSON calls stay JSON. Streams are `application/jsonl`.
 
-Install: `npm i @ts-pf/stream@beta`
+Install: `npm i @ts-pf/stream`
 
 Link for agents: `npx skills experimental_sync -y`
 

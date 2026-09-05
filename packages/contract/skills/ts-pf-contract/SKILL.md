@@ -7,7 +7,7 @@ description: Use when defining a ts-pf contract with procedure, router, schemas,
 
 Contract builders and infer types. No HTTP, no runtime.
 
-Install: `npm i @ts-pf/contract@beta`
+Install: `npm i @ts-pf/contract`
 
 Link for agents: `npx skills experimental_sync -y`
 

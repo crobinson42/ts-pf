@@ -7,7 +7,7 @@ description: Use when wiring a ts-pf client to SWR with createSwr keys, fetchers
 
 Opt-in SWR helpers for a ts-pf **client**. You still call `useSWR` yourself.
 
-Install: `npm i @ts-pf/swr@beta` (peer `swr`)
+Install: `npm i @ts-pf/swr` (peer `swr`)
 
 Link for agents: `npx skills experimental_sync -y`
 

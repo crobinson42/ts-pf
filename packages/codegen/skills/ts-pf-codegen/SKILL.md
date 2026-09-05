@@ -7,7 +7,7 @@ description: Use when emitting a split-repo ts-pf Contract .d.ts from catalog() 
 
 Print a nested `Contract` `.d.ts` from `catalog()`. Frontend still uses `createClient<Contract>(link)`.
 
-Install: `npm i @ts-pf/codegen@beta`
+Install: `npm i @ts-pf/codegen`
 
 Link for agents: `npx skills experimental_sync -y`
 

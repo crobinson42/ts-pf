@@ -7,7 +7,7 @@ description: Use when throwing or handling ts-pf PFError, localFailure, PROTOCOL
 
 Portable JSON envelope and `PFError`. No HTTP server, no schemas, no codecs.
 
-Install: `npm i @ts-pf/protocol@beta`
+Install: `npm i @ts-pf/protocol`
 
 Link for agents: `npx skills experimental_sync -y`
 

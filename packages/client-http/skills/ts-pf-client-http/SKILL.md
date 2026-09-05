@@ -7,7 +7,7 @@ description: Use when calling ts-pf over Fetch with FetchLink or Fetch Intercept
 
 `FetchLink` and Fetch `Interceptor`s. Implements `Link`.
 
-Install: `npm i @ts-pf/client-http@beta`
+Install: `npm i @ts-pf/client-http`
 
 Link for agents: `npx skills experimental_sync -y`
 

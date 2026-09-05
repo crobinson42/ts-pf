@@ -1,5 +1,11 @@
 # @ts-pf/protocol
 
+## 0.1.0
+
+### Patch Changes
+
+- First stable `0.1.0` release. Exit Changesets pre mode and publish to the npm `latest` dist-tag.
+
 ## 0.1.0-beta.2
 
 ### Patch Changes

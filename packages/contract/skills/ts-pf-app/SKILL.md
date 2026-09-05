@@ -7,7 +7,7 @@ description: Use when building an app with ts-pf — picking packages, writing a
 
 Contract-first TypeScript RPC. One procedure model; Fetch is an adapter. Load a `ts-pf-<pkg>` skill for package details.
 
-Install: `npm i @ts-pf/contract@beta @ts-pf/server@beta @ts-pf/server-http@beta @ts-pf/client@beta @ts-pf/client-http@beta`
+Install: `npm i @ts-pf/contract @ts-pf/server @ts-pf/server-http @ts-pf/client @ts-pf/client-http`
 
 Link for agents (after install or `npm update`): `npx skills experimental_sync -y`
 
