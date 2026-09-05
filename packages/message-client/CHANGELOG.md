@@ -1,5 +1,14 @@
 # @ts-pf/message-client
 
+## 0.1.0-beta.1
+
+### Patch Changes
+
+- Publish from GitHub Actions with npm trusted publishing (OIDC). No `NPM_TOKEN`.
+- Updated dependencies
+  - @ts-pf/client@0.1.0-beta.1
+  - @ts-pf/message@0.1.0-beta.1
+
 ## 0.1.0-beta.0
 
 ### Minor Changes

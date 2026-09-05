@@ -8,12 +8,12 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/client": "0.1.0-beta.0",
-    "@ts-pf/client-http": "0.1.0-beta.0",
-    "@ts-pf/contract": "0.1.0-beta.0",
-    "@ts-pf/server": "0.1.0-beta.0",
-    "@ts-pf/server-http": "0.1.0-beta.0",
-    "@ts-pf/stream": "0.1.0-beta.0",
+    "@ts-pf/client": "0.1.0-beta.1",
+    "@ts-pf/client-http": "0.1.0-beta.1",
+    "@ts-pf/contract": "0.1.0-beta.1",
+    "@ts-pf/server": "0.1.0-beta.1",
+    "@ts-pf/server-http": "0.1.0-beta.1",
+    "@ts-pf/stream": "0.1.0-beta.1",
     "zod": "^4.0.0"
   }
 }

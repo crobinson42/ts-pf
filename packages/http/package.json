@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/http",
-  "version": "0.1.0-beta.0",
+  "version": "0.1.0-beta.1",
   "description": "HTTP wire helpers: JSONCodec, RpcCodec, PROTOCOL_HEADER, path helpers, httpStatus",
   "license": "MIT",
   "repository": {
@@ -40,6 +40,6 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/protocol": "0.1.0-beta.0"
+    "@ts-pf/protocol": "0.1.0-beta.1"
   }
 }

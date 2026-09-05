@@ -26,6 +26,7 @@
     "codegen-from-catalog",
     "first-public-beta",
     "mvc-kit-bind-client",
-    "openapi-from-catalog"
+    "openapi-from-catalog",
+    "trusted-publishing"
   ]
 }

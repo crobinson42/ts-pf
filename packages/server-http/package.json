@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/server-http",
-  "version": "0.1.0-beta.0",
+  "version": "0.1.0-beta.1",
   "description": "Fetch Request/Response handler and HTTP HandlerPlugins",
   "license": "MIT",
   "repository": {
@@ -40,12 +40,12 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/http": "0.1.0-beta.0",
-    "@ts-pf/protocol": "0.1.0-beta.0",
-    "@ts-pf/server": "0.1.0-beta.0"
+    "@ts-pf/http": "0.1.0-beta.1",
+    "@ts-pf/protocol": "0.1.0-beta.1",
+    "@ts-pf/server": "0.1.0-beta.1"
   },
   "devDependencies": {
-    "@ts-pf/contract": "0.1.0-beta.0",
+    "@ts-pf/contract": "0.1.0-beta.1",
     "zod": "^4.0.0"
   }
 }
