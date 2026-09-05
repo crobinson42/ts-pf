@@ -27,15 +27,15 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/contract": "workspace:*"
+    "@ts-pf/contract": "*"
   },
   "peerDependencies": {
     "mvc-kit": ">=4.9.0"
   },
   "devDependencies": {
-    "@ts-pf/client": "workspace:*",
-    "@ts-pf/protocol": "workspace:*",
-    "@ts-pf/server": "workspace:*",
+    "@ts-pf/client": "*",
+    "@ts-pf/protocol": "*",
+    "@ts-pf/server": "*",
     "mvc-kit": "^4.9.0",
     "zod": "^4.0.0"
   }

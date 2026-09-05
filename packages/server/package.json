@@ -27,8 +27,8 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/contract": "workspace:*",
-    "@ts-pf/protocol": "workspace:*"
+    "@ts-pf/contract": "*",
+    "@ts-pf/protocol": "*"
   },
   "devDependencies": {
     "zod": "^4.0.0"

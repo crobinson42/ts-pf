@@ -33,6 +33,6 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/protocol": "workspace:*"
+    "@ts-pf/protocol": "*"
   }
 }

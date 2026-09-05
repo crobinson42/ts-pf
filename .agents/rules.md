@@ -125,7 +125,7 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 - ESM-only, TypeScript strict (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`).
 - One job per file. No HTTP in `contract`. No schemas in `protocol`. No `Request`/`Response` in `server` or `client`.
 - Tests: Vitest. Type tests: `expectTypeOf` plus `tsc --noEmit`.
-- Workspace: pnpm + Turborepo. Build: `tsc -p tsconfig.build.json`.
+- Workspace: npm + Turborepo (`packages/*`, `examples/*`). Internal `@ts-pf/*` deps: `"*"`. Lockfile: `package-lock.json`. Build: `tsc -p tsconfig.build.json`.
 
 ## Anti-patterns
 
@@ -161,7 +161,7 @@ Live in `examples/`: `hello` (Fetch), `message` (MessagePort), `stream` (`Stream
 ## Done means verified
 
 ```
-pnpm lint && pnpm type-check && pnpm test && pnpm build
+npm run lint && npm run type-check && npm test && npm run build
 ```
 
 Wire changes must update `packages/protocol/PROTOCOL.md`.

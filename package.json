@@ -2,7 +2,11 @@
   "name": "ts-pf",
   "private": true,
   "type": "module",
-  "packageManager": "pnpm@11.9.0",
+  "packageManager": "npm@11.12.1",
+  "workspaces": [
+    "packages/*",
+    "examples/*"
+  ],
   "scripts": {
     "build": "turbo run build",
     "test": "turbo run test",
@@ -16,5 +20,8 @@
     "turbo": "^2.5.0",
     "typescript": "^5.8.0",
     "vitest": "^3.2.0"
+  },
+  "overrides": {
+    "esbuild": "0.27.7"
   }
 }

@@ -283,6 +283,6 @@ Runnable apps in [`examples/`](examples/): [`hello`](examples/hello) (Fetch), [`
 ## Development
 
 ```sh
-pnpm install
-pnpm lint && pnpm type-check && pnpm test && pnpm build
+npm install
+npm run lint && npm run type-check && npm test && npm run build
 ```

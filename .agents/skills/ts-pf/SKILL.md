@@ -261,7 +261,7 @@ Runtime `validateSchema`: user `registerSchemaAdapter` (first `accept` match) �
 | Timeout | `AbortSignal.timeout` — userland. |
 | Batch | refuse. Out of scope. |
 
-New packages: same `exports` (source for workspace, `publishConfig` → `dist`), `tsc -p tsconfig.build.json`, Vitest, Biome. Depend downward only (no client↔server, no server-http↔client-http).
+New packages: same `exports` (source for workspace, `publishConfig` → `dist`), `tsc -p tsconfig.build.json`, Vitest, Biome. Internal `@ts-pf/*` deps: `"*"` (not `workspace:*`). Depend downward only (no client↔server, no server-http↔client-http).
 
 ## Anti-patterns
 
@@ -297,4 +297,4 @@ New packages: same `exports` (source for workspace, `publishConfig` → `dist`),
 - Procedure completeness: `impl.router()` rejects missing/extra keys (types + runtime)
 - Errors: unknown throws → `INTERNAL`, no stack in JSON. Unary output schema failure → `INTERNAL`, no issues. Invalid declared error `data` → `INTERNAL`, never serialize the bad payload. `ClientError` narrows `data` from `code`. `asResult` is `CallResult<T, E>`.
 - Protocol edits update `PROTOCOL.md`, `ProtocolErrorCode` in `packages/protocol/src/error.ts`, and the duplicated **private** `ProtocolErrorCode` union in `packages/contract/src/infer.ts`
-- `pnpm lint && pnpm type-check && pnpm test && pnpm build`
+- `npm run lint && npm run type-check && npm test && npm run build`
