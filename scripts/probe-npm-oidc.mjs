@@ -93,7 +93,15 @@ function hint(payload, status, body) {
     'Changesets runs npm publish, so allow direct publish on every @ts-pf/* package.',
     'Existing connections cannot be edited — delete and recreate if a field is wrong.',
     'https://www.npmjs.com/package/@ts-pf/contract → Settings → Trusted publishing',
+    'Local (interactive 2FA; a bypass-2FA GAT cannot do this): bash scripts/trust-github-publishers.sh',
   ]
+  if (status === 404 || /package not found/i.test(text)) {
+    lines.push(
+      '',
+      'HTTP 404 "package not found" does not mean the npm package is missing.',
+      `${PACKAGE} is on the registry. npm returns this when no trusted publisher matches this GitHub identity.`,
+    )
+  }
   if (/stage/i.test(text) && !/publish/i.test(text)) {
     lines.push('', 'This looks like a stage-only publisher. Check "allow npm publish".')
   }
