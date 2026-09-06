@@ -74,6 +74,21 @@ describe('contract infer types', () => {
     take(notFound)
   })
 
+  it('infers nested branded slice routers', () => {
+    const planet = router({
+      find: procedure
+        .input(z.object({ id: z.number() }))
+        .output(z.object({ name: z.string() })),
+    })
+    const contract = router({ planet })
+    expectTypeOf<
+      InferContractInputs<typeof contract>['planet']['find']
+    >().toEqualTypeOf<{ id: number }>()
+    expectTypeOf<
+      InferContractOutputs<typeof contract>['planet']['find']
+    >().toEqualTypeOf<{ name: string }>()
+  })
+
   it('InferContractErrors walks the router', () => {
     const contract = router({
       planet: {

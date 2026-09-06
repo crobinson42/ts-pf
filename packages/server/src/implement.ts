@@ -46,6 +46,7 @@ function applyInherited(
         ...node['~pf'],
         use: [...inherited.use, ...node['~pf'].use],
         useAfter: [...inherited.useAfter, ...node['~pf'].useAfter],
+        path: inherited.path,
       },
     }
   }
@@ -55,7 +56,10 @@ function applyInherited(
       continue
     }
     if (child) {
-      result[key] = applyInherited(child, inherited)
+      result[key] = applyInherited(child, {
+        ...inherited,
+        path: [...inherited.path, key],
+      })
     }
   }
   return result

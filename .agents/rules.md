@@ -78,6 +78,7 @@ Do not resurrect oRPC names in code, docs, or examples.
 | `emit` / `catalogHash` | `generate` / `compile` as the only names; `digest` as the only hash name |
 | `ts-pf-codegen` | `pf` |
 | generated `Contract` | `AppRouter` |
+| nested `router({ planet: planetContract })` | `mergeRouters` / `compose()` |
 
 Implemented routers in examples: `app`, not `router` (that name is the contract helper).
 
@@ -97,7 +98,7 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 - Keep `ProtocolErrorCode` duplicated as a private union in `packages/contract/src/infer.ts`. Do not import `@ts-pf/protocol` from contract.
 - `METHOD_NOT_ALLOWED` stays in the closed set; only FetchHandler emits it. `PAYLOAD_TOO_LARGE` is shared (HTTP body cap + message outbound oversize).
 
-**Not in core:** OpenAPI runtime / REST / Scalar, error-catalog RPC, Node `IncomingMessage` adapters, framework adapters, TanStack Query, lazy routers, Map/Set on the wire, EventSource clients, Last-Event-ID, EventPublisher. File/Blob is `@ts-pf/file`. Message streams are `@ts-pf/stream`. SSE output framing is `@ts-pf/sse`. Procedure catalogs are `@ts-pf/docs`. OpenAPI 3.1 documents are `@ts-pf/openapi`. Typed-client `.d.ts` codegen is `@ts-pf/codegen`. Message transports are `@ts-pf/message` / `message-server` / `message-client`. SWR is `@ts-pf/swr`. mvc-kit Resource helpers are `@ts-pf/mvc-kit`. Fetch is `@ts-pf/server-http` / `@ts-pf/client-http`. Do not add `.docs()` to the contract builder. None of these are core defaults. Do not redeclare `VALIDATION`, `INTERNAL`, `BAD_REQUEST`, `METHOD_NOT_ALLOWED`, or `PAYLOAD_TOO_LARGE` on `.errors()`.
+**Not in core:** OpenAPI runtime / REST / Scalar, error-catalog RPC, Node `IncomingMessage` adapters, framework adapters, TanStack Query, lazy routers, `mergeRouters` / `compose()`, Map/Set on the wire, EventSource clients, Last-Event-ID, EventPublisher. Feature slices nest `router({ planet: planetContract })` and `impl.router({ planet: planetApp })`. Each server exports one contract; clients import that contract only. File/Blob is `@ts-pf/file`. Message streams are `@ts-pf/stream`. SSE output framing is `@ts-pf/sse`. Procedure catalogs are `@ts-pf/docs`. OpenAPI 3.1 documents are `@ts-pf/openapi`. Typed-client `.d.ts` codegen is `@ts-pf/codegen`. Message transports are `@ts-pf/message` / `message-server` / `message-client`. SWR is `@ts-pf/swr`. mvc-kit Resource helpers are `@ts-pf/mvc-kit`. Fetch is `@ts-pf/server-http` / `@ts-pf/client-http`. Do not add `.docs()` to the contract builder. None of these are core defaults. Do not redeclare `VALIDATION`, `INTERNAL`, `BAD_REQUEST`, `METHOD_NOT_ALLOWED`, or `PAYLOAD_TOO_LARGE` on `.errors()`.
 
 ## Extension (hooks, not a plugin framework)
 

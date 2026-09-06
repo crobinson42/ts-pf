@@ -206,6 +206,8 @@ const client = createClient<typeof contract>(new PortLink({ port: port2 }))
 
 `$context<C>()` is the source of context types. Middleware runtime-merges; it does not infer added keys.
 
+Compose is nested objects. `router({ planet: planetContract })` nests slice contracts. `impl.router({ planet: planetApp })` nests finished slice apps (`createImplementer(sliceContract).$context<AppCtx>().router({ ... })`). Root `.use(mw)` prepends; nested procedure `path` is the composed tree. Pick procedures for a second server (`{ list: usersApp.list }`). No `mergeRouters` / `compose()` / lazy routers.
+
 ## Call pipeline
 
 0. `HandlerPlugin.onRequest` — optional `Request` wrap or `Response` short-circuit (CORS preflight). Prefix miss skips plugins.
@@ -265,6 +267,7 @@ Runtime `validateSchema`: user `registerSchemaAdapter` (first `accept` match) �
 | Retry / in-flight dedupe / cache | `RetryPlugin` / `DedupePlugin` / `CachePlugin` on `createClient(link, { plugins })`. Server `DedupePlugin` via `createLocalClient` `{ plugins }` or `applyPlugins` into `FetchHandler`/`HandlerOptions` `{ interceptors }`. Not FetchLink internals. Not Fetch interceptors (they cannot see structured input without cloning body). Skip `AsyncIterable` input; `CachePlugin` also does not cache iterable output. Server default dedupe keys every unary call — pass `key` to restrict to reads (unsafe for non-idempotent writes). Batch still refuse. |
 | Timeout | `AbortSignal.timeout` — userland. |
 | Batch | refuse. Out of scope. |
+| Feature-slice / multi-server compose | Nested `router({ planet: planetContract })` and `impl.router({ planet: planetApp })`. Pick procedures for a smaller tree. Same `AppCtx` on every slice. Do not add `mergeRouters` / `compose()` / lazy routers. |
 
 New **published** packages: `version` `0.0.0`, `license: "MIT"`, `files: ["dist", "skills"]`, `keywords` (shared `ts-pf` / `typescript` / `rpc` / `typesafe` / `typed-rpc` / `api` / `contract-first` plus package-specific terms), `skills/ts-pf-<pkg>/SKILL.md`, workspace `exports` → `src` with matching `publishConfig.exports` → `dist` (mirror extra paths such as `./stdio`), `publishConfig.access: "public"`, `tsc -p tsconfig.build.json`, Vitest, Biome, a `.changeset/*.md`. Internal `@ts-pf/*` deps: `"*"` (not `workspace:*`). `changeset version` rewrites `"*"` for the tarball; do not restore `"*"` on packages that already have a versioned range. Depend downward only (no client↔server, no server-http↔client-http). Releases use Changesets and publish to npm dist-tag `latest`. Do not run `changeset pre enter` or add `.changeset/pre.json`. New **example** packages are `private: true` and should be appended to `.changeset/config.json` `ignore`.
 
@@ -290,6 +293,7 @@ New **published** packages: `version` `0.0.0`, `license: "MIT"`, `files: ["dist"
 - Widening `asResult` to `CallResult<T, E | PFError>`
 - Exporting `createErrorFactory` / `finalizeDeclaredError`
 - Importing `@ts-pf/protocol` into contract to share `ProtocolErrorCode`
+- Adding `mergeRouters` / `compose()` / lazy routers. Nest `router()` objects.
 
 ## Review checklist
 

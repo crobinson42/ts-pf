@@ -38,6 +38,8 @@ export const app = impl.use(requireUser).router({
 
 `.use()` runs before input validation (`input: unknown`). `.useAfter()` runs after (typed input). `$context<C>()` is the context type source; middleware runtime-merges and does not infer added keys. Pass HTTP `Request` in `FetchHandler.handle(..., { context })`, not via `$context` alone. Name the implemented router `app`. Default `DedupePlugin` keys every unary call — pass `key` to restrict to reads.
 
+Nest finished slice apps: `impl.router({ planet: planetApp, star: starApp })`. Each slice is `createImplementer(sliceContract).$context<AppCtx>().router({ ... })` with the same `AppCtx`. Root `.use(mw)` prepends onto nested procedures. Procedure `path` is the composed tree (`planet.find`). Pick an implemented procedure into a smaller server: `{ list: usersApp.list }`.
+
 ## API
 
 - `createImplementer`, `createLocalClient`, `runProcedure`, `lookupProcedure`
@@ -56,3 +58,4 @@ export const app = impl.use(requireUser).router({
 - Import `CallInterceptor` from `@ts-pf/client` (duplicate types).
 - Attach interceptors on `createImplementer` — they attach per caller (`createLocalClient` / handler `{ interceptors }`).
 - Default `DedupePlugin` on non-idempotent writes.
+- `mergeRouters` — nest `impl.router({ planet: planetApp })`.

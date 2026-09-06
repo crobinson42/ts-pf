@@ -46,6 +46,22 @@ describe('procedure builder', () => {
     expect(isContractProcedure(contract.planet.find)).toBe(true)
   })
 
+  it('router() nests branded slice routers', () => {
+    const planet = router({
+      find: procedure
+        .input(z.object({ id: z.number() }))
+        .output(z.object({ id: z.number() })),
+    })
+    const star = router({
+      find: procedure.output(z.object({ id: z.number() })),
+    })
+    const contract = router({ planet, star })
+    expect(isContractRouter(contract)).toBe(true)
+    expect(isContractRouter(contract.planet)).toBe(true)
+    expect(isContractProcedure(contract.planet.find)).toBe(true)
+    expect(isContractProcedure(contract.star.find)).toBe(true)
+  })
+
   it('router() throws on a non-procedure leaf', () => {
     expect(() =>
       router({

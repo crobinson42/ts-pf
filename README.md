@@ -118,6 +118,27 @@ export default {
 
 `.use()` runs before input validation. `.useAfter()` runs after, with typed input.
 
+## Compose
+
+`router()` nests slice contracts. `impl.router()` nests finished slice implementations. One server, one contract; the client never sees the slices.
+
+```ts
+export const contract = router({
+  planet: planetContract,
+  star: starContract,
+})
+
+const impl = createImplementer(contract).$context<AppCtx>()
+export const app = impl.router({
+  planet: planetApp,
+  star: starApp,
+})
+```
+
+`planetApp` comes from `createImplementer(planetContract).$context<AppCtx>().router({ ... })`. Use the same `AppCtx` on every slice.
+
+A second server (web vs mobile) is a second composed contract — pick procedures when the trees differ (`router({ list: users.list })` vs `router({ list: users.listPopulated })`, then `{ list: usersApp.list }` vs `{ list: usersApp.listPopulated }`). Shared domain logic stays plain functions. No `mergeRouters`.
+
 ## HTTP plugins
 
 `FetchHandler` accepts opt-in `HandlerPlugin`s for origin concerns. Procedure middleware cannot see `Request` / `Response`.

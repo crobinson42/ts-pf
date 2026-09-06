@@ -33,9 +33,26 @@ export type ImplementedProcedure = {
 
 declare const contractBrand: unique symbol
 
-export type ImplementedRouter<T = unknown> = {
-  readonly [key: string]: ImplementedProcedure | ImplementedRouter | undefined
-} & { readonly [contractBrand]?: T }
+type AnyImplementedRouter = {
+  readonly [key: string]:
+    | ImplementedProcedure
+    | AnyImplementedRouter
+    | undefined
+}
+
+type ImplementedRouterMapped<T> = {
+  readonly [K in keyof T as K extends '~pf'
+    ? never
+    : K]: T[K] extends ContractProcedure
+    ? ImplementedProcedure
+    : ImplementedRouterMapped<T[K]>
+}
+
+export type ImplementedRouter<T = unknown> = ([unknown] extends [T]
+  ? AnyImplementedRouter
+  : ImplementedRouterMapped<T>) & {
+  readonly [contractBrand]?: T
+}
 
 export function isImplementedProcedure(
   value: unknown,
@@ -215,7 +232,7 @@ export function lookupProcedure(
   router: ImplementedRouter,
   path: string[],
 ): ImplementedProcedure | undefined {
-  let current: ImplementedProcedure | ImplementedRouter | undefined = router
+  let current: ImplementedProcedure | AnyImplementedRouter | undefined = router
   for (const segment of path) {
     if (!current || isImplementedProcedure(current)) {
       return undefined

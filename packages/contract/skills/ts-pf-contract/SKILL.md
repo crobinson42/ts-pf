@@ -34,6 +34,8 @@ export const contract = router({
 
 Schemas: Standard Schema (Zod, Valibot, ArkType) or TypeBox. More via `registerSchemaAdapter`. `.output()` is optional (`unknown` if omitted). `.input()` once.
 
+Nest slice routers: `router({ planet: planetContract, star: starContract })`. Pick a procedure into a smaller tree: `router({ list: users.list })`. No `mergeRouters`.
+
 ## API
 
 - `procedure`, `router`, `registerSchemaAdapter`, `validateSchema`
@@ -52,4 +54,5 @@ Schemas: Standard Schema (Zod, Valibot, ArkType) or TypeBox. More via `registerS
 - HTTP, `FetchHandler`, or codecs here.
 - `.docs()` on the builder — use `docs()` from `@ts-pf/docs` inside `.meta()`.
 - Stacked `.input()` merge/pipe. oRPC `oc`.
+- `mergeRouters` — nest `router({ planet: planetContract })`.
 - Redeclare `VALIDATION`, `INTERNAL`, `BAD_REQUEST`, `METHOD_NOT_ALLOWED`, or `PAYLOAD_TOO_LARGE` on `.errors()`.

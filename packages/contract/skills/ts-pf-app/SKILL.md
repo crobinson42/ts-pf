@@ -1,6 +1,6 @@
 ---
 name: ts-pf-app
-description: Use when building an app with ts-pf — picking packages, writing a contract, implementing a server, creating a client, or choosing Fetch vs message vs stream. Triggers: ts-pf, @ts-pf, RPC, createImplementer, FetchHandler, createClient, FetchLink.
+description: Use when building an app with ts-pf — picking packages, writing a contract, implementing a server, creating a client, composing feature slices, or choosing Fetch vs message vs stream. Triggers: ts-pf, @ts-pf, RPC, createImplementer, FetchHandler, createClient, FetchLink, feature slice, merge routers.
 ---
 
 # ts-pf (app)
@@ -50,6 +50,55 @@ await client.planet.find({ id: 1 })
 
 Name the implemented router `app`. Wire: `@ts-pf/protocol` `PROTOCOL.md`.
 
+## Compose
+
+Feature slices own a contract and an implementation. A server nests them. Each client imports **that server's** contract only.
+
+```ts
+export const contract = router({
+  planet: planetContract,
+  star: starContract,
+  auth: authContract,
+})
+
+const impl = createImplementer(contract).$context<AppCtx>()
+export const app = impl.router({
+  planet: planetApp,
+  star: starApp,
+  auth: authApp,
+})
+```
+
+`planetApp` is `createImplementer(planetContract).$context<AppCtx>().router({ ... })`. Shared `AppCtx` on every slice; `$context` does not merge. Shared domain logic is plain functions, not a shared implementer.
+
+Two servers (web vs mobile) are two composed contracts, not variants of one. Each server gets its own `createImplementer`. Pick procedures when the trees differ:
+
+```ts
+const users = router({
+  list: procedure.output(z.array(UserRef)),
+  listPopulated: procedure.output(z.array(UserPopulated)),
+})
+const usersImpl = createImplementer(users).$context<AppCtx>()
+const usersApp = usersImpl.router({
+  list: usersImpl.list.handler(listUsers),
+  listPopulated: usersImpl.listPopulated.handler(listUsersPopulated),
+})
+
+const webContract = router({ users: router({ list: users.list }) })
+const webImpl = createImplementer(webContract).$context<AppCtx>()
+export const webApp = webImpl.router({ users: { list: usersApp.list } })
+createClient<typeof webContract>(new FetchLink({ url: '/rpc' }))
+
+const mobileContract = router({ users: router({ list: users.listPopulated }) })
+const mobileImpl = createImplementer(mobileContract).$context<AppCtx>()
+export const mobileApp = mobileImpl.router({
+  users: { list: usersApp.listPopulated },
+})
+createClient<typeof mobileContract>(new FetchLink({ url: '/rpc' }))
+```
+
+No `mergeRouters`. No `compose()`. No lazy routers.
+
 ## Packages
 
 | Want | Package | Skill |
@@ -91,6 +140,7 @@ File, stream, SSE, message, docs, SWR, mvc-kit are opt-in. Default handler/link 
 | `ts-pf-codegen` | `pf` |
 | generated `Contract` | `AppRouter` |
 | implemented `app` | `router` (that name is the contract helper) |
+| nested `router({ planet: planetContract })` | `mergeRouters` / `compose()` |
 
 ## Don't
 
@@ -98,3 +148,4 @@ File, stream, SSE, message, docs, SWR, mvc-kit are opt-in. Default handler/link 
 - Serve REST, OpenAPI, or `catalog.json` from `FetchHandler`.
 - Fold WebSocket or SSE into `FetchHandler`. No `.ws()` / `.stdio()` / `.port()` on procedures.
 - ClientContext bags. No oRPC `*HandlerPlugin` class names.
+- `mergeRouters` / `compose()` / lazy routers — nest `router({ planet: planetContract })`.
