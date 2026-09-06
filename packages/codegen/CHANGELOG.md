@@ -1,5 +1,11 @@
 # @ts-pf/codegen
 
+## 0.1.1
+
+### Patch Changes
+
+- @ts-pf/docs@0.1.1
+
 ## 0.1.0
 
 ### Patch Changes

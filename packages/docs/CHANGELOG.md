@@ -1,5 +1,12 @@
 # @ts-pf/docs
 
+## 0.1.1
+
+### Patch Changes
+
+- Updated dependencies [1070bfa]
+  - @ts-pf/contract@0.1.1
+
 ## 0.1.0
 
 ### Patch Changes

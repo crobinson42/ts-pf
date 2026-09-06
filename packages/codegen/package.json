@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/codegen",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Opt-in .d.ts codegen from catalog() for split-repo createClient",
   "keywords": [
     "ts-pf",
@@ -55,12 +55,12 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/docs": "0.1.0"
+    "@ts-pf/docs": "0.1.1"
   },
   "devDependencies": {
-    "@ts-pf/client": "0.1.0",
-    "@ts-pf/contract": "0.1.0",
-    "@ts-pf/stream": "0.1.0",
+    "@ts-pf/client": "0.1.1",
+    "@ts-pf/contract": "0.1.1",
+    "@ts-pf/stream": "0.1.1",
     "@types/node": "^22.15.0",
     "typebox": "^1.3.24",
     "zod": "^4.0.0"

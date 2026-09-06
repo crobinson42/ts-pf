@@ -1,5 +1,11 @@
 # @ts-pf/contract
 
+## 0.1.1
+
+### Patch Changes
+
+- 1070bfa: Nest slice contracts and finished implementations with `router({ planet: planetContract })` and `impl.router({ planet: planetApp })`. Procedure `path` follows the composed tree. Each server still exports one contract for clients.
+
 ## 0.1.0
 
 ### Patch Changes

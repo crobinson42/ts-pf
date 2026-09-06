@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/contract",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Contract-first procedure and router builders, schema adapters, and infer types",
   "keywords": [
     "ts-pf",
