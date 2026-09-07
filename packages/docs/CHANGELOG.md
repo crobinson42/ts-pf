@@ -1,5 +1,11 @@
 # @ts-pf/docs
 
+## 0.1.2
+
+### Patch Changes
+
+- be734b4: Stress-test input/output JSON Schema through `catalog()` → `emit()` / `openapi()`. Hoist OpenAPI inner schemas so recursive `$ref`s resolve, print TypeBox records and catchall index signatures as valid TypeScript, and treat non-JSON TypeBox `type`s as unavailable.
+
 ## 0.1.1
 
 ### Patch Changes
