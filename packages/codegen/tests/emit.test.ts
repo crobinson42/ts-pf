@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { catalogHash, emit } from '@ts-pf/codegen'
 import { procedure, router } from '@ts-pf/contract'
-import { catalog, type ProcedureCatalog } from '@ts-pf/docs'
+import { catalog, docs, type ProcedureCatalog } from '@ts-pf/docs'
 import { stream } from '@ts-pf/stream'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
@@ -122,6 +122,46 @@ describe('emit', () => {
   it('matches the checked-in planet fixture', () => {
     const fixture = readFileSync(fixturePath, 'utf8')
     expect(emit(planetCatalog())).toBe(fixture)
+  })
+
+  it('prints JSDoc on documented procedures and skips siblings without docs', () => {
+    const spec = catalog(
+      router({
+        planet: {
+          find: procedure
+            .meta(docs({ description: 'Find a planet by id' }))
+            .meta({ kind: 'query' })
+            .input(z.object({ id: z.number() }))
+            .output(z.object({ id: z.number() })),
+          list: procedure.output(z.array(z.object({ id: z.number() }))),
+        },
+      }),
+    )
+    const dts = emit(spec, { banner: false })
+    expect(dts).toContain(`  planet: {
+    /**
+     * Find a planet by id
+     */
+    find: ContractProcedure<{ id: number }, { id: number }>
+    list: ContractProcedure<void, { id: number }[]>
+  }`)
+    expect(dts).not.toContain('kind')
+    expect(dts).not.toContain('query')
+  })
+
+  it('prints JSDoc before a quoted procedure key', () => {
+    const spec = catalog(
+      router({
+        'find-planet': procedure
+          .meta(docs({ description: 'Find a planet by id' }))
+          .output(z.string()),
+      }),
+    )
+    const dts = emit(spec, { banner: false })
+    expect(dts).toContain(`  /**
+   * Find a planet by id
+   */
+  'find-planet': ContractProcedure<void, string>`)
   })
 
   it('throws on unsupported catalogVersion', () => {

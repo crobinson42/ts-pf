@@ -5,6 +5,7 @@ import type {
   ProcedureCatalog,
 } from '@ts-pf/docs'
 import { catalogHash } from './hash.js'
+import { jsDocLines } from './jsdoc.js'
 import { aliasName, pascalCase, quoteKey, quoteString } from './names.js'
 import { PHANTOM_SOURCE } from './phantom.js'
 import { printJsonSchema } from './print-type.js'
@@ -68,6 +69,11 @@ function printNamespace(
 ): string {
   const lines = ['{']
   for (const [key, node] of tree) {
+    if (node.kind === 'proc') {
+      for (const line of jsDocLines(node.proc.docs)) {
+        lines.push(`  ${line}`)
+      }
+    }
     const value =
       node.kind === 'proc'
         ? printProcedure(node.proc, aliases, failOnUnavailable)

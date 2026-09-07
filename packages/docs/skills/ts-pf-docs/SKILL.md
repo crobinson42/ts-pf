@@ -38,7 +38,7 @@ if (url.pathname === '/catalog.json') {
 ## Pair with
 
 - OpenAPI: `ts-pf-openapi`
-- Split-repo `.d.ts`: `ts-pf-codegen`
+- Split-repo `.d.ts`: `ts-pf-codegen` (`emit()` prints JSDoc from `docs()`)
 - Descriptions live on existing `.meta()` — not `.docs()` on the builder
 
 ## Don't

@@ -91,6 +91,7 @@ packages/openapi/src/
 packages/codegen/src/
   index.ts            emit, catalogHash, EmitOptions
   cli.ts              emit / pull / hash (not exported from ".")
+  jsdoc.ts            JSDoc from catalog docs() (internal; not exported)
 packages/message/src/
   index.ts            frames, MessageSession, Duplex, encodeFrame, decodeFrame, createMemoryDuplex, createPortDuplex, createWsDuplex, WebSocketLike
   error.ts            errorFromEnvelope (no HTTP status table), re-exports localFailure
@@ -255,7 +256,7 @@ Runtime `validateSchema`: user `registerSchemaAdapter` (first `accept` match) â†
 | SSE output | `@ts-pf/sse` `SseCodec` on `FetchHandler` / `FetchLink`. Same `stream()` contracts. |
 | API docs / procedure catalog | `@ts-pf/docs` `docs()` + `catalog()`. |
 | OpenAPI 3.1 document | `@ts-pf/openapi` `openapi(catalog(contract), { info })`. POST JSON RPC only. |
-| Split-repo typed client | `@ts-pf/codegen` `emit(catalog)`. |
+| Split-repo typed client | `@ts-pf/codegen` `emit(catalog)` (JSDoc from `docs()`; other `.meta()` stays on catalog JSON). |
 | Message transports (WS / stdio / MessagePort) | use existing `@ts-pf/message` / `message-server` / `message-client`. Do not fold into `FetchHandler`. Do not invent `TransportHandler`. Stdio is `./stdio` only. |
 | A new **pipe** (WebTransport, Chrome port, Electron IPC, Unix socket) | new adapter package that calls `runProcedure` / implements `Link`. Never touch `createImplementer`, middleware, or `createClient`. |
 | A new **paradigm** (gRPC, GraphQL, REST) | projection like `@ts-pf/openapi`, not an adapter of `runProcedure`. |

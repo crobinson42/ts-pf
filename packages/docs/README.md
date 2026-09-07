@@ -69,6 +69,8 @@ import { writeFileSync } from 'node:fs'
 writeFileSync('contract.d.ts', emit(catalog(contract, { prefix: '/rpc' })))
 ```
 
+`emit()` prints JSDoc from `docs()`. Other `.meta()` keys stay on the catalog JSON.
+
 Serve the JSON in **userland**, outside the RPC prefix (`GET /rpc/...` is a procedure miss, not a spec):
 
 ```ts

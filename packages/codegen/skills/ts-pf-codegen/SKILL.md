@@ -19,6 +19,7 @@ import { emit, catalogHash } from '@ts-pf/codegen'
 import { writeFileSync } from 'node:fs'
 
 const spec = catalog(contract, { prefix: '/rpc' })
+writeFileSync('catalog.json', JSON.stringify(spec, null, 2))
 writeFileSync('contract.d.ts', emit(spec))
 catalogHash(spec) // 'sha256:<hex>'
 ```
@@ -30,6 +31,8 @@ import type { Contract } from './contract.js'
 
 const client = createClient<Contract>(new FetchLink({ url: '/rpc' }))
 ```
+
+`emit()` prints JSDoc from `docs()` (`description` / `summary` / `@deprecated`) onto `Contract` members. Other `.meta()` stays on the catalog — ship `catalog.json` beside the `.d.ts` for runtime policy (`CachePlugin` `key`, etc.). Hover on `client.planet.find` may not show that JSDoc (`ContractClient` is a mapped type).
 
 CLI: `ts-pf-codegen emit <catalog.json|-> [-o contract.d.ts]`. Also `pull` / `hash`. Serve `catalog.json` in userland, not `FetchHandler`.
 

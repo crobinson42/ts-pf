@@ -46,6 +46,10 @@ catalogHash(catalog) // 'sha256:<hex>' of canonical JSON
 
 Generated procedures are `ContractProcedure<I, O, E>` with Phantom Standard Schema leaves so `InferErrorData` / `asResult` still narrow `error.code === 'NOT_FOUND'`. Protocol errors stay out of the generated error map (`ClientError` already unions them). No-input is `void`. Streams are `AsyncIterable<Item>`.
 
+`docs()` on a procedure becomes JSDoc on that generated member (`description`, `summary`, `@deprecated`). Tags stay OpenAPI grouping; other `.meta()` keys are not printed. JSDoc is on `Contract` members — `ContractClient` is a mapped type, so hover on `client.planet.find` may not show it.
+
+Runtime policy (cache vs write, auth, …) stays on the catalog. Ship `catalog.json` next to `contract.d.ts` and look up `procedures[].meta` by path. `createClient<Contract>` is still type-only.
+
 The generated file uses `import type { ContractProcedure } from '@ts-pf/contract'`. This package does not import contract at runtime.
 
 ## CLI
