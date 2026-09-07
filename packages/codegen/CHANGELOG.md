@@ -1,5 +1,11 @@
 # @ts-pf/codegen
 
+## 0.1.2
+
+### Patch Changes
+
+- bb2485b: `emit()` prints JSDoc from catalog `docs()` (`description`, `summary`, `@deprecated`) onto generated `Contract` members. Other `.meta()` stays on the catalog.
+
 ## 0.1.1
 
 ### Patch Changes

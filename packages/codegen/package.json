@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/codegen",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Opt-in .d.ts codegen from catalog() for split-repo createClient",
   "keywords": [
     "ts-pf",
