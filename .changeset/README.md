@@ -16,7 +16,7 @@ New published packages start at `0.0.0` and need a changeset. They also ship `sk
 
 ## Release
 
-On `main`, the [release workflow](../.github/workflows/release.yml) opens a **Version packages** PR when unpublished changesets exist. Merging that PR publishes to npm as `latest`.
+On `main`, the [release workflow](../.github/workflows/release.yml) opens a **Version packages** PR when unpublished changesets exist. Merging that PR publishes to npm as `latest`, pushes git tags, and creates GitHub Releases (`changesets/action` `publish:`).
 
 `GITHUB_TOKEN` can only open that PR if the repo allows it: **Settings → Actions → General → Workflow permissions → Allow GitHub Actions to create and approve pull requests**. Also set **Read and write permissions**. After changing this, re-run the `release` workflow.
 
@@ -32,7 +32,7 @@ npm run build
 npm run changeset:publish   # npm dist-tag `latest`
 ```
 
-The GitHub Action does **not** run `version` / `publish` through a shell. Use an npm script (`npm run changeset:version`), not `cmd && other`.
+The GitHub Action does **not** run `version` / `publish` through a shell. Use npm scripts (`npm run changeset:version`, `npm run changeset:publish`), not `cmd && other`. Do not publish in a separate step after the action — that skips git tag push and GitHub Releases.
 
 `changeset version` rewrites internal `"*"` `@ts-pf/*` dependencies to the released version so the published tarball is installable. Do not restore `"*"` by hand after a version bump.
 
@@ -56,4 +56,4 @@ The GitHub Action does **not** run `version` / `publish` through a shell. Use an
    The first `npm trust` prompts for 2FA. Enable **skip 2FA for 5 minutes** on npmjs.com so the rest of the loop can finish.
 3. Enable **Settings → Actions → General → Workflow permissions**: **Read and write permissions** and **Allow GitHub Actions to create and approve pull requests** (`https://github.com/crobinson42/ts-pf/settings/actions`).
 4. Push / merge to `main`. The release workflow opens the version PR.
-5. Merge the version PR. Packages publish to `latest`.
+5. Merge the version PR. Packages publish to `latest`, and the action pushes tags and opens GitHub Releases.
