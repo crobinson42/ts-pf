@@ -1,5 +1,11 @@
 # @ts-pf/codegen
 
+## 0.1.3
+
+### Patch Changes
+
+- 35e5895: Point at `examples/codegen` for the split-repo `emit` / `createClient<Contract>` happy path.
+
 ## 0.1.2
 
 ### Patch Changes
