@@ -1,0 +1,18 @@
+{
+  "name": "@ts-pf/example-codegen",
+  "private": true,
+  "type": "module",
+  "workspaces": ["server", "client"],
+  "scripts": {
+    "generate": "UPDATE=1 vitest run tests/smoke.test.ts",
+    "test": "vitest run",
+    "type-check": "tsc --noEmit",
+    "lint": "biome check tests"
+  },
+  "dependencies": {
+    "@ts-pf/client": "0.1.1",
+    "@ts-pf/codegen": "0.1.2",
+    "@ts-pf/example-codegen-client": "*",
+    "@ts-pf/example-codegen-server": "*"
+  }
+}

@@ -18,6 +18,13 @@
     }
   },
   "files": {
-    "includes": ["**", "!**/dist", "!**/node_modules", "!**/.turbo", "!**/tests/fixtures"]
+    "includes": [
+      "**",
+      "!**/dist",
+      "!**/node_modules",
+      "!**/.turbo",
+      "!**/tests/fixtures",
+      "!examples/codegen/client/src/contract.d.ts"
+    ]
   }
 }

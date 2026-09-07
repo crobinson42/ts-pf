@@ -19,6 +19,7 @@ Wire format: `packages/protocol/PROTOCOL.md`. DX overview: `README.md`.
 examples/
   README.md           learning path
   hello/              contract, implementer, FetchHandler, FetchLink, createClient
+  codegen/            split-repo emit(catalog) → createClient<Contract>
   message/            PortHandler + PortLink over MessageChannel
   stream/             StreamCodec + stream()
   plugins/            CallPlugin / CallInterceptor; first-party retry/cache/dedupe; local TimeoutPlugin / AuditPlugin; CORSPlugin is HTTP-only
@@ -153,7 +154,7 @@ await client.planet.find({ id: 1 })
 // asResult(client.planet.find({ id: 1 })) — result.error.code === 'NOT_FOUND' narrows data
 ```
 
-Runnable form of this happy path: `examples/hello`. Message: `examples/message`. Streams: `examples/stream`. Plugins: `examples/plugins`.
+Runnable form of this happy path: `examples/hello`. Split-repo typed client: `examples/codegen`. Message: `examples/message`. Streams: `examples/stream`. Plugins: `examples/plugins`.
 
 Files are opt-in. Do not put this in the default happy path:
 

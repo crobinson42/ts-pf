@@ -5,6 +5,7 @@ Thin apps for the procedure model. Fetch is the default adapter; message, stream
 | Example | What |
 |---|---|
 | [`hello`](hello) | Contract, implementer, `FetchHandler`, `createClient` + `FetchLink` |
+| [`codegen`](codegen) | Split-repo `emit(catalog)` → `createClient<Contract>` (client cannot import the live contract) |
 | [`message`](message) | `PortHandler` + `PortLink` over `MessageChannel` |
 | [`stream`](stream) | `StreamCodec` + `stream()` on the HTTP adapter |
 | [`plugins`](plugins) | `CallPlugin` / `CallInterceptor`, retry / cache / dedupe, custom plugins |

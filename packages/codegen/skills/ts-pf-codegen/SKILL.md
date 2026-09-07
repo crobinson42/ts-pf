@@ -5,7 +5,7 @@ description: Use when emitting a split-repo ts-pf Contract .d.ts from catalog() 
 
 # @ts-pf/codegen
 
-Print a nested `Contract` `.d.ts` from `catalog()`. Frontend still uses `createClient<Contract>(link)`.
+Print a nested `Contract` `.d.ts` from `catalog()`. Frontend still uses `createClient<Contract>(link)`. Runnable: `examples/codegen`.
 
 Install: `npm i @ts-pf/codegen`
 

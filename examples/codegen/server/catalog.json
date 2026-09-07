@@ -1,0 +1,249 @@
+{
+  "catalogVersion": 1,
+  "protocol": {
+    "name": "ts-pf",
+    "version": "1",
+    "header": {
+      "name": "x-ts-pf-protocol",
+      "value": "1"
+    },
+    "method": "POST"
+  },
+  "protocolErrors": [
+    {
+      "code": "BAD_REQUEST",
+      "status": 400
+    },
+    {
+      "code": "VALIDATION",
+      "status": 422,
+      "data": {
+        "kind": "json",
+        "jsonSchema": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "issues"
+          ],
+          "properties": {
+            "issues": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "message",
+                  "path"
+                ],
+                "properties": {
+                  "message": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "array",
+                    "items": {
+                      "type": [
+                        "string",
+                        "number"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "code": "NOT_FOUND",
+      "status": 404
+    },
+    {
+      "code": "INTERNAL",
+      "status": 500
+    },
+    {
+      "code": "METHOD_NOT_ALLOWED",
+      "status": 405
+    },
+    {
+      "code": "PAYLOAD_TOO_LARGE",
+      "status": 413
+    }
+  ],
+  "procedures": [
+    {
+      "path": [
+        "planet",
+        "list"
+      ],
+      "key": "planet/list",
+      "meta": {
+        "docs": {
+          "description": "List known planets"
+        }
+      },
+      "errors": [],
+      "href": "/rpc/planet/list",
+      "docs": {
+        "description": "List known planets"
+      },
+      "output": {
+        "kind": "json",
+        "jsonSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "number"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "vendor": "standard-json-schema"
+      }
+    },
+    {
+      "path": [
+        "planet",
+        "find"
+      ],
+      "key": "planet/find",
+      "meta": {
+        "docs": {
+          "description": "Find a planet by id"
+        }
+      },
+      "errors": [
+        {
+          "code": "NOT_FOUND",
+          "status": 404,
+          "data": {
+            "kind": "json",
+            "jsonSchema": {
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "id"
+              ],
+              "additionalProperties": false
+            },
+            "vendor": "standard-json-schema"
+          }
+        }
+      ],
+      "href": "/rpc/planet/find",
+      "docs": {
+        "description": "Find a planet by id"
+      },
+      "input": {
+        "kind": "json",
+        "jsonSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "id"
+          ]
+        },
+        "vendor": "standard-json-schema"
+      },
+      "output": {
+        "kind": "json",
+        "jsonSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "number"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        "vendor": "standard-json-schema"
+      }
+    },
+    {
+      "path": [
+        "planet",
+        "create"
+      ],
+      "key": "planet/create",
+      "meta": {
+        "docs": {
+          "description": "Create a planet"
+        }
+      },
+      "errors": [],
+      "href": "/rpc/planet/create",
+      "docs": {
+        "description": "Create a planet"
+      },
+      "input": {
+        "kind": "json",
+        "jsonSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "name"
+          ]
+        },
+        "vendor": "standard-json-schema"
+      },
+      "output": {
+        "kind": "json",
+        "jsonSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "number"
+            },
+            "name": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        "vendor": "standard-json-schema"
+      }
+    }
+  ],
+  "prefix": "/rpc"
+}

@@ -8,6 +8,9 @@
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
   "ignore": [
+    "@ts-pf/example-codegen",
+    "@ts-pf/example-codegen-client",
+    "@ts-pf/example-codegen-server",
     "@ts-pf/example-hello",
     "@ts-pf/example-message",
     "@ts-pf/example-plugins",

@@ -154,7 +154,7 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 
 ## Examples
 
-Live in `examples/`: `hello` (Fetch), `message` (MessagePort), `stream` (`StreamCodec`), `plugins` (`CallPlugin` / `CallInterceptor`). They are private workspace packages, not published. New examples: `private: true` and append the package name to `.changeset/config.json` `ignore`.
+Live in `examples/`: `hello` (Fetch), `codegen` (split-repo `emit` / `createClient<Contract>`), `message` (MessagePort), `stream` (`StreamCodec`), `plugins` (`CallPlugin` / `CallInterceptor`). They are private workspace packages, not published. New examples: `private: true` and append the package name to `.changeset/config.json` `ignore`.
 
 - Implemented routers are named `app` (not `router` — that name is the contract helper).
 - Example `client.ts` must not import `@ts-pf/server`.

@@ -13,7 +13,8 @@
   },
   "workspaces": [
     "packages/*",
-    "examples/*"
+    "examples/*",
+    "examples/codegen/*"
   ],
   "scripts": {
     "build": "turbo run build",

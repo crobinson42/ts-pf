@@ -1,0 +1,17 @@
+{
+  "name": "@ts-pf/example-codegen-client",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/client.ts"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "lint": "biome check src"
+  },
+  "dependencies": {
+    "@ts-pf/client": "0.1.1",
+    "@ts-pf/client-http": "0.1.1",
+    "@ts-pf/contract": "0.1.1"
+  }
+}
