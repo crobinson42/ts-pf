@@ -26,6 +26,31 @@ describe('toJsonSchema', () => {
     expect(json).not.toHaveProperty('~kind')
   })
 
+  it('rewrites TypeBox Cyclic $ref names onto #/$defs', () => {
+    const json = toJsonSchema(
+      Type.Cyclic(
+        {
+          Node: Type.Object({
+            name: Type.String(),
+            children: Type.Array(Type.Ref('Node')),
+          }),
+        },
+        'Node',
+      ),
+      { io: 'output' },
+    )
+    expect(json.$ref).toBe('#/$defs/Node')
+    const node = (json.$defs as { Node: { properties: { children: unknown } } })
+      .Node
+    expect(JSON.stringify(node.properties.children)).toContain('#/$defs/Node')
+  })
+
+  it('rejects TypeBox types that are not JSON Schema', () => {
+    expect(() => toJsonSchema(Type.BigInt(), { io: 'output' })).toThrow(
+      /not JSON Schema/,
+    )
+  })
+
   it('throws when no converter accepts the schema', () => {
     expect(() => toJsonSchema({ nope: true }, { io: 'output' })).toThrow(
       /converter/i,

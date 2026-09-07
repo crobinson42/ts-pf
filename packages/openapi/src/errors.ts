@@ -22,7 +22,10 @@ export function protocolErrorRefs(
   const refs = new Map<string, JsonSchema>()
   for (const err of catalog.protocolErrors) {
     const name = protocolErrorSchemaName(err.code)
-    const data = innerFromCatalog(err.data)
+    const data =
+      err.data !== undefined
+        ? putSchema(schemas, `${name}.Data`, innerFromCatalog(err.data) ?? {})
+        : undefined
     refs.set(
       err.code,
       putSchema(schemas, name, failureEnvelope(err.code, data)),
@@ -60,7 +63,14 @@ export function operationErrorResponses(
   for (const err of proc.errors) {
     const status = err.status ?? 400
     const name = schemaName(proc.path, `Error.${err.code}`)
-    const data = innerFromCatalog(err.data)
+    const data =
+      err.data !== undefined
+        ? putSchema(
+            options.schemas,
+            schemaName(proc.path, `Error.${err.code}.Data`),
+            innerFromCatalog(err.data) ?? {},
+          )
+        : undefined
     add(status, {
       code: err.code,
       description: err.message ?? err.code,

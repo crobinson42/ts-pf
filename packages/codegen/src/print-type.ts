@@ -50,6 +50,7 @@ class Printer {
   private readonly aliasMap = new Map<string, string>()
   private readonly printing = new Set<string>()
   private readonly defAlias = new Map<string, string>()
+  private readonly defTarget = new Map<string, unknown>()
   private root: unknown
 
   constructor(private readonly prefix: string) {}
@@ -83,7 +84,15 @@ class Printer {
     for (const key of Object.keys(defs).sort()) {
       const pointer = `#/${defsKey}/${escapePointer(key)}`
       const alias = `${this.prefix}_${pascalCase(key)}`
+      const target = defs[key]
       this.defAlias.set(pointer, alias)
+      this.defAlias.set(key, alias)
+      this.defTarget.set(pointer, target)
+      this.defTarget.set(key, target)
+      if (isRecord(target) && typeof target.$id === 'string') {
+        this.defAlias.set(target.$id, alias)
+        this.defTarget.set(target.$id, target)
+      }
     }
     for (const key of Object.keys(defs).sort()) {
       const pointer = `#/${defsKey}/${escapePointer(key)}`
@@ -188,17 +197,20 @@ class Printer {
   }
 
   private printRef(ref: string): string {
-    if (!ref.startsWith('#')) {
-      return 'unknown /* external $ref */'
-    }
-
-    const known = this.defAlias.get(ref)
-    if (known !== undefined) {
-      const target = resolvePointer(this.root, ref)
+    const named = this.defAlias.get(ref)
+    if (named !== undefined) {
+      const target = this.defTarget.get(ref)
       if (target === undefined) {
         return 'unknown'
       }
-      return this.ensureAlias(known, target, ref)
+      const pointer = ref.startsWith('#')
+        ? ref
+        : `#/$defs/${escapePointer(ref)}`
+      return this.ensureAlias(named, target, pointer)
+    }
+
+    if (!ref.startsWith('#')) {
+      return 'unknown /* external $ref */'
     }
 
     if (ref === '#') {
@@ -253,6 +265,7 @@ class Printer {
           )
         : [],
     )
+    const extraTs = this.additionalType(schema, pointer)
     const fields: Array<{ key: string; optional: boolean; ts: string }> = []
     for (const key of Object.keys(properties)) {
       const value = properties[key]
@@ -262,25 +275,80 @@ class Printer {
         ts: this.print(value, `${pointer}/properties/${escapePointer(key)}`),
       })
     }
+    if (extraTs !== undefined) {
+      for (const key of required) {
+        if (key in properties) {
+          continue
+        }
+        fields.push({ key: quoteKey(key), optional: false, ts: extraTs })
+      }
+    }
 
     let index: string | undefined
     if (schema.additionalProperties === false) {
       index = undefined
     } else if (schema.additionalProperties === true) {
       index = 'unknown'
-    } else if (schema.additionalProperties === undefined) {
-      // Zod input / TypeBox omit additionalProperties. Listed properties are
-      // the TS shape (live `z.object({ id: z.number() })` is `{ id: number }`).
-      // A free-form object with no properties is a dictionary.
-      index = fields.length === 0 ? 'unknown' : undefined
+    } else if (schema.additionalProperties !== undefined) {
+      index = extraTs
+      if (index !== undefined && index !== 'unknown' && fields.length > 0) {
+        index = unique([...fields.map((field) => field.ts), index]).join(' | ')
+      }
+    } else if ('properties' in schema) {
+      // Explicit properties (including {}) are the TS shape. Zod / TypeBox
+      // objects omit additionalProperties; do not treat them as dictionaries.
+      index = undefined
     } else {
-      index = this.print(
-        schema.additionalProperties,
-        `${pointer}/additionalProperties`,
-      )
+      index = this.patternDictionary(schema, pointer) ?? 'unknown'
     }
 
     return formatObject(fields, index)
+  }
+
+  private additionalType(
+    schema: Record<string, unknown>,
+    pointer: string,
+  ): string | undefined {
+    if (schema.additionalProperties === true) {
+      return 'unknown'
+    }
+    if (
+      schema.additionalProperties === false ||
+      schema.additionalProperties === undefined
+    ) {
+      return undefined
+    }
+    return this.print(
+      schema.additionalProperties,
+      `${pointer}/additionalProperties`,
+    )
+  }
+
+  private patternDictionary(
+    schema: Record<string, unknown>,
+    pointer: string,
+  ): string | undefined {
+    if (!isRecord(schema.patternProperties)) {
+      return undefined
+    }
+    const keys = Object.keys(schema.patternProperties)
+    if (keys.length !== 1) {
+      return undefined
+    }
+    const key = keys[0]
+    if (
+      key !== '^.*$' &&
+      key !== '^' &&
+      key !== '.+' &&
+      key !== '^[\\s\\S]*$'
+    ) {
+      return undefined
+    }
+    const item = schema.patternProperties[key]
+    return this.print(
+      item,
+      `${pointer}/patternProperties/${escapePointer(key)}`,
+    )
   }
 
   private printArray(schema: Record<string, unknown>, pointer: string): string {

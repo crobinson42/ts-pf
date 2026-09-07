@@ -58,17 +58,29 @@ function toOperation(
 ): OpenAPIOperation {
   const requestName = schemaName(proc.path, 'Request')
   const successName = schemaName(proc.path, 'Success')
-  const requestInner = innerFromCatalog(proc.input)
-  const successInner = innerFromCatalog(proc.output)
+  const requestInner = hasInput(proc)
+    ? putSchema(
+        options.schemas,
+        schemaName(proc.path, 'Input'),
+        innerFromCatalog(proc.input) ?? {},
+      )
+    : undefined
+  const successInner = hasOutput(proc)
+    ? putSchema(
+        options.schemas,
+        schemaName(proc.path, 'Output'),
+        innerFromCatalog(proc.output) ?? {},
+      )
+    : undefined
   const requestSchema = putSchema(
     options.schemas,
     requestName,
-    requestEnvelope(hasInput(proc) ? requestInner : undefined),
+    requestEnvelope(requestInner),
   )
   const successSchema = putSchema(
     options.schemas,
     successName,
-    successEnvelope(hasOutput(proc) ? successInner : undefined),
+    successEnvelope(successInner),
   )
 
   const operation: OpenAPIOperation = {

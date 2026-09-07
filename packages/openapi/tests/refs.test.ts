@@ -53,7 +53,7 @@ describe('relocateRefs', () => {
     ).toEqual({ $ref: 'https://example.com/schema.json' })
   })
 
-  it('rewrites recursive Zod $refs inside the generated document', () => {
+  it('rewrites recursive Zod $refs onto the hoisted inner schema', () => {
     const Node: z.ZodType<{ name: string; child?: unknown }> = z.object({
       name: z.string(),
       get child() {
@@ -72,6 +72,22 @@ describe('relocateRefs', () => {
     )
     const dumped = JSON.stringify(spec)
     expect(dumped).not.toMatch(/"\$ref":"#\/\$defs\//)
-    expect(dumped).toMatch(/#\/components\/schemas\/planet\.tree\./)
+    expect(dumped).not.toMatch(/"\$ref":"#"/)
+    const input = spec.components.schemas['planet.tree.Input'] as {
+      type?: string
+      required?: string[]
+      properties?: { name?: unknown; child?: { $ref?: string } }
+    }
+    expect(input.type).toBe('object')
+    expect(input.required).toEqual(['name'])
+    expect(input.properties?.name).toMatchObject({ type: 'string' })
+    expect(input.properties?.child?.$ref).toBe(
+      '#/components/schemas/planet.tree.Input',
+    )
+    expect(spec.components.schemas['planet.tree.Request']).toMatchObject({
+      properties: {
+        input: { $ref: '#/components/schemas/planet.tree.Input' },
+      },
+    })
   })
 })

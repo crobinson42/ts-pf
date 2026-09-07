@@ -148,8 +148,14 @@ describe('openapi', () => {
       { info: { title: 'X', version: '1' } },
     )
     expect(odd.paths['/ping']?.post).toBeDefined()
-    const success = odd.components.schemas['ping.Success']
-    expect(JSON.stringify(success)).toMatch(/unavailable/i)
+    expect(odd.components.schemas['ping.Success']).toMatchObject({
+      properties: {
+        output: { $ref: '#/components/schemas/ping.Output' },
+      },
+    })
+    expect(JSON.stringify(odd.components.schemas['ping.Output'])).toMatch(
+      /unavailable/i,
+    )
   })
 
   it('adds multipart only when opted in, on unary JSON requests', () => {
