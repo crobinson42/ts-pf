@@ -24,6 +24,7 @@ examples/
   stream/             StreamCodec + stream()
   plugins/            CallPlugin / CallInterceptor; first-party retry/cache/dedupe; local TimeoutPlugin / AuditPlugin; CORSPlugin is HTTP-only
 scripts/check-skills.mjs
+scripts/check-exports.mjs
 packages/*/skills/ts-pf-<pkg>/SKILL.md   consumer usage (hub ts-pf-app on contract)
 packages/contract/src/
   builder.ts          procedure singleton, router()
@@ -271,7 +272,7 @@ Runtime `validateSchema`: user `registerSchemaAdapter` (first `accept` match) �
 | Batch | refuse. Out of scope. |
 | Feature-slice / multi-server compose | Nested `router({ planet: planetContract })` and `impl.router({ planet: planetApp })`. Pick procedures for a smaller tree. Same `AppCtx` on every slice. Do not add `mergeRouters` / `compose()` / lazy routers. |
 
-New **published** packages: `version` `0.0.0`, `license: "MIT"`, `files: ["dist", "skills"]`, `keywords` (shared `ts-pf` / `typescript` / `rpc` / `typesafe` / `typed-rpc` / `api` / `contract-first` plus package-specific terms), `skills/ts-pf-<pkg>/SKILL.md`, workspace `exports` → `src` with matching `publishConfig.exports` → `dist` (mirror extra paths such as `./stdio`), `publishConfig.access: "public"`, `tsc -p tsconfig.build.json`, Vitest, Biome, a `.changeset/*.md`. Internal `@ts-pf/*` deps: `"*"` (not `workspace:*`). `changeset version` rewrites `"*"` for the tarball; do not restore `"*"` on packages that already have a versioned range. Depend downward only (no client↔server, no server-http↔client-http). Releases use Changesets and publish to npm dist-tag `latest`. Do not run `changeset pre enter` or add `.changeset/pre.json`. New **example** packages are `private: true` and should be appended to `.changeset/config.json` `ignore`.
+New **published** packages: `version` `0.0.0`, `license: "MIT"`, `files: ["dist", "skills"]`, `keywords` (shared `ts-pf` / `typescript` / `rpc` / `typesafe` / `typed-rpc` / `api` / `contract-first` plus package-specific terms), `skills/ts-pf-<pkg>/SKILL.md`, `exports` → `dist` (mirror extra paths such as `./stdio`), `publishConfig.access: "public"` only (do not put `exports` in `publishConfig`; npm leaves workspace `exports` in the tarball), `tsc -p tsconfig.build.json`, Vitest, Biome, a `.changeset/*.md`. Internal `@ts-pf/*` deps: `"*"` (not `workspace:*`). `changeset version` rewrites `"*"` for the tarball; do not restore `"*"` on packages that already have a versioned range. Depend downward only (no client↔server, no server-http↔client-http). Releases use Changesets and publish to npm dist-tag `latest`. Do not run `changeset pre enter` or add `.changeset/pre.json`. New **example** packages are `private: true` and should be appended to `.changeset/config.json` `ignore`.
 
 ## Anti-patterns
 
@@ -296,6 +297,7 @@ New **published** packages: `version` `0.0.0`, `license: "MIT"`, `files: ["dist"
 - Exporting `createErrorFactory` / `finalizeDeclaredError`
 - Importing `@ts-pf/protocol` into contract to share `ProtocolErrorCode`
 - Adding `mergeRouters` / `compose()` / lazy routers. Nest `router()` objects.
+- Pointing `exports` at `src` and relying on `publishConfig.exports` — npm does not rewrite it.
 
 ## Review checklist
 
@@ -308,6 +310,6 @@ New **published** packages: `version` `0.0.0`, `license: "MIT"`, `files: ["dist"
 - Procedure completeness: `impl.router()` rejects missing/extra keys (types + runtime)
 - Errors: unknown throws → `INTERNAL`, no stack in JSON. Unary output schema failure → `INTERNAL`, no issues. Invalid declared error `data` → `INTERNAL`, never serialize the bad payload. `ClientError` narrows `data` from `code`. `asResult` is `CallResult<T, E>`.
 - Protocol edits update `PROTOCOL.md`, `ProtocolErrorCode` in `packages/protocol/src/error.ts`, and the duplicated **private** `ProtocolErrorCode` union in `packages/contract/src/infer.ts`
-- `npm run lint && npm run check:skills && npm run type-check && npm test && npm run build`
-- Published-package changes include a `.changeset/*.md`. Releases publish to npm dist-tag `latest`. New published packages: `license` / `publishConfig.access` / `files: ["dist", "skills"]` / `keywords` / `skills/ts-pf-<pkg>/SKILL.md`. Do not restore `"*"` after a version bump.
+- `npm run lint && npm run check:skills && npm run type-check && npm test && npm run build && npm run check:exports`
+- Published-package changes include a `.changeset/*.md`. Releases publish to npm dist-tag `latest`. New published packages: `license` / `exports` → `dist` / `publishConfig.access` only / `files: ["dist", "skills"]` / `keywords` / `skills/ts-pf-<pkg>/SKILL.md`. Do not restore `"*"` after a version bump.
 - Matching `packages/<pkg>/skills/ts-pf-<pkg>` still matches public exports and names. Published `package.json` files include npm `keywords` (shared family terms plus package-specific). `npm run check:skills`.

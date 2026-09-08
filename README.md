@@ -323,7 +323,7 @@ Runnable apps in [`examples/`](examples/): [`hello`](examples/hello) (Fetch), [`
 
 ```sh
 npm install
-npm run lint && npm run check:skills && npm run type-check && npm test && npm run build
+npm run lint && npm run check:skills && npm run type-check && npm test && npm run build && npm run check:exports
 ```
 
 A public API / name / happy-path change updates `packages/<pkg>/skills/ts-pf-<pkg>/SKILL.md` in the same PR (`npm run check:skills`).
