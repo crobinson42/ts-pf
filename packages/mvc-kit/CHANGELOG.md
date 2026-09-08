@@ -1,5 +1,13 @@
 # @ts-pf/mvc-kit
 
+## 0.1.2
+
+### Patch Changes
+
+- 92c5262: Point package `exports` at `dist`. npm does not rewrite `publishConfig.exports`, so published tarballs previously resolved to missing `src/` files.
+- Updated dependencies [92c5262]
+  - @ts-pf/contract@0.1.2
+
 ## 0.1.1
 
 ### Patch Changes

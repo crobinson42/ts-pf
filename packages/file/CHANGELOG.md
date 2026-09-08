@@ -1,5 +1,14 @@
 # @ts-pf/file
 
+## 0.1.1
+
+### Patch Changes
+
+- 92c5262: Point package `exports` at `dist`. npm does not rewrite `publishConfig.exports`, so published tarballs previously resolved to missing `src/` files.
+- Updated dependencies [92c5262]
+  - @ts-pf/http@0.1.1
+  - @ts-pf/protocol@0.1.1
+
 ## 0.1.0
 
 ### Patch Changes

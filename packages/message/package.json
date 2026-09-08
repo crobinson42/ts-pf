@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/message",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Opt-in JSON text frames and MessageSession for WS, stdio, and MessagePort",
   "keywords": [
     "ts-pf",
@@ -51,6 +51,6 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/protocol": "0.1.0"
+    "@ts-pf/protocol": "0.1.1"
   }
 }
