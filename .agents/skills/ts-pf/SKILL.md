@@ -7,7 +7,7 @@ metadata:
 
 # ts-pf
 
-Follow [`.agents/rules.md`](../../rules.md) for locks and public names. This skill is the architecture map and the "how to change it" guide. Consumer usage docs live in `packages/<pkg>/skills/` (hub: `packages/contract/skills/ts-pf-app`). Do not publish this file. Downstream install is `npx skills experimental_sync -y` — never a library `postinstall`.
+Follow [`.agents/rules.md`](../../rules.md) for locks and public names. This skill is the architecture map and the "how to change it" guide. Consumer usage docs live in `packages/<pkg>/skills/` (hub catalog: `packages/contract/skills/ts-pf-app`; index: `skills/README.md`). Do not publish this file. Downstream install is `npx skills experimental_sync -y` — never a library `postinstall`. Do not add a published `@ts-pf/skills` package.
 
 Wire format: `packages/protocol/PROTOCOL.md`. DX overview: `README.md`.
 
@@ -25,7 +25,8 @@ examples/
   plugins/            CallPlugin / CallInterceptor; first-party retry/cache/dedupe; local TimeoutPlugin / AuditPlugin; CORSPlugin is HTTP-only
 scripts/check-skills.mjs
 scripts/check-exports.mjs
-packages/*/skills/ts-pf-<pkg>/SKILL.md   consumer usage (hub ts-pf-app on contract)
+skills/README.md                         consumer skill index (not published)
+packages/*/skills/ts-pf-<pkg>/SKILL.md   consumer usage (hub catalog ts-pf-app on contract)
 packages/contract/src/
   builder.ts          procedure singleton, router()
   procedure.ts        ContractProcedure brand
@@ -265,7 +266,7 @@ Runtime `validateSchema`: user `registerSchemaAdapter` (first `accept` match) �
 | SWR (React) | `@ts-pf/swr` `createSwr(client)`. |
 | mvc-kit (MVVM) | `@ts-pf/mvc-kit` `bindClient(client, host)` + `issuesToFieldErrors`. |
 | TanStack Query, Node HTTP, EventPublisher | **new package** under `packages/`. Do not fold into contract/server/client. Same PR: `skills/ts-pf-<pkg>/SKILL.md`, `"files"` includes `skills`, and `keywords` (shared family terms plus package-specific). |
-| Consumer usage skill | `packages/<pkg>/skills/ts-pf-<pkg>/SKILL.md` in the same PR as a public API / name / happy-path change. Hub is `ts-pf-app` on contract. `npm run check:skills`. |
+| Consumer usage skill | `packages/<pkg>/skills/ts-pf-<pkg>/SKILL.md` in the same PR as a public API / name / happy-path change. Hub catalog is `ts-pf-app` on contract (opt-in happy-path snippets too). Index: `skills/README.md`. `npm run check:skills`. Do not add `@ts-pf/skills`. |
 | Typed errors on a procedure | `.errors({ CODE: { status?, message, data? } })`. `status` is optional HTTP / OpenAPI metadata. Handler: `throw errors.CODE(data)`. `ClientError<E>` is declared variants plus remaining protocol codes. `asResult` → `CallResult<T, E>`. Non-JS clients switch on JSON `error.code`. `isLocalFailure` is `local === true`. Do not put `status` or `cause` in `{ ok: false, error }`. |
 | Retry / in-flight dedupe / cache | `RetryPlugin` / `DedupePlugin` / `CachePlugin` on `createClient(link, { plugins })`. Server `DedupePlugin` via `createLocalClient` `{ plugins }` or `applyPlugins` into `FetchHandler`/`HandlerOptions` `{ interceptors }`. Not FetchLink internals. Not Fetch interceptors (they cannot see structured input without cloning body). Skip `AsyncIterable` input; `CachePlugin` also does not cache iterable output. Server default dedupe keys every unary call — pass `key` to restrict to reads (unsafe for non-idempotent writes). Batch still refuse. |
 | Timeout | `AbortSignal.timeout` — userland. |
@@ -312,4 +313,4 @@ New **published** packages: `version` `0.0.0`, `license: "MIT"`, `files: ["dist"
 - Protocol edits update `PROTOCOL.md`, `ProtocolErrorCode` in `packages/protocol/src/error.ts`, and the duplicated **private** `ProtocolErrorCode` union in `packages/contract/src/infer.ts`
 - `npm run lint && npm run check:skills && npm run type-check && npm test && npm run build && npm run check:exports`
 - Published-package changes include a `.changeset/*.md`. Releases publish to npm dist-tag `latest`. New published packages: `license` / `exports` → `dist` / `publishConfig.access` only / `files: ["dist", "skills"]` / `keywords` / `skills/ts-pf-<pkg>/SKILL.md`. Do not restore `"*"` after a version bump.
-- Matching `packages/<pkg>/skills/ts-pf-<pkg>` still matches public exports and names. Published `package.json` files include npm `keywords` (shared family terms plus package-specific). `npm run check:skills`.
+- Matching `packages/<pkg>/skills/ts-pf-<pkg>` still matches public exports and names. Hub `ts-pf-app` description still names opt-in capabilities. `skills/README.md` lists every published skill path. Published `package.json` files include npm `keywords` (shared family terms plus package-specific). `npm run check:skills`.

@@ -41,13 +41,13 @@ Wire spec: [packages/protocol/PROTOCOL.md](packages/protocol/PROTOCOL.md).
 
 ## Agent skills
 
-Each `@ts-pf/*` package ships `skills/ts-pf-<name>/` (plus `ts-pf-app` on `@ts-pf/contract`). After install or `npm update`:
+Each `@ts-pf/*` package ships `skills/ts-pf-<name>/`. `@ts-pf/contract` also ships the hub catalog `ts-pf-app` (Fetch happy path plus opt-in capabilities the app has not installed yet). Sync copies skills from **installed** packages. After install or `npm update`:
 
 ```sh
 npx skills experimental_sync -y
 ```
 
-That links the skills into the project's agent skill dirs. Put the command on the **app** `postinstall` if you want it automatic — never on `@ts-pf/*`.
+That links the skills into the project's agent skill dirs. Put the command on the **app** `postinstall` if you want it automatic — never on `@ts-pf/*`. Index of every consumer skill: [`skills/README.md`](skills/README.md) (not published, not an authoring home). Do not add a published `@ts-pf/skills` package.
 
 ## Contract
 
@@ -326,6 +326,6 @@ npm install
 npm run lint && npm run check:skills && npm run type-check && npm test && npm run build && npm run check:exports
 ```
 
-A public API / name / happy-path change updates `packages/<pkg>/skills/ts-pf-<pkg>/SKILL.md` in the same PR (`npm run check:skills`).
+A public API / name / happy-path change updates `packages/<pkg>/skills/ts-pf-<pkg>/SKILL.md` in the same PR (`npm run check:skills`). Opt-in happy-path changes also update the matching snippet on `ts-pf-app`.
 
 Releases use [Changesets](https://github.com/changesets/changesets) (`latest` on npm). See [`.changeset/README.md`](.changeset/README.md). A PR that changes a published `packages/*` package must include a changeset (`npx changeset`).

@@ -127,7 +127,7 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 - One job per file. No HTTP in `contract`. No schemas in `protocol`. No `Request`/`Response` in `server` or `client`.
 - Tests: Vitest. Type tests: `expectTypeOf` plus `tsc --noEmit`.
 - Workspace: npm + Turborepo (`packages/*`, `examples/*`). Internal `@ts-pf/*` deps: `"*"` until `changeset version` rewrites them for npm; do not restore `"*"` after a bump. New published packages: `license: "MIT"`, `exports` → `dist` (mirror extra paths such as `./stdio`), `publishConfig.access: "public"` only (npm does not rewrite `publishConfig.exports`), `files: ["dist", "skills"]`, a `keywords` array (shared `ts-pf` / `typescript` / `rpc` / `typesafe` / `typed-rpc` / `api` / `contract-first` plus package-specific terms), and a `skills/ts-pf-<pkg>/SKILL.md` consumer skill (same PR as the package). Lockfile: `package-lock.json`. Build: `tsc -p tsconfig.build.json`. turbo `test` and `type-check` `dependsOn: ["build", "^build"]` because workspace tests import `@ts-pf/*` by name and need `dist`.
-- Consumer skills live in `packages/<pkg>/skills/ts-pf-<pkg>/SKILL.md` (hub `ts-pf-app` is in `contract`). Update the matching skill in the same PR as a public API / name / happy-path change. Do not copy this file into them. Downstream install: `npx skills experimental_sync -y`. No library `postinstall`.
+- Consumer skills live in `packages/<pkg>/skills/ts-pf-<pkg>/SKILL.md` (hub `ts-pf-app` is in `contract`). The hub is the capability catalog for packages the consumer has not installed; usage skills version with their package. Update the matching skill in the same PR as a public API / name / happy-path change. If that change is the opt-in happy path, also update the matching snippet on `ts-pf-app`. Do not copy this file into them. Index: `skills/README.md` (not published; no `SKILL.md` there). Downstream install: `npx skills experimental_sync -y`. No library `postinstall`. Do not add a published `@ts-pf/skills` package.
 - Releases: Changesets, npm dist-tag `latest`. PRs that change a published `packages/*` package include a `.changeset/*.md`. Do not run `changeset pre enter` or add `.changeset/pre.json`. Examples are private and listed in `.changeset/config.json` `ignore` (add new example names there).
 
 ## Anti-patterns
@@ -167,4 +167,4 @@ Live in `examples/`: `hello` (Fetch), `codegen` (split-repo `emit` / `createClie
 npm run lint && npm run check:skills && npm run type-check && npm test && npm run build && npm run check:exports
 ```
 
-Wire changes must update `packages/protocol/PROTOCOL.md`. Public API / name / happy-path changes must update `packages/<pkg>/skills/ts-pf-<pkg>/SKILL.md`.
+Wire changes must update `packages/protocol/PROTOCOL.md`. Public API / name / happy-path changes must update `packages/<pkg>/skills/ts-pf-<pkg>/SKILL.md`. Opt-in happy-path changes also update the matching snippet on `packages/contract/skills/ts-pf-app/SKILL.md`.
