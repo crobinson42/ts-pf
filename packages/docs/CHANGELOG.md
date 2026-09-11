@@ -1,5 +1,12 @@
 # @ts-pf/docs
 
+## 0.1.4
+
+### Patch Changes
+
+- Updated dependencies [615fd9c]
+  - @ts-pf/contract@0.1.3
+
 ## 0.1.3
 
 ### Patch Changes

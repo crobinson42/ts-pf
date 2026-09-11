@@ -1,5 +1,12 @@
 # @ts-pf/server
 
+## 0.2.2
+
+### Patch Changes
+
+- Updated dependencies [615fd9c]
+  - @ts-pf/contract@0.1.3
+
 ## 0.2.1
 
 ### Patch Changes

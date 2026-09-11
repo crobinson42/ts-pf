@@ -1,5 +1,12 @@
 # @ts-pf/mvc-kit
 
+## 0.1.3
+
+### Patch Changes
+
+- Updated dependencies [615fd9c]
+  - @ts-pf/contract@0.1.3
+
 ## 0.1.2
 
 ### Patch Changes

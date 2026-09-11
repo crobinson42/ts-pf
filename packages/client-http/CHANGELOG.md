@@ -1,5 +1,11 @@
 # @ts-pf/client-http
 
+## 0.1.3
+
+### Patch Changes
+
+- @ts-pf/client@0.1.3
+
 ## 0.1.2
 
 ### Patch Changes
