@@ -1,0 +1,16 @@
+{
+  "name": "@ts-pf/example-clean-arch-domain",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "type-check": "tsc --noEmit",
+    "lint": "biome check src tests"
+  },
+  "dependencies": {
+    "zod": "^4.0.0"
+  }
+}

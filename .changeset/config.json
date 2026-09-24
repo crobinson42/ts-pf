@@ -8,6 +8,11 @@
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
   "ignore": [
+    "@ts-pf/example-clean-arch",
+    "@ts-pf/example-clean-arch-api",
+    "@ts-pf/example-clean-arch-app",
+    "@ts-pf/example-clean-arch-domain",
+    "@ts-pf/example-clean-arch-infra",
     "@ts-pf/example-codegen",
     "@ts-pf/example-codegen-client",
     "@ts-pf/example-codegen-server",

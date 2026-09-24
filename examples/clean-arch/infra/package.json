@@ -1,0 +1,16 @@
+{
+  "name": "@ts-pf/example-clean-arch-infra",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "lint": "biome check src"
+  },
+  "dependencies": {
+    "@ts-pf/example-clean-arch-app": "*",
+    "@ts-pf/example-clean-arch-domain": "*"
+  }
+}

@@ -23,6 +23,7 @@ examples/
   message/            PortHandler + PortLink over MessageChannel
   stream/             StreamCodec + stream()
   plugins/            CallPlugin / CallInterceptor; first-party retry/cache/dedupe; local TimeoutPlugin / AuditPlugin; CORSPlugin is HTTP-only
+  clean-arch/         onion layers (domain, app, infra, api); FetchHandler + WsHandler, one contract
 scripts/check-skills.mjs
 scripts/check-exports.mjs
 skills/README.md                         consumer skill index (not published)
@@ -156,7 +157,7 @@ await client.planet.find({ id: 1 })
 // asResult(client.planet.find({ id: 1 })) — result.error.code === 'NOT_FOUND' narrows data
 ```
 
-Runnable form of this happy path: `examples/hello`. Split-repo typed client: `examples/codegen`. Message: `examples/message`. Streams: `examples/stream`. Plugins: `examples/plugins`.
+Runnable form of this happy path: `examples/hello`. Split-repo typed client: `examples/codegen`. Message: `examples/message`. Streams: `examples/stream`. Plugins: `examples/plugins`. Onion layering: `examples/clean-arch`.
 
 Files are opt-in. Do not put this in the default happy path:
 

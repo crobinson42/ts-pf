@@ -14,7 +14,8 @@
   "workspaces": [
     "packages/*",
     "examples/*",
-    "examples/codegen/*"
+    "examples/codegen/*",
+    "examples/clean-arch/*"
   ],
   "scripts": {
     "build": "turbo run build",
