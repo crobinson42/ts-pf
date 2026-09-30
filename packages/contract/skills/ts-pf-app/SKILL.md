@@ -1,6 +1,6 @@
 ---
 name: ts-pf-app
-description: Use when building an app with ts-pf — picking packages, writing a contract, implementing a server, creating a client, composing feature slices, or choosing Fetch vs file upload vs stream vs SSE vs message vs docs vs OpenAPI vs codegen vs SWR vs mvc-kit. Triggers: ts-pf, @ts-pf, RPC, createImplementer, FetchHandler, createClient, FetchLink, MultipartCodec, StreamCodec, SseCodec, PortHandler, docs(), catalog(), openapi(), emit(), createSwr, bindClient, feature slice.
+description: Use when building an app with ts-pf — picking packages, writing a contract, implementing a server, creating a client, composing feature slices, or choosing Fetch vs file upload vs stream vs SSE vs message vs docs vs OpenAPI vs codegen vs SWR vs mvc-kit vs astro. Triggers: ts-pf, @ts-pf, RPC, createImplementer, FetchHandler, createClient, FetchLink, MultipartCodec, StreamCodec, SseCodec, PortHandler, docs(), catalog(), openapi(), emit(), createSwr, bindClient, createAstroHandler, feature slice.
 ---
 
 # ts-pf (app)
@@ -118,8 +118,9 @@ No `mergeRouters`. No `compose()`. No lazy routers.
 | Split-repo `Contract` `.d.ts` | `@ts-pf/codegen` | `ts-pf-codegen` |
 | SWR | `@ts-pf/swr` | `ts-pf-swr` |
 | mvc-kit Resources | `@ts-pf/mvc-kit` | `ts-pf-mvc-kit` |
+| Astro endpoint / pages | `@ts-pf/astro` | `ts-pf-astro` |
 
-File, stream, SSE, and message are opt-in codecs/transports — default handler/link stay JSON. Docs, OpenAPI, codegen, SWR, and mvc-kit are other opt-in packages. Snippets below match the package-skill happy path; load `ts-pf-<pkg>` for API lists and Don'ts.
+File, stream, SSE, and message are opt-in codecs/transports — default handler/link stay JSON. Docs, OpenAPI, codegen, SWR, mvc-kit, and Astro are other opt-in packages. Snippets below match the package-skill happy path; load `ts-pf-<pkg>` for API lists and Don'ts.
 
 ### File / Blob — `@ts-pf/file` → `ts-pf-file`
 
@@ -229,6 +230,37 @@ if (!result.ok && result.error.code === 'VALIDATION') {
 }
 ```
 
+### Astro — `@ts-pf/astro` → `ts-pf-astro`
+
+```ts
+import { createAstroHandler, withBase } from '@ts-pf/astro/server'
+
+export const prerender = false
+
+export const ALL = createAstroHandler(handler, {
+  prefix: withBase(import.meta.env.BASE_URL, '/rpc'),
+  context: (astro) => ({ db, user: astro.locals.user }),
+})
+```
+
+```ts
+import { createAstroLocalClient } from '@ts-pf/astro/server'
+
+const caller = await createAstroLocalClient(app, Astro, contextFromAstro)
+const planet = await caller.planet.find({ id: 1 })
+```
+
+```ts
+import { createAstroClient, withBase } from '@ts-pf/astro/client'
+import type { contract } from './contract'
+
+export const client = createAstroClient<typeof contract>({
+  prefix: withBase(import.meta.env.BASE_URL, '/rpc'),
+})
+```
+
+On-demand endpoint (`ALL`, `prerender = false`). Pages call `createAstroLocalClient` in-process. Islands import `@ts-pf/astro/client` or `@ts-pf/astro`, never `@ts-pf/astro/server`.
+
 ## Names
 
 | Use | Not |
@@ -244,6 +276,7 @@ if (!result.ok && result.error.code === 'VALIDATION') {
 | `stream()` | `eventIterator` |
 | `createSwr` | `createSWRUtils` / `swrUtils` |
 | `bindClient` | `bind` as a client wrapper / `createMvc` |
+| `createAstroHandler` / `createAstroLocalClient` / `createAstroClient` | `RPCHandler` |
 | `emit` / `catalogHash` | `generate` / `compile`; `digest` as the only hash name |
 | `ts-pf-codegen` | `pf` |
 | generated `Contract` | `AppRouter` |
@@ -258,3 +291,4 @@ if (!result.ok && result.error.code === 'VALIDATION') {
 - ClientContext bags. No oRPC `*HandlerPlugin` class names.
 - `mergeRouters` / `compose()` / lazy routers — nest `router({ planet: planetContract })`.
 - Import an opt-in package because this catalog mentioned it — install, re-sync, then load `ts-pf-<pkg>`.
+- Client islands and `<script>` import `@ts-pf/astro/client` (or the package root). Endpoint and frontmatter code imports `@ts-pf/astro/server`.

@@ -24,6 +24,8 @@ Contract-first TypeScript RPC library (`@ts-pf/*`). oRPC-like DX is the bar; oRP
 @ts-pf/codegen  → docs
 @ts-pf/swr      → contract (peer swr)
 @ts-pf/mvc-kit  → contract (peer mvc-kit >= 4.9.0)
+@ts-pf/astro/server → server-http + server (peer astro >= 4.9.0)
+@ts-pf/astro        → client-http + client (`.` / `./client`; peer astro >= 4.9.0)
 ```
 
 - `contract` and `protocol` are siblings. Neither depends on the other.
@@ -35,6 +37,7 @@ Contract-first TypeScript RPC library (`@ts-pf/*`). oRPC-like DX is the bar; oRP
 - `@ts-pf/message` depends on `protocol` only. `@ts-pf/message-server` depends on `message` + `server` + `protocol` (never client, prod or dev). `@ts-pf/message-client` depends on `message` + `client` (never server in prod; one-way `message-server` **devDependency** for e2e).
 - `@ts-pf/docs` depends on `contract`, `protocol`, and `http` (header name + `joinProcedurePath` for href). Not imported by core.
 - `@ts-pf/openapi` depends on `docs`. `@ts-pf/codegen` depends on `docs`. `@ts-pf/swr` depends on `contract` only (peer `swr`). `@ts-pf/mvc-kit` depends on `contract` only (peer `mvc-kit >= 4.9.0`).
+- `@ts-pf/astro` `./server` depends on `server-http` and `server`. `.` and `./client` depend on `client-http` and `client`. The server entry never imports the client entry. The client entry never imports the server entry. Peer `astro >= 4.9.0`. Root export is client-only.
 - Routers are nested objects, not a package.
 
 | Package | Owns |
@@ -54,6 +57,7 @@ Contract-first TypeScript RPC library (`@ts-pf/*`). oRPC-like DX is the bar; oRP
 | `codegen` | `emit(catalog)`, `catalogHash()`, `EmitOptions`, CLI `ts-pf-codegen`. |
 | `swr` | `createSwr(client)` helpers for SWR. |
 | `mvc-kit` | `bindClient(client, host)` / `issuesToFieldErrors` / `DisposeSignalHost`. |
+| `astro` | `createAstroHandler`, `createAstroLocalClient` (`./server`); `createAstroClient`, `withBase` (`.` and `./client`). Peer `astro >= 4.9.0`. Root export is client-only. |
 | `message` | JSON text frames + `MessageSession` / `Duplex` + port/ws/stdio duplex adapters. |
 | `message-server` | `PortHandler`, `WsHandler`, `StdioHandler` (`./stdio` only). Calls `lookupProcedure` + `runProcedure`. `HandlerOptions` may include `interceptors` and `validation`. |
 | `message-client` | `PortLink`, `WsLink`, `StdioLink` (`./stdio` only). Implements `Link`. |
@@ -75,6 +79,7 @@ Do not resurrect oRPC names in code, docs, or examples.
 | `stream()` | `eventIterator` |
 | `createSwr` | `createSWRUtils` / `createRouterUtils` / `swrUtils` |
 | `bindClient` | `bind` as a client wrapper / `createMvc` / `createRouterUtils`. `PortHandler.bind` is unchanged. |
+| `createAstroHandler` / `createAstroLocalClient` / `createAstroClient` | `RPCHandler` |
 | `emit` / `catalogHash` | `generate` / `compile` as the only names; `digest` as the only hash name |
 | `ts-pf-codegen` | `pf` |
 | generated `Contract` | `AppRouter` |
@@ -98,7 +103,7 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 - Keep `ProtocolErrorCode` duplicated as a private union in `packages/contract/src/infer.ts`. Do not import `@ts-pf/protocol` from contract.
 - `METHOD_NOT_ALLOWED` stays in the closed set; only FetchHandler emits it. `PAYLOAD_TOO_LARGE` is shared (HTTP body cap + message outbound oversize).
 
-**Not in core:** OpenAPI runtime / REST / Scalar, error-catalog RPC, Node `IncomingMessage` adapters, framework adapters, TanStack Query, lazy routers, `mergeRouters` / `compose()`, Map/Set on the wire, EventSource clients, Last-Event-ID, EventPublisher. Feature slices nest `router({ planet: planetContract })` and `impl.router({ planet: planetApp })`. Each server exports one contract; clients import that contract only. File/Blob is `@ts-pf/file`. Message streams are `@ts-pf/stream`. SSE output framing is `@ts-pf/sse`. Procedure catalogs are `@ts-pf/docs`. OpenAPI 3.1 documents are `@ts-pf/openapi`. Typed-client `.d.ts` codegen is `@ts-pf/codegen`. Message transports are `@ts-pf/message` / `message-server` / `message-client`. SWR is `@ts-pf/swr`. mvc-kit Resource helpers are `@ts-pf/mvc-kit`. Fetch is `@ts-pf/server-http` / `@ts-pf/client-http`. Do not add `.docs()` to the contract builder. None of these are core defaults. Do not redeclare `VALIDATION`, `INTERNAL`, `BAD_REQUEST`, `METHOD_NOT_ALLOWED`, or `PAYLOAD_TOO_LARGE` on `.errors()`.
+**Not in core:** OpenAPI runtime / REST / Scalar, error-catalog RPC, Node `IncomingMessage` adapters, framework adapters, TanStack Query, lazy routers, `mergeRouters` / `compose()`, Map/Set on the wire, EventSource clients, Last-Event-ID, EventPublisher. Feature slices nest `router({ planet: planetContract })` and `impl.router({ planet: planetApp })`. Each server exports one contract; clients import that contract only. File/Blob is `@ts-pf/file`. Message streams are `@ts-pf/stream`. SSE output framing is `@ts-pf/sse`. Procedure catalogs are `@ts-pf/docs`. OpenAPI 3.1 documents are `@ts-pf/openapi`. Typed-client `.d.ts` codegen is `@ts-pf/codegen`. Message transports are `@ts-pf/message` / `message-server` / `message-client`. SWR is `@ts-pf/swr`. mvc-kit Resource helpers are `@ts-pf/mvc-kit`. Astro endpoints and page callers are `@ts-pf/astro`. Fetch is `@ts-pf/server-http` / `@ts-pf/client-http`. Do not add `.docs()` to the contract builder. None of these are core defaults. Do not redeclare `VALIDATION`, `INTERNAL`, `BAD_REQUEST`, `METHOD_NOT_ALLOWED`, or `PAYLOAD_TOO_LARGE` on `.errors()`.
 
 ## Extension (hooks, not a plugin framework)
 
@@ -151,6 +156,7 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 - Do not serve REST or OpenAPI from `FetchHandler`. Do not add GET/PUT/path params to `@ts-pf/openapi` documents. Scalar/Swagger stay userland.
 - Do not serve `catalog.json` from `FetchHandler`. No `createClientFromCatalog` in v1.
 - Do not reconstruct HTTP status from `error.code` on message transports.
+- `@ts-pf/astro/server` is not imported by client islands. `@ts-pf/astro/client` does not import `@ts-pf/server`.
 
 ## Examples
 

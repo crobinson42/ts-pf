@@ -36,6 +36,7 @@ npm install @ts-pf/contract @ts-pf/server @ts-pf/server-http @ts-pf/client @ts-p
 | [`@ts-pf/message-client`](packages/message-client) | Opt-in `PortLink` / `WsLink` / `StdioLink` |
 | [`@ts-pf/swr`](packages/swr) | Opt-in SWR keys, fetchers, mutators, and matchers |
 | [`@ts-pf/mvc-kit`](packages/mvc-kit) | Opt-in `bindClient` + `issuesToFieldErrors` for mvc-kit Resources |
+| [`@ts-pf/astro`](packages/astro) | Opt-in Astro endpoint (`createAstroHandler`) and page caller (`createAstroLocalClient` / `createAstroClient`) |
 
 Wire spec: [packages/protocol/PROTOCOL.md](packages/protocol/PROTOCOL.md).
 
