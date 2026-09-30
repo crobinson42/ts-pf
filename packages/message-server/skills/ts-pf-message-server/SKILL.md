@@ -31,7 +31,7 @@ new StdioHandler(app).bind(
 )
 ```
 
-Call interceptors are `HandlerOptions.interceptors` from `@ts-pf/server`. Pass `context` (value or `(info) => ctx`) on `bind()`, not per frame.
+Call interceptors are `HandlerOptions.interceptors` from `@ts-pf/server`. `HandlerOptions.validation` is the same `ProcedureValidation` for `PortHandler`, `WsHandler`, and `StdioHandler`: input checks default on, output and stream output items run only with `{ validation: { output: true } }`. Set it on the constructor, not on `bind()`. Pass `context` (value or `(info) => ctx`) on `bind()`, not per frame.
 
 ## API
 

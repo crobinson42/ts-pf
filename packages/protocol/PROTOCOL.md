@@ -67,15 +67,15 @@ x-ts-pf-protocol: 1
 | Code | Status | When |
 |---|---|---|
 | `BAD_REQUEST` | 400 | Invalid JSON or envelope |
-| `VALIDATION` | 422 | Input schema failed. `error.data.issues` is `{ message, path }[]` |
+| `VALIDATION` | 422 | Input schema failed, or a stream item schema failed after the stream started. `error.data.issues` is `{ message, path }[]` |
 | `NOT_FOUND` | 404 | Prefix matched, procedure missing |
 | `METHOD_NOT_ALLOWED` | 405 | Non-POST |
 | `PAYLOAD_TOO_LARGE` | 413 | Request body larger than the configured handler limit |
-| `INTERNAL` | 500 | Unknown throw. Output schema failures also use 500 (server bug). |
+| `INTERNAL` | 500 | Unknown throw. A unary output schema failure is also 500 (server bug). Output schema checks are optional. |
 
 The discriminator is `error.code`. HTTP status is unary transport only; it is not in the JSON body.
 
-The table above is a **closed** set. Procedure-declared codes are application-defined strings with optional `data`. `VALIDATION` is the only protocol code with a specified `data` shape: `{ issues: { message, path }[] }` where `path` is `(string | number)[]`. Other protocol codes omit `data`. `INTERNAL` never includes a stack or output-schema issues.
+The table above is a **closed** set. Procedure-declared codes are application-defined strings with optional `data`. `VALIDATION` is the only protocol code with a specified `data` shape: `{ issues: { message, path }[] }` where `path` is `(string | number)[]`. Other protocol codes omit `data`. `INTERNAL` never includes a stack or output-schema issues. Servers may skip output schema checks. When a server checks a unary output schema and it fails, the code is `INTERNAL` and `data` is omitted. When a server checks a stream item and it fails, the code is `VALIDATION` with `issues`, in-band after the stream has started.
 
 Unknown `code` values are valid JSON; clients must catch-all. A procedure may reuse `NOT_FOUND` for a missing entity. Do not redeclare `VALIDATION`, `INTERNAL`, `BAD_REQUEST`, `METHOD_NOT_ALLOWED`, or `PAYLOAD_TOO_LARGE`.
 

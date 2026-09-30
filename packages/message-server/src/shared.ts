@@ -11,6 +11,7 @@ import {
   type CallInterceptor,
   type ImplementedRouter,
   lookupProcedure,
+  type ProcedureValidation,
   type RunProcedureOptions,
   runProcedure,
 } from '@ts-pf/server'
@@ -22,6 +23,7 @@ export type HandlerOptions = {
   helloTimeoutMs?: number
   onError?: (error: unknown) => void | Promise<void>
   interceptors?: readonly CallInterceptor[]
+  validation?: ProcedureValidation
 }
 
 export type AttachRouterOptions<TCtx = unknown> = HandlerOptions & {
@@ -64,6 +66,7 @@ async function dispatchCall(
   rec: ServerInflight,
   context: unknown,
   interceptors?: readonly CallInterceptor[],
+  validation?: ProcedureValidation,
 ): Promise<unknown> {
   const procedure = lookupProcedure(router, frame.path)
   if (!procedure) {
@@ -82,6 +85,9 @@ async function dispatchCall(
   const runOpts: RunProcedureOptions = { signal: rec.ac.signal }
   if (interceptors !== undefined && interceptors.length > 0) {
     runOpts.interceptors = interceptors
+  }
+  if (validation) {
+    runOpts.validation = validation
   }
   return runProcedure(procedure, rawInput, context, runOpts)
 }
@@ -351,6 +357,7 @@ export function attachRouter<TCtx = unknown>(
         rec,
         context,
         options.interceptors,
+        options.validation,
       )
       if (rec.cancelled) {
         return

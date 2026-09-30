@@ -74,6 +74,52 @@ function openClient(
   return { client, frames }
 }
 
+describe('PortHandler validation', () => {
+  const pingContract = router({
+    ping: procedure.output(z.string()),
+  })
+  const pingImpl = createImplementer(pingContract)
+  const pingApp = pingImpl.router({
+    ping: pingImpl.ping.handler(async () => 1 as never),
+  })
+
+  async function call(validation?: { output: true }) {
+    const { port1, port2 } = new MessageChannel()
+    const bind = new PortHandler(
+      pingApp,
+      validation ? { validation } : undefined,
+    ).bind(port1, { context: {} })
+    const { client, frames } = openClient(port2)
+    await client.ready
+    expect(client.send({ type: 'call', id: '1', path: ['ping'] }).ok).toBe(true)
+    const result = await waitFor(
+      frames,
+      (frame) => frame.type === 'result' && frame.id === '1',
+    )
+    bind.close()
+    client.close()
+    return result
+  }
+
+  it('returns the handler output when output validation is off', async () => {
+    expect(await call()).toEqual({
+      type: 'result',
+      id: '1',
+      ok: true,
+      output: 1,
+    })
+  })
+
+  it('returns INTERNAL when output validation is on', async () => {
+    expect(await call({ output: true })).toEqual({
+      type: 'result',
+      id: '1',
+      ok: false,
+      error: { code: 'INTERNAL', message: 'Internal server error' },
+    })
+  })
+})
+
 describe('PortHandler', () => {
   it('exports PortHandler and not attachRouter or TransportHandler', async () => {
     const exported = await import('../src/index.js')

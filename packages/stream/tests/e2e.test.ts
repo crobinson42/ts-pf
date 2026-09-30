@@ -1,6 +1,7 @@
 import { createClient } from '@ts-pf/client'
 import { FetchLink } from '@ts-pf/client-http'
 import { procedure, router } from '@ts-pf/contract'
+import { PFError } from '@ts-pf/protocol'
 import { createImplementer, createLocalClient } from '@ts-pf/server'
 import { FetchHandler } from '@ts-pf/server-http'
 import { StreamCodec, stream } from '@ts-pf/stream'
@@ -56,6 +57,81 @@ function fetchFor(onRequest?: (req: Request) => void): typeof fetch {
     return result.response
   }
 }
+
+describe('stream item validation', () => {
+  const itemContract = router({
+    chat: procedure.output(stream(z.object({ token: z.string() }))),
+    ingest: procedure
+      .input(stream(z.object({ chunk: z.number() })))
+      .output(z.object({ items: z.array(z.unknown()) })),
+  })
+  const itemImpl = createImplementer(itemContract)
+  const itemApp = itemImpl.router({
+    chat: itemImpl.chat.handler(async function* () {
+      yield { token: 1 as never }
+    }),
+    ingest: itemImpl.ingest.handler(async ({ input }) => {
+      const items: unknown[] = []
+      for await (const item of input) {
+        items.push(item)
+      }
+      return { items }
+    }),
+  })
+
+  async function* badChunks(): AsyncIterable<{ chunk: number }> {
+    yield { chunk: 'x' as never }
+  }
+
+  it('yields a stream output item that fails the item schema', async () => {
+    const local = createLocalClient(itemApp, { context: {} })
+    const tokens = await local.chat()
+    const collected: unknown[] = []
+    for await (const token of tokens) {
+      collected.push(token)
+    }
+    expect(collected).toEqual([{ token: 1 }])
+  })
+
+  it('rejects a bad stream output item when output validation is on', async () => {
+    const local = createLocalClient(itemApp, {
+      context: {},
+      validation: { output: true },
+    })
+    const tokens = await local.chat()
+    const err = await (async () => {
+      for await (const _token of tokens) {
+        // drain
+      }
+      return undefined
+    })().then(
+      () => undefined,
+      (error: unknown) => error,
+    )
+    expect(err).toBeInstanceOf(PFError)
+    expect(err).toMatchObject({
+      code: 'VALIDATION',
+      data: { issues: [{ message: expect.any(String) }] },
+    })
+  })
+
+  it('rejects a bad stream input item by default', async () => {
+    const local = createLocalClient(itemApp, { context: {} })
+    await expect(local.ingest(badChunks())).rejects.toMatchObject({
+      code: 'VALIDATION',
+    })
+  })
+
+  it('delivers a bad stream input item when input validation is off', async () => {
+    const local = createLocalClient(itemApp, {
+      context: {},
+      validation: { input: false },
+    })
+    expect(await local.ingest(badChunks())).toEqual({
+      items: [{ chunk: 'x' }],
+    })
+  })
+})
 
 describe('StreamCodec e2e', () => {
   it('streams output tokens', async () => {

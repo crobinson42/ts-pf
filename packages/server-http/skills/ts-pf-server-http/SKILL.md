@@ -30,7 +30,7 @@ if (!result.matched) return new Response('Not Found', { status: 404 })
 return result.response
 ```
 
-`plugins` is HTTP-only (`HandlerPlugin`). RPC call interceptors go on `{ interceptors }` from `@ts-pf/server`. `CORSPlugin` answers `OPTIONS` preflight.
+`plugins` is HTTP-only (`HandlerPlugin`). RPC call interceptors go on `{ interceptors }` from `@ts-pf/server`. `validation` is the same `ProcedureValidation` as `runProcedure`: input checks default on, output and stream output items run only with `{ validation: { output: true } }`. Set it on the constructor, not on `handle()`. `CORSPlugin` answers `OPTIONS` preflight.
 
 ## API
 

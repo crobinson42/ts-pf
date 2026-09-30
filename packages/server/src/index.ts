@@ -15,6 +15,7 @@ export {
   type ImplementedRouter,
   isImplementedProcedure,
   lookupProcedure,
+  type ProcedureValidation,
   type RunProcedureOptions,
   runProcedure,
 } from './runtime.js'

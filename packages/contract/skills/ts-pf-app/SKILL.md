@@ -50,7 +50,7 @@ const client = createClient<typeof contract>(new FetchLink({ url: '/rpc' }))
 await client.planet.find({ id: 1 })
 ```
 
-Name the implemented router `app`. Wire: `@ts-pf/protocol` `PROTOCOL.md`.
+Name the implemented router `app`. Wire: `@ts-pf/protocol` `PROTOCOL.md`. Input schemas are checked unless `validation.input` is `false`. Output schemas, including `stream()` items, are checked only when `validation.output` is `true` on `FetchHandler`, a message handler, `createLocalClient`, or `runProcedure`.
 
 ## Compose
 

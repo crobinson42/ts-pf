@@ -116,7 +116,7 @@ export default {
 }
 ```
 
-`.use()` runs before input validation. `.useAfter()` runs after, with typed input.
+`.use()` runs before input validation. `.useAfter()` runs after, with typed input when the input check ran. Input schemas are checked unless `validation.input` is `false`. Output schemas, including stream output items, are checked only when `validation.output` is `true` (`FetchHandler`, message handlers, `createLocalClient`, and `runProcedure`).
 
 ## Compose
 

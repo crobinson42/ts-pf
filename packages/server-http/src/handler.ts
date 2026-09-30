@@ -12,6 +12,7 @@ import {
   type CallInterceptor,
   type ImplementedRouter,
   lookupProcedure,
+  type ProcedureValidation,
   type RunProcedureOptions,
   runProcedure,
 } from '@ts-pf/server'
@@ -25,6 +26,7 @@ export class FetchHandler<TCtx = unknown> {
   private readonly codec: RpcCodec
   private readonly plugins: HandlerPlugin[]
   private readonly interceptors: readonly CallInterceptor[]
+  private readonly validation: ProcedureValidation | undefined
 
   constructor(
     private readonly router: ImplementedRouter,
@@ -32,11 +34,13 @@ export class FetchHandler<TCtx = unknown> {
       codec?: RpcCodec
       plugins?: HandlerPlugin[]
       interceptors?: readonly CallInterceptor[]
+      validation?: ProcedureValidation
     },
   ) {
     this.codec = options?.codec ?? new JSONCodec()
     this.plugins = options?.plugins ?? []
     this.interceptors = options?.interceptors ?? []
+    this.validation = options?.validation
   }
 
   async handle(
@@ -114,6 +118,9 @@ export class FetchHandler<TCtx = unknown> {
       const runOpts: RunProcedureOptions = { signal: inbound.signal }
       if (this.interceptors.length > 0) {
         runOpts.interceptors = this.interceptors
+      }
+      if (this.validation) {
+        runOpts.validation = this.validation
       }
       const output = await runProcedure(
         procedure,

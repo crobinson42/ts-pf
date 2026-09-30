@@ -25,7 +25,11 @@ new FetchLink({ url: '/rpc', codec })
 procedure.output(stream(z.object({ token: z.string() })))
 ```
 
-Root only. Same codec on handler and link.
+Root only. Same codec on handler and link. Item checks follow the server validation flags. Stream input items are checked unless `validation.input` is `false`. Stream output items are checked only when `validation.output` is `true`:
+
+```ts
+new FetchHandler(app, { codec, validation: { output: true } })
+```
 
 ## API
 

@@ -57,7 +57,10 @@ describe('declared error data', () => {
     const app = impl.router({
       ping: impl.ping.handler(async () => 1 as never),
     })
-    const client = createLocalClient(app, { context: {} })
+    const client = createLocalClient(app, {
+      context: {},
+      validation: { output: true },
+    })
     const err = await client.ping().then(
       () => undefined,
       (error: unknown) => error,
@@ -65,6 +68,33 @@ describe('declared error data', () => {
     expect(err).toMatchObject({ code: 'INTERNAL', status: 400 })
     expect(err).toBeInstanceOf(PFError)
     expect((err as PFError).data).toBeUndefined()
+  })
+
+  it('returns handler output when output validation is off', async () => {
+    const c = router({ ping: procedure.output(z.string()) })
+    const impl = createImplementer(c)
+    const app = impl.router({
+      ping: impl.ping.handler(async () => 1 as never),
+    })
+    const client = createLocalClient(app, { context: {} })
+    expect(await client.ping()).toBe(1)
+  })
+
+  it('skips input validation when validation.input is false', async () => {
+    const c = router({
+      echo: procedure
+        .input(z.object({ n: z.number() }))
+        .output(z.object({ n: z.number() })),
+    })
+    const impl = createImplementer(c)
+    const app = impl.router({
+      echo: impl.echo.handler(async ({ input }) => input),
+    })
+    const client = createLocalClient(app, {
+      context: {},
+      validation: { input: false },
+    })
+    expect(await client.echo({ n: 'x' } as never)).toEqual({ n: 'x' })
   })
 
   it('validates error data thrown from an async iterable', async () => {

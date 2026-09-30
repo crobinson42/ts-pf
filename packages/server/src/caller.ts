@@ -5,6 +5,7 @@ import {
   type ImplementedProcedure,
   type ImplementedRouter,
   isImplementedProcedure,
+  type ProcedureValidation,
   type RunProcedureOptions,
   runProcedure,
 } from './runtime.js'
@@ -12,8 +13,9 @@ import {
 function buildRunOptions(
   signal: AbortSignal | undefined,
   interceptors: readonly CallInterceptor[],
+  validation: ProcedureValidation | undefined,
 ): RunProcedureOptions | undefined {
-  if (!signal && interceptors.length === 0) {
+  if (!signal && interceptors.length === 0 && !validation) {
     return undefined
   }
   const options: RunProcedureOptions = {}
@@ -23,6 +25,9 @@ function buildRunOptions(
   if (interceptors.length > 0) {
     options.interceptors = interceptors
   }
+  if (validation) {
+    options.validation = validation
+  }
   return options
 }
 
@@ -30,6 +35,7 @@ function createNode(
   node: ImplementedProcedure | ImplementedRouter<unknown>,
   context: unknown,
   interceptors: readonly CallInterceptor[],
+  validation: ProcedureValidation | undefined,
 ): unknown {
   if (isImplementedProcedure(node)) {
     return (...args: unknown[]) => {
@@ -43,12 +49,12 @@ function createNode(
         (first as { signal?: unknown }).signal instanceof AbortSignal
       ) {
         const signal = (first as { signal: AbortSignal }).signal
-        const options = buildRunOptions(signal, interceptors)
+        const options = buildRunOptions(signal, interceptors, validation)
         return options
           ? runProcedure(node, undefined, context, options)
           : runProcedure(node, undefined, context)
       }
-      const options = buildRunOptions(second?.signal, interceptors)
+      const options = buildRunOptions(second?.signal, interceptors, validation)
       return options
         ? runProcedure(node, first, context, options)
         : runProcedure(node, first, context)
@@ -60,7 +66,7 @@ function createNode(
       continue
     }
     if (child) {
-      nested[key] = createNode(child, context, interceptors)
+      nested[key] = createNode(child, context, interceptors, validation)
     }
   }
   return nested
@@ -72,8 +78,14 @@ export function createLocalClient<T>(
     context: unknown
     interceptors?: readonly CallInterceptor[]
     plugins?: readonly CallPlugin[]
+    validation?: ProcedureValidation
   },
 ): ContractClient<T> {
   const interceptors = applyPlugins(opts.plugins ?? [], opts.interceptors)
-  return createNode(router, opts.context, interceptors) as ContractClient<T>
+  return createNode(
+    router,
+    opts.context,
+    interceptors,
+    opts.validation,
+  ) as ContractClient<T>
 }

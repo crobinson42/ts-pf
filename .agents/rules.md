@@ -41,10 +41,10 @@ Contract-first TypeScript RPC library (`@ts-pf/*`). oRPC-like DX is the bar; oRP
 |---|---|
 | `contract` | `procedure`, `router`, schema adapters, typed errors (`ClientError` discriminated union, `InferErrorData`, `InferContractErrors`), infer types |
 | `protocol` | `PFError`, JSON envelope types, `PROTOCOL_VERSION`, `localFailure`. No HTTP server. No schemas. No `RpcCodec`. Failure JSON is `{ code, message, data? }` only (`toJSON` omits `status`, `cause`, and `local`). `ProtocolErrorCode` is a closed set. |
-| `server` | `createImplementer`, middleware, `runProcedure`, `lookupProcedure`, `createLocalClient`, `CallInterceptor` / `CallPlugin` / `applyPlugins`, event helpers (`onStart` / `onSuccess` / `onError` / `onFinish`), `DedupePlugin`. Interceptors attach per caller, not on `createImplementer`. Duplicate `CallInterceptor` types — do not import from client. `ErrorFactory` is typed on `ProcedureBuilder.handler` from that procedure’s map; `MiddlewareFn.errors` stays the default/loose factory. `finalizeDeclaredError` is internal (`runProcedure` only, not exported). Not `runCallInterceptors`. |
+| `server` | `createImplementer`, middleware, `runProcedure`, `lookupProcedure`, `createLocalClient`, `ProcedureValidation`, `CallInterceptor` / `CallPlugin` / `applyPlugins`, event helpers (`onStart` / `onSuccess` / `onError` / `onFinish`), `DedupePlugin`. Interceptors and `validation` attach per caller, not on `createImplementer`. Duplicate `CallInterceptor` types — do not import from client. `ErrorFactory` is typed on `ProcedureBuilder.handler` from that procedure’s map; `MiddlewareFn.errors` stays the default/loose factory. `finalizeDeclaredError` is internal (`runProcedure` only, not exported). Not `runCallInterceptors`. |
 | `client` | `createClient`, `Link`, `intercept` / `CallInterceptor` / `CallPlugin` / `applyPlugins`, event helpers (`onStart` / `onSuccess` / `onError` / `onFinish`), `RetryPlugin` / `DedupePlugin` / `CachePlugin`, `asResult` / `CallResult<T, E>` (do not widen with `E \| PFError`), `isLocalFailure` (`local === true`). Not Fetch `Interceptor`. Not `runCallInterceptors`. |
 | `http` | `JSONCodec`, `RpcCodec`, `RpcEncodedBody`, `RpcBodySource`, `PROTOCOL_HEADER`, `joinProcedurePath`, `parseProcedurePath`, `httpStatus`, `PROTOCOL_HTTP_STATUS` |
-| `server-http` | `FetchHandler`, `HandlerPlugin` (`CORSPlugin`, `RequestLimitPlugin`, `RequestHeadersPlugin`, `ResponseHeadersPlugin`). `FetchHandler` accepts `interceptors?: CallInterceptor[]` (from `@ts-pf/server`) separate from `plugins?: HandlerPlugin[]`. |
+| `server-http` | `FetchHandler`, `HandlerPlugin` (`CORSPlugin`, `RequestLimitPlugin`, `RequestHeadersPlugin`, `ResponseHeadersPlugin`). `FetchHandler` accepts `interceptors?: CallInterceptor[]` and `validation?: ProcedureValidation` (from `@ts-pf/server`) separate from `plugins?: HandlerPlugin[]`. |
 | `client-http` | `FetchLink`, Fetch `Interceptor` |
 | `file` | `MultipartCodec` only. Do not add `PFFile`, `file()`, or export walk helpers. |
 | `stream` | `StreamCodec` + `stream()`. Root `AsyncIterable` as JSONL envelopes. |
@@ -55,7 +55,7 @@ Contract-first TypeScript RPC library (`@ts-pf/*`). oRPC-like DX is the bar; oRP
 | `swr` | `createSwr(client)` helpers for SWR. |
 | `mvc-kit` | `bindClient(client, host)` / `issuesToFieldErrors` / `DisposeSignalHost`. |
 | `message` | JSON text frames + `MessageSession` / `Duplex` + port/ws/stdio duplex adapters. |
-| `message-server` | `PortHandler`, `WsHandler`, `StdioHandler` (`./stdio` only). Calls `lookupProcedure` + `runProcedure`. `HandlerOptions` may include `interceptors`. |
+| `message-server` | `PortHandler`, `WsHandler`, `StdioHandler` (`./stdio` only). Calls `lookupProcedure` + `runProcedure`. `HandlerOptions` may include `interceptors` and `validation`. |
 | `message-client` | `PortLink`, `WsLink`, `StdioLink` (`./stdio` only). Implements `Link`. |
 
 ## Public names
@@ -89,9 +89,9 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 - Spec: `packages/protocol/PROTOCOL.md`. Envelope is `{ input }`, `{ ok: true, output }`, `{ ok: false, error: { code, message, data? } }`. Optional `multipart/form-data` (`@ts-pf/file`), `application/jsonl` (`@ts-pf/stream`), `text/event-stream` (`@ts-pf/sse`) wrap the same envelopes over HTTP. Optional message transports wrap the same envelopes over WebSocket, stdio, and MessagePort.
 - Server runtime: `runProcedure` / `lookupProcedure`. `FetchHandler` is Fetch `Request` / `Response` only, in `@ts-pf/server-http`. Message adapters live in `@ts-pf/message-server`.
 - `.output()` is optional (`unknown` if omitted). `.input()` once; no stacked merge/pipe.
-- `.use()` runs **before** input validation (`input: unknown`). `.useAfter()` runs **after** (typed input).
+- `.use()` runs **before** input validation (`input: unknown`). `.useAfter()` runs **after** (typed input when the input check ran). Input checks default on. `validation.input: false` skips them, including stream input items, and `.useAfter()` then sees the raw value.
 - Client-side input validation is off by default.
-- Unary output schema failure is `INTERNAL` with no `issues` (input failure stays `VALIDATION`). Invalid declared error `data` is the same `INTERNAL`. HTTP status for those codes is mapped by `httpStatus()` in `@ts-pf/http` (500 / 422), not stamped by `runProcedure`.
+- Output checks, including stream output items, default off. `validation.output: true` runs them. Unary output schema failure is `INTERNAL` with no `issues` (input failure stays `VALIDATION`). A bad stream output item stays `VALIDATION` with `issues`. Invalid declared error `data` is always `INTERNAL` (not behind the output flag). HTTP status for those codes is mapped by `httpStatus()` in `@ts-pf/http` (500 / 422), not stamped by `runProcedure`. Parsed output (strip, defaults, transforms) is applied only when output checks run.
 - Discriminator is JSON `error.code`. HTTP status is transport-only; never put `status`, `cause`, or `local` in the envelope.
 - `PFError.status` is a TS hint (default 400), not identity. `ErrorDef.status` is optional HTTP / OpenAPI metadata.
 - Local failures: `localFailure()` → `INTERNAL` with `local: true` and `status: 0`. `isLocalFailure` is `local === true`. That status is not on the wire and is not a protocol status. Abort message is `Request aborted`.

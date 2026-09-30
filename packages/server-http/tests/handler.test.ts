@@ -22,6 +22,54 @@ const app = impl.router({
   },
 })
 
+describe('FetchHandler validation', () => {
+  const pingContract = router({
+    ping: procedure.output(z.string()),
+  })
+  const pingImpl = createImplementer(pingContract)
+  const pingApp = pingImpl.router({
+    ping: pingImpl.ping.handler(async () => 1 as never),
+  })
+
+  async function post(handler: FetchHandler) {
+    const result = await handler.handle(
+      new Request('http://localhost/rpc/ping', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ input: null }),
+      }),
+      { prefix: '/rpc', context: {} },
+    )
+    expect(result.matched).toBe(true)
+    if (!result.matched) {
+      throw new Error('expected match')
+    }
+    return result.response
+  }
+
+  it('returns the handler output when output validation is off', async () => {
+    const response = await post(new FetchHandler(pingApp))
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ ok: true, output: 1 })
+  })
+
+  it('returns INTERNAL when output validation is on', async () => {
+    const response = await post(
+      new FetchHandler(pingApp, { validation: { output: true } }),
+    )
+    expect(response.status).toBe(500)
+    const body = (await response.json()) as {
+      ok: false
+      error: { code: string; data?: unknown }
+    }
+    expect(body).toMatchObject({
+      ok: false,
+      error: { code: 'INTERNAL', message: 'Internal server error' },
+    })
+    expect(body.error.data).toBeUndefined()
+  })
+})
+
 describe('FetchHandler', () => {
   const handler = new FetchHandler(app)
 

@@ -65,9 +65,17 @@ export function isImplementedProcedure(
   )
 }
 
+export type ProcedureValidation = {
+  /** Set false to skip the input schema. Default true. */
+  input?: boolean
+  /** Set true to check the output schema, including stream output items. Default false. */
+  output?: boolean
+}
+
 export type RunProcedureOptions = {
   signal?: AbortSignal
   interceptors?: readonly CallInterceptor[]
+  validation?: ProcedureValidation
 }
 
 export async function runProcedure(
@@ -78,6 +86,8 @@ export async function runProcedure(
 ): Promise<unknown> {
   const def = proc['~pf']
   const errors = createErrorFactory(def.contract['~pf'].errors)
+  const validateInput = options?.validation?.input !== false
+  const validateOutput = options?.validation?.output === true
   let ctx: Record<string, unknown> = { ...(context as Record<string, unknown>) }
   let input = rawInput
   let signal = options?.signal
@@ -93,7 +103,7 @@ export async function runProcedure(
         ...(signal ? { signal } : {}),
       })
       const outputSchema = def.contract['~pf'].output
-      if (outputSchema) {
+      if (validateOutput && outputSchema) {
         const result = await validateSchema(outputSchema, output)
         if (!result.success) {
           throw new PFError({
@@ -126,7 +136,7 @@ export async function runProcedure(
     const mw = def.use[index]
     if (!mw) {
       const inputSchema = def.contract['~pf'].input
-      if (inputSchema) {
+      if (validateInput && inputSchema) {
         const result = await validateSchema(inputSchema, input)
         if (!result.success) {
           throw new PFError({
