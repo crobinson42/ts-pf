@@ -1,5 +1,12 @@
 # @ts-pf/message-client
 
+## 0.1.4
+
+### Patch Changes
+
+- @ts-pf/client@0.1.4
+- @ts-pf/message@0.1.2
+
 ## 0.1.3
 
 ### Patch Changes

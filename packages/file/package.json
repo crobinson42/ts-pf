@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/file",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Opt-in MultipartCodec for File/Blob attachments",
   "keywords": [
     "ts-pf",
@@ -47,15 +47,15 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/http": "0.1.1",
-    "@ts-pf/protocol": "0.1.1"
+    "@ts-pf/http": "0.1.2",
+    "@ts-pf/protocol": "0.1.2"
   },
   "devDependencies": {
-    "@ts-pf/client": "0.1.3",
-    "@ts-pf/client-http": "0.1.3",
-    "@ts-pf/contract": "0.1.3",
-    "@ts-pf/server": "0.2.2",
-    "@ts-pf/server-http": "0.1.3",
+    "@ts-pf/client": "0.1.4",
+    "@ts-pf/client-http": "0.1.4",
+    "@ts-pf/contract": "0.1.4",
+    "@ts-pf/server": "0.3.0",
+    "@ts-pf/server-http": "0.2.0",
     "zod": "^4.0.0"
   }
 }

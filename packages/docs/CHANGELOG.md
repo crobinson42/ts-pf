@@ -1,5 +1,14 @@
 # @ts-pf/docs
 
+## 0.1.5
+
+### Patch Changes
+
+- Updated dependencies [8cf3711]
+  - @ts-pf/protocol@0.1.2
+  - @ts-pf/contract@0.1.4
+  - @ts-pf/http@0.1.2
+
 ## 0.1.4
 
 ### Patch Changes

@@ -1,5 +1,11 @@
 # @ts-pf/protocol
 
+## 0.1.2
+
+### Patch Changes
+
+- 8cf3711: Output schema checks, including stream output items, run only when `validation.output` is true. Input checks stay on unless `validation.input` is false. Parsed output (strip, defaults, transforms) is applied only when output checks are on.
+
 ## 0.1.1
 
 ### Patch Changes
