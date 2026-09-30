@@ -10,8 +10,8 @@
     "lint": "biome check src"
   },
   "dependencies": {
-    "@ts-pf/client": "0.1.4",
-    "@ts-pf/client-http": "0.1.4",
-    "@ts-pf/contract": "0.1.4"
+    "@ts-pf/client": "0.1.5",
+    "@ts-pf/client-http": "0.1.5",
+    "@ts-pf/contract": "0.1.5"
   }
 }

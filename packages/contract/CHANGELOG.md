@@ -1,5 +1,11 @@
 # @ts-pf/contract
 
+## 0.1.5
+
+### Patch Changes
+
+- 276aa9e: Add `@ts-pf/astro` for Astro API routes (`createAstroHandler`) and in-process page calls (`createAstroLocalClient`). Browser and island code uses `createAstroClient`. The contract skill catalog lists the package.
+
 ## 0.1.4
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/server-http",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Fetch Request/Response handler and HTTP HandlerPlugins",
   "keywords": [
     "ts-pf",
@@ -49,10 +49,10 @@
   "dependencies": {
     "@ts-pf/http": "0.1.2",
     "@ts-pf/protocol": "0.1.2",
-    "@ts-pf/server": "0.3.0"
+    "@ts-pf/server": "0.3.1"
   },
   "devDependencies": {
-    "@ts-pf/contract": "0.1.4",
+    "@ts-pf/contract": "0.1.5",
     "zod": "^4.0.0"
   }
 }

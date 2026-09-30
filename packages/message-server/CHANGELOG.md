@@ -1,5 +1,11 @@
 # @ts-pf/message-server
 
+## 0.2.1
+
+### Patch Changes
+
+- @ts-pf/server@0.3.1
+
 ## 0.2.0
 
 ### Minor Changes

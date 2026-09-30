@@ -1,5 +1,11 @@
 # @ts-pf/sse
 
+## 0.1.5
+
+### Patch Changes
+
+- @ts-pf/stream@0.1.5
+
 ## 0.1.4
 
 ### Patch Changes

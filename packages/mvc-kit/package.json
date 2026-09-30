@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/mvc-kit",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Opt-in bindClient and issuesToFieldErrors for mvc-kit Resources",
   "keywords": [
     "ts-pf",
@@ -45,15 +45,15 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/contract": "0.1.4"
+    "@ts-pf/contract": "0.1.5"
   },
   "peerDependencies": {
     "mvc-kit": ">=4.9.0"
   },
   "devDependencies": {
-    "@ts-pf/client": "0.1.4",
+    "@ts-pf/client": "0.1.5",
     "@ts-pf/protocol": "0.1.2",
-    "@ts-pf/server": "0.3.0",
+    "@ts-pf/server": "0.3.1",
     "mvc-kit": "^4.9.0",
     "zod": "^4.0.0"
   }
