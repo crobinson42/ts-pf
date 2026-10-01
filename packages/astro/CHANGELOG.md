@@ -1,5 +1,11 @@
 # @ts-pf/astro
 
+## 0.1.1
+
+### Patch Changes
+
+- d5892e5: No behavior change. This is the first version published by the release workflow.
+
 ## 0.1.0
 
 ### Minor Changes

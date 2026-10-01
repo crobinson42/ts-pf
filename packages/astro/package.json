@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/astro",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Opt-in Astro endpoint and in-process page caller for ts-pf",
   "keywords": [
     "ts-pf",
