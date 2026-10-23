@@ -1,6 +1,6 @@
 # @ts-pf/message-server
 
-Opt-in `PortHandler` / `WsHandler` / `StdioHandler` for the same implemented `app` as `FetchHandler`. Adapters call `lookupProcedure` + `runProcedure`. They are not `HandlerPlugin`s and not a second RPC. Pass call interceptors as `HandlerOptions.interceptors` (from `@ts-pf/server`); do not port HTTP `HandlerPlugin` here.
+Opt-in `PortHandler` / `WsHandler` / `StdioHandler` / `DuplexHandler` for the same implemented `app` as `FetchHandler`. Adapters call `lookupProcedure` + `runProcedure`. They are not `HandlerPlugin`s and not a second RPC. Pass call interceptors as `HandlerOptions.interceptors` (from `@ts-pf/server`); do not port HTTP `HandlerPlugin` here.
 
 Agent skill: [`skills/ts-pf-message-server/`](skills/ts-pf-message-server/). Sync with `npx skills experimental_sync -y`.
 

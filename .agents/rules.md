@@ -75,11 +75,11 @@ Do not resurrect oRPC names in code, docs, or examples.
 |---|---|
 | `procedure` / `router` | `oc` |
 | `createImplementer` / local `impl` | `implement` / `os` |
-| `FetchHandler` / `PortHandler` / `WsHandler` / `StdioHandler` | `RPCHandler` |
+| `FetchHandler` / `PortHandler` / `WsHandler` / `StdioHandler` / `DuplexHandler` | `RPCHandler` / `TransportHandler` |
 | `CORSPlugin` / `RequestLimitPlugin` / `RequestHeadersPlugin` / `ResponseHeadersPlugin` / `RetryPlugin` / `DedupePlugin` / `CachePlugin` | `*HandlerPlugin` / `*LinkPlugin`. Keep interface `HandlerPlugin`; `CallPlugin` is a different type. |
 | `createLocalClient` | `createRouterClient` |
 | `asResult` | `safe` |
-| `FetchLink` / `PortLink` / `WsLink` / `StdioLink` | `RPCLink` |
+| `FetchLink` / `PortLink` / `WsLink` / `StdioLink` / `DuplexLink` | `RPCLink` |
 | `bind` | `upgrade` |
 | `stream()` | `eventIterator` |
 | `createSwr` | `createSWRUtils` / `createRouterUtils` / `swrUtils` |

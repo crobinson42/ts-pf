@@ -1,6 +1,6 @@
 # @ts-pf/message-client
 
-Opt-in `PortLink` / `WsLink` / `StdioLink` for the same `createClient(link)` as `@ts-pf/client-http` `FetchLink`.
+Opt-in `PortLink` / `WsLink` / `StdioLink` / `DuplexLink` for the same `createClient(link)` as `@ts-pf/client-http` `FetchLink`.
 
 Agent skill: [`skills/ts-pf-message-client/`](skills/ts-pf-message-client/). Sync with `npx skills experimental_sync -y`.
 
