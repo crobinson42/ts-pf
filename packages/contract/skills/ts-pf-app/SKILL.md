@@ -50,7 +50,7 @@ const client = createClient<typeof contract>(new FetchLink({ url: '/rpc' }))
 await client.planet.find({ id: 1 })
 ```
 
-Name the implemented router `app`. Wire: `@ts-pf/protocol` `PROTOCOL.md`. Input schemas are checked unless `validation.input` is `false`. Output schemas, including `stream()` items, are checked only when `validation.output` is `true` on `FetchHandler`, a message handler, `createLocalClient`, or `runProcedure`.
+Name the implemented router `app`. `new FetchHandler(app)` infers the context type from `app`, so `handle(request, { context })` is checked against `$context<{ db: Db }>()`; the same holds for `createLocalClient`, the message handlers, and Astro. `createClient` needs `<typeof contract>` (or a `ContractClient<typeof contract>` annotation); without it the result is a `{ '~error': ... }` type, not an empty client. Wire: `@ts-pf/protocol` `PROTOCOL.md`. Input schemas are checked unless `validation.input` is `false`. Output schemas, including `stream()` items, are checked only when `validation.output` is `true` on `FetchHandler`, a message handler, `createLocalClient`, or `runProcedure`.
 
 ## Compose
 
@@ -71,7 +71,7 @@ export const app = impl.router({
 })
 ```
 
-`planetApp` is `createImplementer(planetContract).$context<AppCtx>().router({ ... })`. Shared `AppCtx` on every slice; `$context` does not merge. Shared domain logic is plain functions, not a shared implementer.
+`planetApp` is `createImplementer(planetContract).$context<AppCtx>().router({ ... })`. Shared `AppCtx` on every slice; `$context` does not merge, and `impl.router()` rejects a slice built with a different `$context`, a handler under the wrong key, or a missing / extra key, naming the key. Shared domain logic is plain functions, not a shared implementer.
 
 Two servers (web vs mobile) are two composed contracts, not variants of one. Each server gets its own `createImplementer`. Pick procedures when the trees differ:
 

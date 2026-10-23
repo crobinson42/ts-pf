@@ -46,24 +46,24 @@ packages/http/src/
   path.ts             join/parse procedure URL path
   http-status.ts      httpStatus / PROTOCOL_HTTP_STATUS (code → status; keys must equal ProtocolErrorCode)
 packages/server/src/
-  implement.ts        createImplementer proxy tree
+  implement.ts        createImplementer proxy tree; Implementer.router is <I>(impl: I & RouterImplCheck<T, TCtx, I>) → ImplementedRouter<T, TCtx>; ProcedureBuilder carries TContract
   error-factory.ts    createErrorFactory, finalizeDeclaredError (internal; not exported)
-  runtime.ts          runProcedure, lookupProcedure, HandlerFn.signal, RunProcedureOptions.interceptors, ProcedureValidation
-  caller.ts           createLocalClient (optional interceptors/plugins/validation)
+  runtime.ts          runProcedure, lookupProcedure, HandlerFn.signal, RunProcedureOptions.interceptors, ProcedureValidation; ImplementedProcedure<TContract, TCtx> / ImplementedRouter<T, TCtx> phantom brands (ContractShape, RouterImpl, MissingProcedures / UnexpectedKeys / PresentProcedures → RouterImplCheck)
+  caller.ts           createLocalClient (context typed from the router brand via NoInfer; optional interceptors/plugins/validation)
   middleware.ts       MiddlewareFn, ErrorFactory (handler typed; middleware loose)
   call-interceptor.ts CallInterceptor (`runCallInterceptors` not exported)
   plugin.ts           CallPlugin, applyPlugins
   events.ts           onStart / onSuccess / onError / onFinish
   dedupe-plugin.ts    DedupePlugin (in-flight; pass `key` to restrict to reads)
 packages/server-http/src/
-  handler.ts          FetchHandler (anti-buffering headers on ReadableStream bodies; httpStatus on errors; `interceptors` around runProcedure; `validation` forwarded into it; `onError` option / `FetchHandlerOnError` or default console.error for unknown / INTERNAL)
+  handler.ts          FetchHandler (TCtx inferred from app's context brand, ImplementedRouter<unknown, TCtx>; anti-buffering headers on ReadableStream bodies; httpStatus on errors; `interceptors` around runProcedure; `validation` forwarded into it; `onError` option / `FetchHandlerOnError` or default console.error for unknown / INTERNAL)
   plugins.ts          HandlerPlugin
   cors-plugin.ts      CORSPlugin / CORSPluginOptions
   request-limit-plugin.ts RequestLimitPlugin / RequestLimitPluginOptions
   request-headers-plugin.ts RequestHeadersPlugin / RequestHeadersPluginContext
   response-headers-plugin.ts ResponseHeadersPlugin / ResponseHeadersPluginContext
 packages/client/src/
-  client.ts           createClient proxy (optional interceptors/plugins)
+  client.ts           createClient<T = never> proxy (optional interceptors/plugins; `{ '~error': ... }` result type when T is omitted and not inferable)
   link.ts             Link
   as-result.ts        asResult, CallResult
   is-local-failure.ts isLocalFailure (local === true)
@@ -104,9 +104,9 @@ packages/message/src/
   stdio.ts            createStdioDuplex — ./stdio only
 packages/message-server/src/
   index.ts            PortHandler, WsHandler, HandlerOptions, type WebSocketLike (no stdio)
-  port.ts             PortHandler
-  ws.ts               WsHandler
-  stdio.ts            StdioHandler — ./stdio only
+  port.ts             PortHandler (TCtx inferred from app's context brand)
+  ws.ts               WsHandler (same)
+  stdio.ts            StdioHandler (same) — ./stdio only
   shared.ts           HandlerOptions (exported, `interceptors`, `validation`); attachRouter / AttachRouterOptions (internal)
 packages/message-client/src/
   index.ts            PortLink, WsLink, type WebSocketLike, type LinkOptions (no stdio)
@@ -119,8 +119,8 @@ packages/swr/src/
 packages/mvc-kit/src/
   index.ts            bindClient, DisposeSignalHost, issuesToFieldErrors
 packages/astro/src/
-  server.ts           createAstroHandler, createAstroLocalClient, withBase (./server)
-  client.ts           createAstroClient (./client)
+  server.ts           createAstroHandler, createAstroLocalClient, withBase (./server; context typed from the app's TCtx via NoInfer)
+  client.ts           createAstroClient<T = never> (./client; `{ '~error': ... }` result when T is omitted, like createClient)
   with-base.ts        withBase
   index.ts            re-exports client only
 ```
@@ -216,9 +216,9 @@ new PortHandler(app).bind(port1, { context: { db } })
 const client = createClient<typeof contract>(new PortLink({ port: port2 }))
 ```
 
-`$context<C>()` is the source of context types. Middleware runtime-merges; it does not infer added keys.
+`$context<C>()` is the source of context types. `impl.router()` brands the tree with it (`ImplementedRouter<T, TCtx>`; leaves `ImplementedProcedure<TContract, TCtx>`), and `FetchHandler`, the message handlers, `createLocalClient`, and Astro infer `TCtx` from that brand and type `context` with it — so `new FetchHandler(app)` needs no generic and `context: (req) => ({ db, req })` types `req`. Hand-built trees have no brand and fall back to `unknown`. Middleware runtime-merges; it does not infer added keys.
 
-Compose is nested objects. `router({ planet: planetContract })` nests slice contracts. `impl.router({ planet: planetApp })` nests finished slice apps (`createImplementer(sliceContract).$context<AppCtx>().router({ ... })`). Root `.use(mw)` prepends; nested procedure `path` is the composed tree. Pick procedures for a second server (`{ list: usersApp.list }`). No `mergeRouters` / `compose()` / lazy routers.
+Compose is nested objects. `router({ planet: planetContract })` nests slice contracts. `impl.router({ planet: planetApp })` nests finished slice apps (`createImplementer(sliceContract).$context<AppCtx>().router({ ... })`). Root `.use(mw)` prepends; nested procedure `path` is the composed tree. Pick procedures for a second server (`{ list: usersApp.list }`). A slice built with a different `$context`, a handler under another procedure's key, a superset slice, or a missing / extra key is a type error naming the key (`MissingProcedures` / `UnexpectedKeys`); a slice that needs less context than the root provides nests (contravariant brand). No `mergeRouters` / `compose()` / lazy routers.
 
 ## Call pipeline
 
@@ -313,11 +313,11 @@ New **published** packages: `version` `0.0.0`, `license: "MIT"`, `files: ["dist"
 
 - Names match the table in `.agents/rules.md`
 - DAG still acyclic; client never depends on server; server never depends on client; server-http never depends on client-http; client-http never depends on server-http (prod); `@ts-pf/http` not imported by contract/server/client (prod); file = http + protocol; stream = http + protocol + contract; sse = stream + http + protocol; docs = contract + protocol + http; openapi = docs; codegen = docs; swr = contract (peer swr); mvc-kit = contract (peer mvc-kit >= 4.9.0); message = protocol; message-server = message + server + protocol (never client); message-client = message + client (never server prod); astro server entry depends on server-http + server + contract (type-only); astro client entry depends on client-http + client + contract (type-only); neither entry imports the other side; peer astro; root `.` is client-only because check-exports requires `.`. No `TransportHandler`. Stdio is not on the main index.
-- Public exports: protocol = `PFError`, `PFErrorInit`, `isPFError`, `localFailure`, `ProtocolErrorCode`, `PROTOCOL_VERSION`, envelope types, `PFResultPromise`. Not `JSONCodec` / `RpcCodec` / `PROTOCOL_HEADER` / path helpers. server = implementer, local client, `runProcedure`, `lookupProcedure`, middleware types, `CallInterceptor`, `CallPlugin`, `applyPlugins`, `onStart` / `onSuccess` / `onError` / `onFinish`, `RunProcedureOptions`, `ProcedureValidation`, `DedupePlugin`, `DedupePluginOptions`. Not `FetchHandler` / `HandlerPlugin` / `runCallInterceptors`. client = `createClient`, `Link`, `asResult`, `CallResult`, `isLocalFailure`, `intercept`, `CallInterceptor`, `CallPlugin`, `applyPlugins`, `onStart` / `onSuccess` / `onError` / `onFinish`, `RetryPlugin`, `RetryPluginOptions`, `DedupePlugin`, `DedupePluginOptions`, `CachePlugin`, `CachePluginOptions`. Not `FetchLink` / Fetch `Interceptor` / `runCallInterceptors`. http = `JSONCodec`, `RpcCodec`, `RpcEncodedBody`, `RpcBodySource`, `PROTOCOL_HEADER`, path helpers, `httpStatus`, `PROTOCOL_HTTP_STATUS`. server-http = `FetchHandler`, `FetchHandlerOnError`, `HandleResult`, `HandlerPlugin`, CORS/limit/header plugins + option/context types. client-http = `FetchLink`, `Interceptor`. file = `MultipartCodec`. stream = `StreamCodec` + `stream()`. sse = `SseCodec` + `SSE_CONTENT_TYPE`. Server does **not** export `createErrorFactory` / `finalizeDeclaredError`. Links have `close()` on message-client impls; do **not** add `close()` to `Link`. astro `.` and `./client` export `createAstroClient` and `withBase`; `./server` exports `createAstroHandler`, `createAstroLocalClient`, and `withBase`. `.` does not export `createAstroHandler`.
+- Public exports: protocol = `PFError`, `PFErrorInit`, `isPFError`, `localFailure`, `ProtocolErrorCode`, `PROTOCOL_VERSION`, envelope types, `PFResultPromise`. Not `JSONCodec` / `RpcCodec` / `PROTOCOL_HEADER` / path helpers. server = implementer, local client, `runProcedure`, `lookupProcedure`, middleware types, `ImplementedProcedure<TContract, TCtx>` / `ImplementedRouter<T, TCtx>` / `RouterImpl<T, TCtx>` (branded), `CallInterceptor`, `CallPlugin`, `applyPlugins`, `onStart` / `onSuccess` / `onError` / `onFinish`, `RunProcedureOptions`, `ProcedureValidation`, `DedupePlugin`, `DedupePluginOptions`. Not `FetchHandler` / `HandlerPlugin` / `runCallInterceptors`. client = `createClient`, `Link`, `asResult`, `CallResult`, `isLocalFailure`, `intercept`, `CallInterceptor`, `CallPlugin`, `applyPlugins`, `onStart` / `onSuccess` / `onError` / `onFinish`, `RetryPlugin`, `RetryPluginOptions`, `DedupePlugin`, `DedupePluginOptions`, `CachePlugin`, `CachePluginOptions`. Not `FetchLink` / Fetch `Interceptor` / `runCallInterceptors`. http = `JSONCodec`, `RpcCodec`, `RpcEncodedBody`, `RpcBodySource`, `PROTOCOL_HEADER`, path helpers, `httpStatus`, `PROTOCOL_HTTP_STATUS`. server-http = `FetchHandler`, `FetchHandlerOnError`, `HandleResult`, `HandlerPlugin`, CORS/limit/header plugins + option/context types. client-http = `FetchLink`, `Interceptor`. file = `MultipartCodec`. stream = `StreamCodec` + `stream()`. sse = `SseCodec` + `SSE_CONTENT_TYPE`. Server does **not** export `createErrorFactory` / `finalizeDeclaredError`. Links have `close()` on message-client impls; do **not** add `close()` to `Link`. astro `.` and `./client` export `createAstroClient` and `withBase`; `./server` exports `createAstroHandler`, `createAstroLocalClient`, and `withBase`. `.` does not export `createAstroHandler`.
 - `isLocalFailure` is `local === true`, not `status === 0`.
 - `FetchHandler` uses `httpStatus(error)` for `Response.status`. Protocol codes map to the HTTP table. `METHOD_NOT_ALLOWED` is Fetch-only emission.
 - `FetchLink` rethrows `PFError` from `decodeResponse` only when `x-ts-pf-protocol` is present. Non-RPC decode wrap uses HTTP status, not `local: true`. `FetchLink` binds fetch to `globalThis`. Streamed `ReadableStream` responses get anti-buffering headers.
-- Procedure completeness: `impl.router()` rejects missing/extra keys (types + runtime)
+- Procedure completeness: `impl.router()` rejects missing/extra keys, a handler under another procedure's key, and a slice with a different `$context` (types, naming the key) and missing/extra keys (runtime). Adapters (`FetchHandler`, message handlers, `createLocalClient`, Astro) infer `TCtx` from the router brand; hand-built trees stay `unknown`; `new FetchHandler<AppCtx>(app)` still compiles.
 - Errors: unknown throws → `INTERNAL`, no stack in JSON; `FetchHandler` logs them with `console.error` unless `onError` is set. Input checks default on. Output checks, including stream output items, default off (`validation.output: true`). Unary output schema failure → `INTERNAL`, no issues. A bad stream output item → `VALIDATION` with `issues`. Invalid declared error `data` → `INTERNAL`, never serialize the bad payload (always, not behind `validation.output`). `ClientError` narrows `data` from `code`. `asResult` is `CallResult<T, E>`.
 - Protocol error-code edits update every copy of the closed set: (1) `ProtocolErrorCode` in `packages/protocol/src/error.ts` (source of truth), (2) the duplicated **private** `ProtocolErrorCode` union in `packages/contract/src/infer.ts` (exported as `ContractProtocolErrorCode`; still no protocol import), (3) `PROTOCOL_HTTP_STATUS` in `packages/http/src/http-status.ts`, (4) `packages/docs/src/catalog.ts` — derived from (1) + (3), so it needs no edit but its `VALIDATION` data branch may, and (5) the "Protocol errors" table in `packages/protocol/PROTOCOL.md`. Conformance tests: `packages/http/tests/protocol-table.test.ts` (3 = 1 codes; 3 = 5 statuses), `packages/server/tests/protocol-error-code.test.ts` (2 = 1, type), `packages/protocol/tests/protocol-md.test.ts` (5 = 1 codes).
 - `npm run lint && npm run check:skills && npm run check:deps && npm run type-check && npm test && npm run build && npm run check:exports`

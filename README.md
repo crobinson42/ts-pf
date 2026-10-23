@@ -109,12 +109,12 @@ export const app = impl.use(requireUser).router({
   },
 })
 
-// The generic types the `context` factory passed to handle() (next section).
-// Pass it explicitly; it is not inferred from `app`.
-export const handler = new FetchHandler<AppCtx>(app)
+// `FetchHandler` infers `AppCtx` from `app`, so the `context` passed to
+// handle() (next section) is checked against it.
+export const handler = new FetchHandler(app)
 ```
 
-`Db`, `User`, `db`, and `auth()` are your app's types and values. `$context<AppCtx>()` is the only source of context types: middleware runtime-merges what it passes to `next({ context })` but does not widen the type, so declare optional keys such as `user?` up front.
+`Db`, `User`, `db`, and `auth()` are your app's types and values. `$context<AppCtx>()` is the only source of context types: middleware runtime-merges what it passes to `next({ context })` but does not widen the type, so declare optional keys such as `user?` up front. `impl.router()` carries that type on `app`: `FetchHandler`, the message handlers, `createLocalClient`, and `@ts-pf/astro` read it from there and reject a `context` that does not match, and `impl.router()` itself rejects a missing or extra key, a handler placed under another procedure's key, or a slice built with a different `$context`, naming the key in the error.
 
 `.use()` runs before input validation. `.useAfter()` runs after, with typed input when the input check ran. Input schemas are checked unless `validation.input` is `false`. Output schemas, including stream output items, are checked only when `validation.output` is `true` (`FetchHandler`, message handlers, `createLocalClient`, and `runProcedure`).
 
@@ -414,7 +414,15 @@ import type { contract } from './contract.js'
 import { app } from './server.js'
 
 const { port1, port2 } = new MessageChannel()
-new PortHandler(app).bind(port1, { context: { db } })
+// `bind` wants the same AppCtx as FetchHandler (the type comes from `app`).
+// A port has no HTTP request: build one from the hello `meta`, or give
+// message servers a slice with its own `$context`.
+new PortHandler(app).bind(port1, {
+  context: ({ meta }) => ({
+    db,
+    req: new Request('http://localhost/', { headers: meta as HeadersInit }),
+  }),
+})
 const client = createClient<typeof contract>(new PortLink({ port: port2 }))
 ```
 
