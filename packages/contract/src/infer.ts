@@ -28,6 +28,8 @@ export type InferContractErrorCodes<T> = {
     : keyof InferProc<T[K]>['errors']
 }
 
+// Hand-written duplicate of ProtocolErrorCode in @ts-pf/protocol. contract
+// does not import protocol; a type test in @ts-pf/server keeps them equal.
 type ProtocolErrorCode =
   | 'BAD_REQUEST'
   | 'VALIDATION'
@@ -35,6 +37,8 @@ type ProtocolErrorCode =
   | 'INTERNAL'
   | 'METHOD_NOT_ALLOWED'
   | 'PAYLOAD_TOO_LARGE'
+
+export type ContractProtocolErrorCode = ProtocolErrorCode
 
 type DeclaredClientError<E extends ErrorMap> = {
   [K in keyof E & string]: [InferErrorData<E[K]>] extends [never]
