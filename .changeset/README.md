@@ -16,15 +16,15 @@ New published packages start at `0.0.0` and need a changeset. They also ship `sk
 
 ## Release
 
-On `main`, the [release workflow](../.github/workflows/release.yml) opens a **Version packages** PR when unpublished changesets exist. Merging that PR publishes to npm as `latest`, pushes git tags, and creates GitHub Releases (`changesets/action` `publish:`).
+On `main`, the [release workflow](../.github/workflows/release.yml) opens a **Version packages** PR when unpublished changesets exist. Merging that PR publishes to npm as `latest`, pushes git tags, and creates GitHub Releases (`changesets/action` `publish-script`).
 
-`GITHUB_TOKEN` can only open that PR if the repo allows it: **Settings → Actions → General → Workflow permissions → Allow GitHub Actions to create and approve pull requests**. Also set **Read and write permissions**. After changing this, re-run the `release` workflow.
+The action's default `github-token` (the workflow `GITHUB_TOKEN`) can only open that PR if the repo allows it: **Settings → Actions → General → Workflow permissions → Allow GitHub Actions to create and approve pull requests**. Also set **Read and write permissions**. After changing this, re-run the `release` workflow.
 
 ```sh
 npm install @ts-pf/contract
 ```
 
-Local equivalent (`changeset version` needs `GITHUB_TOKEN` in the environment because `config.json` uses `@changesets/changelog-github` to link PRs and authors; a read-only token is enough):
+Local equivalent, with at least one pending changeset (`changeset version` exits 1 without one; it also needs `GITHUB_TOKEN` in the environment because `config.json` uses `@changesets/changelog-github` to link PRs and authors; a read-only token is enough):
 
 ```sh
 GITHUB_TOKEN=<token> npm run changeset:version   # consumes .changeset/*.md, writes versions + CHANGELOG.md, refreshes the lockfile
@@ -32,7 +32,7 @@ npm run build
 npm run changeset:publish   # npm dist-tag `latest`
 ```
 
-The GitHub Action does **not** run `version` / `publish` through a shell. Use npm scripts (`npm run changeset:version`, `npm run changeset:publish`), not `cmd && other`. Do not publish in a separate step after the action — that skips git tag push and GitHub Releases.
+The GitHub Action does **not** run `version` / `publish` through a shell. Use npm scripts (`npm run changeset:version`, `npm run changeset:publish`), not `cmd && other`. Do not publish in a separate step after the action — that skips git tag push and GitHub Releases. `changeset:publish` must reach `changeset publish` with the environment intact: `changesets/action` v2 passes `CHANGESETS_OUTPUT` and reads the published packages from it to push tags and create Releases, and fails without it.
 
 `changeset version` rewrites internal `"*"` `@ts-pf/*` dependencies to the released version so the published tarball is installable. Do not restore `"*"` by hand after a version bump.
 

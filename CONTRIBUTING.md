@@ -11,7 +11,7 @@ ts-pf is a contract-first TypeScript RPC library published as 19 `@ts-pf/*` pack
 
 ## Setup
 
-Node 22 or newer (a recent 22.x: dev tooling such as jsdom needs >= 22.22); `.nvmrc` pins 22, which is what CI treats as primary (the matrix also runs 24).
+Node 22 (>= 22.22) or 24: dev tooling such as jsdom and the Changesets CLI does not support older 22.x, 23, or 25; `.nvmrc` pins 22, which is what CI treats as primary (the matrix also runs 24).
 
 ```sh
 nvm use            # or any Node >= 22.22
@@ -92,7 +92,7 @@ Only `hello` listens; the others are smoke-tested. Do not add a framework adapte
 
 Releases use [Changesets](https://github.com/changesets/changesets) and publish to the npm `latest` dist-tag. The full runbook, including npm trusted-publisher setup, lives in [`.changeset/README.md`](.changeset/README.md); this is the shape of it.
 
-1. Merging a PR to `main` triggers the [release workflow](.github/workflows/release.yml). It re-runs lint, `check:skills`, type-check, test, build, and `check:exports` (CI has already run the full chain on the PR), then `changesets/action` opens or updates a **Version packages** PR when unpublished changesets exist. That PR consumes `.changeset/*.md`, bumps versions, writes `CHANGELOG.md` files, rewrites internal `"*"` dependencies to the released versions (do not restore `"*"` afterwards), and refreshes the lockfile.
+1. Merging a PR to `main` triggers the [release workflow](.github/workflows/release.yml). It re-runs lint, `lint:root`, `check:skills`, `check:deps`, type-check, test, build, `check:exports`, and `check:snippets` (CI has already run the full chain on the PR), then `changesets/action` opens or updates a **Version packages** PR when unpublished changesets exist. That PR consumes `.changeset/*.md`, bumps versions, writes `CHANGELOG.md` files, rewrites internal `"*"` dependencies to the released versions (do not restore `"*"` afterwards), and refreshes the lockfile.
 2. Merging the Version packages PR publishes every bumped package, pushes git tags, and creates GitHub Releases. Do not publish by hand in a separate step; that skips tags and releases.
 3. Publishing uses npm **trusted publishing** (OIDC), not a token. Each `@ts-pf/*` package has a trusted publisher pointing at user `crobinson42`, repository `ts-pf`, workflow filename `release.yml`, empty environment, with `npm publish` allowed (not stage-only). `id-token: write` is the only credential. Do not set `NPM_TOKEN`, and do not pass `registry-url` to `actions/setup-node`: it writes an empty `_authToken` and npm then skips OIDC and fails with `ENEEDAUTH`. The job runs `scripts/probe-npm-oidc.mjs` first so a failed token exchange prints the registry's message. A 404 `package not found` from that exchange means a missing trusted publisher, not an unpublished package; `scripts/trust-github-publishers.sh` creates them all with interactive 2FA.
 4. The release job pins Node 24 with a global `npm@11.12.1`, the combination the OIDC flow was verified with. It is deliberately not tied to `.nvmrc`.
@@ -101,7 +101,7 @@ Releases use [Changesets](https://github.com/changesets/changesets) and publish 
 Local equivalent, for inspection only:
 
 ```sh
-GITHUB_TOKEN=<token> npm run changeset:version   # needs a token: the changelog uses @changesets/changelog-github
+GITHUB_TOKEN=<token> npm run changeset:version   # needs a token (@changesets/changelog-github) and a pending changeset; exits 1 when there is none
 npm run build
 npm run changeset:publish                        # only from a trusted-publishing context or an npm login with publish rights
 ```
