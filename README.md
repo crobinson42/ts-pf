@@ -454,7 +454,7 @@ oRPC is a dual RPC + OpenAPI platform with many adapters, serializers, and integ
 
 ## Examples
 
-Runnable apps in [`examples/`](examples/): [`hello`](examples/hello) (Fetch), [`codegen`](examples/codegen) (split-repo `emit` / `createClient<Contract>`), [`message`](examples/message) (MessagePort), [`stream`](examples/stream) (`StreamCodec`), [`plugins`](examples/plugins) (`CallPlugin` / `CallInterceptor`).
+Smoke-tested examples in [`examples/`](examples/): [`hello`](examples/hello) (Fetch; also runs as a server with `npm run dev`), [`codegen`](examples/codegen) (split-repo `emit` / `createClient<Contract>`), [`message`](examples/message) (MessagePort), [`stream`](examples/stream) (`StreamCodec`), [`plugins`](examples/plugins) (`CallPlugin` / `CallInterceptor`). Each exercises its client against its handler in-process; build first (`npm run build`), then see [`examples/README.md`](examples/README.md).
 
 ## Development
 

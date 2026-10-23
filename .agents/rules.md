@@ -164,8 +164,10 @@ Live in `examples/`: `hello` (Fetch), `codegen` (split-repo `emit` / `createClie
 
 - Implemented routers are named `app` (not `router` — that name is the contract helper).
 - Example `client.ts` must not import `@ts-pf/server`.
-- Do not add framework adapter packages to satisfy an example.
+- Do not add framework adapter packages to satisfy an example. `hello/src/serve.ts` (`npm run dev`) is an example-local `node:http` bridge; do not promote it to a published adapter.
 - Do not restore numbered `01-hello` … `15-mvc-kit` or `_shared`.
+- Example READMEs keep three sections: "What it shows", "Run", "What the smoke test asserts". Examples are smoke-tested, not "runnable apps"; only `hello` listens.
+- Root `vitest.config.ts` lists `test.projects` explicitly (`packages/*` plus each example config); no bare `examples/*` glob (it would load `examples/README.md`).
 
 ## Done means verified
 

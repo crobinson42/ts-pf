@@ -6,6 +6,7 @@
     "node": ">=20"
   },
   "scripts": {
+    "dev": "tsc -p tsconfig.serve.json && node dist/serve.js",
     "test": "vitest run",
     "type-check": "tsc --noEmit",
     "lint": "biome check src tests"
