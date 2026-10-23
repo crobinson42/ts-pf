@@ -73,7 +73,7 @@ writeFileSync('contract.d.ts', emit(catalog(contract, { prefix: '/rpc' })))
 
 `emit()` prints JSDoc from `docs()`. Other `.meta()` keys stay on the catalog JSON.
 
-Serve the JSON in **userland**, outside the RPC prefix (`GET /rpc/...` is a procedure miss, not a spec):
+Serve the JSON in **userland**, outside the RPC prefix (`GET /rpc/...` answers `405 METHOD_NOT_ALLOWED`; the RPC prefix serves procedures, not a spec):
 
 ```ts no-check
 if (url.pathname === '/catalog.json') {

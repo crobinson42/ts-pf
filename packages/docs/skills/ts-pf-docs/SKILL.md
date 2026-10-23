@@ -45,6 +45,6 @@ if (url.pathname === '/catalog.json') {
 ## Don't
 
 - `.docs()` on the contract builder.
-- Serve the catalog from `FetchHandler` (`GET /rpc/...` is a procedure miss).
+- Serve the catalog from `FetchHandler` (`GET /rpc/...` answers `405 METHOD_NOT_ALLOWED`; the RPC prefix serves procedures only).
 - Walk an implemented `app` — pass `contract`.
 - REST `method` / `path` / path params.
