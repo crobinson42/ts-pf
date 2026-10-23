@@ -1,5 +1,14 @@
+import { defined } from '@ts-pf/protocol'
 import type { ImplementedProcedure } from './runtime.js'
 
+/**
+ * Wraps one `runProcedure` call. Interceptors run in array order with `[0]`
+ * outermost (`applyPlugins` puts plugin interceptors before loose ones).
+ * `next(opts)` **replaces** whatever it is given — `input`, `context`, and
+ * `signal` each overwrite the current value for everything inside, and a key
+ * that is passed as `undefined` clears it. Compare middleware `next()`
+ * (`NextFn` in `middleware.ts`), which merges `context` into the current one.
+ */
 export type CallInterceptor = (ctx: {
   procedure: ImplementedProcedure
   path: string[]
@@ -7,9 +16,11 @@ export type CallInterceptor = (ctx: {
   context: unknown
   signal?: AbortSignal
   next: (opts?: {
+    /** Replaces the input for everything inside this interceptor. */
     input?: unknown
     /** Replaces context entirely; does not merge. */
     context?: unknown
+    /** Replaces the signal; passing `undefined` removes it. */
     signal?: AbortSignal
   }) => Promise<unknown>
 }) => Promise<unknown>
@@ -42,30 +53,23 @@ export function runCallInterceptors(
       path: interceptorPath,
       input: current.input,
       context: current.context,
-      ...(current.signal ? { signal: current.signal } : {}),
+      ...defined({ signal: current.signal }),
       next: (opts) => {
         const nextCurrent: CallState = {
           input: opts && 'input' in opts ? opts.input : current.input,
           context: opts && 'context' in opts ? opts.context : current.context,
-        }
-        if (opts && 'signal' in opts) {
-          if (opts.signal) {
-            nextCurrent.signal = opts.signal
-          }
-        } else if (current.signal) {
-          nextCurrent.signal = current.signal
+          ...defined({
+            signal: opts && 'signal' in opts ? opts.signal : current.signal,
+          }),
         }
         return run(index + 1, nextCurrent)
       },
     })
   }
 
-  const initial: CallState = {
+  return run(0, {
     input: ctx.input,
     context: ctx.context,
-  }
-  if (ctx.signal) {
-    initial.signal = ctx.signal
-  }
-  return run(0, initial)
+    ...defined({ signal: ctx.signal }),
+  })
 }

@@ -249,6 +249,19 @@ describe('middleware input typing', () => {
     })
   })
 
+  it('impl.middleware() fits impl.use() and a per-procedure .use()', () => {
+    const mw = impl.middleware(async ({ next }) => next())
+    impl.use(mw).router({ planet: { find, create } })
+    impl.planet.find.use(mw).handler(async ({ input }) => ({
+      id: input.id,
+      name: 'earth',
+    }))
+    // `.useAfter()` is typed with the procedure's input and output, so a
+    // loose reusable middleware does not fit there; write it inline.
+    // @ts-expect-error useAfter needs MiddlewareFn<Ctx, { id: number }, ...>
+    impl.planet.find.useAfter(mw)
+  })
+
   it('middleware errors factory stays loose', () => {
     impl.planet.find.use(async ({ errors, next }) => {
       expectTypeOf(errors.ANYTHING).parameters.toEqualTypeOf<[unknown?]>()

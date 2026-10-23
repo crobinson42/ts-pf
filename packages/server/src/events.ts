@@ -1,3 +1,4 @@
+import { defined } from '@ts-pf/protocol'
 import type { CallInterceptor } from './call-interceptor.js'
 
 type EventCtx = {
@@ -8,14 +9,12 @@ type EventCtx = {
 }
 
 function eventCtx(ctx: EventCtx): EventCtx {
-  return ctx.signal
-    ? {
-        path: ctx.path,
-        input: ctx.input,
-        context: ctx.context,
-        signal: ctx.signal,
-      }
-    : { path: ctx.path, input: ctx.input, context: ctx.context }
+  return {
+    path: ctx.path,
+    input: ctx.input,
+    context: ctx.context,
+    ...defined({ signal: ctx.signal }),
+  }
 }
 
 export function onStart(

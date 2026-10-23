@@ -47,6 +47,23 @@ describe('middleware', () => {
     expect(seen).toEqual([7])
   })
 
+  it('impl.middleware() runs on a per-procedure .use() too', async () => {
+    const order: string[] = []
+    const impl = createImplementer(contract).$context<{ seen: string[] }>()
+    const trace = impl.middleware(async ({ next, path }) => {
+      order.push(path.join('.'))
+      return next()
+    })
+    const app = impl.router({
+      ping: impl.ping.handler(async () => 'pong'),
+      echo: impl.echo.use(trace).handler(async ({ input }) => input),
+    })
+    const client = createLocalClient(app, { context: { seen: [] } })
+    expect(await client.echo({ n: 1 })).toEqual({ n: 1 })
+    expect(await client.ping()).toBe('pong')
+    expect(order).toEqual(['echo'])
+  })
+
   it('middleware can inject context', async () => {
     const impl = createImplementer(contract).$context<{
       user?: { id: number }

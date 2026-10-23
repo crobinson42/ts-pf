@@ -30,6 +30,30 @@ describe('declared error data', () => {
     })
   })
 
+  it('keeps the original declared error as cause, off the wire', async () => {
+    const c = router({
+      find: procedure.errors({
+        NOT_FOUND: { status: 404, data: z.object({ id: z.number() }) },
+      }),
+    })
+    const impl = createImplementer(c)
+    const app = impl.router({
+      find: impl.find.handler(async ({ errors }) => {
+        throw errors.NOT_FOUND({ id: 'nope' } as never)
+      }),
+    })
+    const client = createLocalClient(app, { context: {} })
+    const err = (await client.find().catch((e: unknown) => e)) as PFError
+    expect(err).toBeInstanceOf(PFError)
+    expect(err.cause).toBeInstanceOf(PFError)
+    expect((err.cause as PFError).code).toBe('NOT_FOUND')
+    expect((err.cause as PFError).data).toEqual({ id: 'nope' })
+    expect(JSON.parse(JSON.stringify(err))).toEqual({
+      code: 'INTERNAL',
+      message: 'Internal server error',
+    })
+  })
+
   it('undeclared PFError codes pass through', async () => {
     const c = router({
       ping: procedure.output(z.string()),
@@ -69,6 +93,14 @@ describe('declared error data', () => {
     expect(err).toBeInstanceOf(PFError)
     expect((err as PFError).status).toBeUndefined()
     expect((err as PFError).data).toBeUndefined()
+    // The schema issues ride on `cause` for the server log only.
+    expect((err as PFError).cause).toEqual([
+      expect.objectContaining({ message: expect.any(String) }),
+    ])
+    expect(JSON.parse(JSON.stringify(err))).toEqual({
+      code: 'INTERNAL',
+      message: 'Internal server error',
+    })
   })
 
   it('returns handler output when output validation is off', async () => {
