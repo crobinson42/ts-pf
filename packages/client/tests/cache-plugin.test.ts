@@ -1,6 +1,6 @@
 import { CachePlugin, intercept, type Link } from '@ts-pf/client'
 import { localFailure } from '@ts-pf/protocol'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 function asyncInput(): AsyncIterable<number> {
   return {
@@ -36,20 +36,25 @@ describe('CachePlugin', () => {
   })
 
   it('misses after ttl expires', async () => {
-    let calls = 0
-    const link: Link = {
-      call() {
-        calls++
-        return Promise.resolve({ n: calls })
-      },
+    vi.useFakeTimers()
+    try {
+      let calls = 0
+      const link: Link = {
+        call() {
+          calls++
+          return Promise.resolve({ n: calls })
+        },
+      }
+      const wrapped = intercept(link, {
+        plugins: [new CachePlugin({ ttl: 1 })],
+      })
+      expect(await wrapped.call(['echo'], { id: 1 })).toEqual({ n: 1 })
+      await vi.advanceTimersByTimeAsync(10)
+      expect(await wrapped.call(['echo'], { id: 1 })).toEqual({ n: 2 })
+      expect(calls).toBe(2)
+    } finally {
+      vi.useRealTimers()
     }
-    const wrapped = intercept(link, {
-      plugins: [new CachePlugin({ ttl: 1 })],
-    })
-    expect(await wrapped.call(['echo'], { id: 1 })).toEqual({ n: 1 })
-    await new Promise((resolve) => setTimeout(resolve, 10))
-    expect(await wrapped.call(['echo'], { id: 1 })).toEqual({ n: 2 })
-    expect(calls).toBe(2)
   })
 
   it('does not cache errors', async () => {
