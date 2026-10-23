@@ -5,14 +5,29 @@ import {
   type RpcEncodedBody,
 } from '@ts-pf/http'
 import {
-  isPFError,
+  isAsyncIterable,
   PFError,
+  type RpcFailure,
   type RpcRequest,
   type RpcResponse,
+  toWireError,
 } from '@ts-pf/protocol'
 import { StreamCodec } from '@ts-pf/stream'
-import { isAsyncIterable } from './is-async-iterable.js'
 import { encodeSse, readSseEvents, SSE_CONTENT_TYPE } from './sse.js'
+
+/** Envelope items only: a `ReadableStream` is bytes, not items (as in `@ts-pf/stream`). */
+function isItemStream(value: unknown): value is AsyncIterable<unknown> {
+  return (
+    isAsyncIterable(value) &&
+    !(typeof ReadableStream !== 'undefined' && value instanceof ReadableStream)
+  )
+}
+
+/** In-band failure after the stream started: an unknown throw is `INTERNAL`. */
+function failureLine(error: unknown): string {
+  const failure: RpcFailure = { ok: false, error: toWireError(error) }
+  return JSON.stringify(failure)
+}
 
 function mime(contentType: string | null): string {
   if (contentType == null || contentType === '') {
@@ -46,7 +61,7 @@ function badRequest(message: string): PFError {
 }
 
 function assertItem(value: unknown): void {
-  if (isAsyncIterable(value)) {
+  if (isItemStream(value)) {
     throw badRequest('Nested streams are not supported')
   }
   if (typeof Blob !== 'undefined' && value instanceof Blob) {
@@ -77,7 +92,7 @@ export class SseCodec implements RpcCodec {
   }
 
   async encodeSuccess<T>(output: T): Promise<RpcEncodedBody> {
-    if (isAsyncIterable(output)) {
+    if (isItemStream(output)) {
       return {
         contentType: SSE_CONTENT_TYPE,
         body: encodeSse(
@@ -86,7 +101,7 @@ export class SseCodec implements RpcCodec {
             assertItem(item)
             return jsonText(await this.inner.encodeSuccess(item))
           },
-          (error) => this.failureLine(error),
+          failureLine,
           this.keepAliveMs,
         ),
       }
@@ -161,22 +176,5 @@ export class SseCodec implements RpcCodec {
         message: 'Stream truncated',
       })
     }
-  }
-
-  private failureLine(error: unknown): string {
-    if (isPFError(error)) {
-      const payload: { code: string; message: string; data?: unknown } = {
-        code: error.code,
-        message: error.message,
-      }
-      if (error.data !== undefined) {
-        payload.data = error.data
-      }
-      return JSON.stringify({ ok: false, error: payload })
-    }
-    return JSON.stringify({
-      ok: false,
-      error: { code: 'INTERNAL', message: 'Internal server error' },
-    })
   }
 }

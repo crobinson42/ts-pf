@@ -8,7 +8,7 @@ import {
   type MessageFrame,
   MessageSession,
 } from '@ts-pf/message'
-import { isAsyncIterable } from './is-async-iterable.js'
+import { isItemStream } from './item-stream.js'
 import { createPushQueue, type PushQueue } from './push-queue.js'
 
 export type LinkOptions = {
@@ -326,7 +326,7 @@ export function attachClient(options: AttachClientOptions): {
     input: unknown,
     signal?: AbortSignal,
   ): Promise<unknown> {
-    const streamingInput = isAsyncIterable(input)
+    const streamingInput = isItemStream(input)
 
     await waitForReady(signal)
 

@@ -13,3 +13,5 @@ export {
   type PFErrorInit,
   ProtocolErrorCode,
 } from './error.js'
+export { isAsyncIterable } from './is-async-iterable.js'
+export { toWireError } from './wire-error.js'

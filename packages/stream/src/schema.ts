@@ -1,7 +1,7 @@
 import type { StandardSchemaV1 } from '@standard-schema/spec'
 import { type InferSchemaOutput, validateSchema } from '@ts-pf/contract'
 import { PFError } from '@ts-pf/protocol'
-import { isAsyncIterable } from './is-async-iterable.js'
+import { isItemStream } from './item-stream.js'
 
 export function stream<S>(
   item: S,
@@ -21,7 +21,7 @@ export function stream<S>(
         output: 0 as unknown as AsyncIterable<InferSchemaOutput<S>>,
       },
       validate: async (value) => {
-        if (!isAsyncIterable(value)) {
+        if (!isItemStream(value)) {
           return { issues: [{ message: 'Expected an async iterable' }] }
         }
         return { value: wrap(value, item) }

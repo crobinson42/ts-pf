@@ -105,6 +105,9 @@ function cap(items: unknown[], maxChunks: number | undefined): unknown[] {
   return items.slice(items.length - maxChunks)
 }
 
+// Local copy: `isAsyncIterable` in `@ts-pf/protocol` is the shared predicate, but
+// `@ts-pf/swr` depends on `contract` only (rules.md DAG), so it is not imported
+// for one check; this copy also keeps the `ReadableStream` exclusion.
 function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
   if (
     typeof ReadableStream !== 'undefined' &&
