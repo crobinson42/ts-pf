@@ -1,6 +1,9 @@
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
+import { execFile } from 'node:child_process'
+import { mkdtemp, readFile, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { promisify } from 'node:util'
 import { catalogHash, emit } from '@ts-pf/codegen'
 import { describe, expect, it } from 'vitest'
 import { type CliIo, runCli } from '../src/cli.js'
@@ -49,9 +52,29 @@ function memoryIo(opts: {
   }
 }
 
+const execFileAsync = promisify(execFile)
+const distCli = fileURLToPath(new URL('../dist/cli.js', import.meta.url))
+
 describe('ts-pf-codegen CLI', () => {
   const spec = planetCatalog()
   const raw = JSON.stringify(spec)
+
+  it.each(['--help', '-h'])('%s prints usage and exits 0', async (flag) => {
+    const box = memoryIo({})
+    const code = await runCli([flag], box.io)
+    expect(code).toBe(0)
+    expect(box.stdout).toMatch(/^Usage: ts-pf-codegen/)
+    expect(box.stdout).toMatch(/--help/)
+    expect(box.stderr).toBe('')
+  })
+
+  it('no command prints usage to stderr and exits 1', async () => {
+    const box = memoryIo({})
+    const code = await runCli([], box.io)
+    expect(code).toBe(1)
+    expect(box.stdout).toBe('')
+    expect(box.stderr).toMatch(/^Usage: ts-pf-codegen/)
+  })
 
   it('emit writes a .d.ts from a catalog file', async () => {
     const files = new Map<string, string>([['catalog.json', raw]])
@@ -177,5 +200,31 @@ describe('ts-pf-codegen CLI', () => {
     const code = await runCli(['emit', catalogPath, '-o', outPath], realIo)
     expect(code).toBe(0)
     expect(await readFile(outPath, 'utf8')).toBe(emit(spec))
+  })
+
+  it('runs through a node_modules/.bin style symlink (npx / npm scripts)', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'ts-pf-codegen-bin-'))
+    const link = join(dir, 'ts-pf-codegen')
+    await symlink(distCli, link)
+    const { stdout, stderr } = await execFileAsync(process.execPath, [
+      link,
+      '--help',
+    ])
+    expect(stdout).toMatch(/^Usage: ts-pf-codegen/)
+    expect(stderr).toBe('')
+  })
+
+  it('emits through the symlinked bin', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'ts-pf-codegen-bin-'))
+    const link = join(dir, 'ts-pf-codegen')
+    const catalogPath = join(dir, 'catalog.json')
+    await symlink(distCli, link)
+    await writeFile(catalogPath, raw)
+    const { stdout } = await execFileAsync(process.execPath, [
+      link,
+      'emit',
+      catalogPath,
+    ])
+    expect(stdout).toBe(emit(spec))
   })
 })

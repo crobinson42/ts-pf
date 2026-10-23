@@ -58,9 +58,10 @@ The generated file uses `import type { ContractProcedure } from '@ts-pf/contract
 ts-pf-codegen emit <catalog.json|-> [-o contract.d.ts] [--name Contract] [--fail-on-unavailable]
 ts-pf-codegen pull <url> [-o contract.d.ts] [--lock catalog.lock.json]
 ts-pf-codegen hash <catalog.json|->
+ts-pf-codegen --help
 ```
 
-`emit` and `hash` read stdin when the path is `-`. Omit `-o` to write the `.d.ts` to stdout.
+`emit` and `hash` read stdin when the path is `-`. Omit `-o` to write the `.d.ts` to stdout. `--help` / `-h` print usage and exit 0; no command prints usage to stderr and exits 1. Run it as `npx ts-pf-codegen …` or from an npm script — the bin resolves through the `node_modules/.bin` symlink.
 
 Commit `contract.d.ts`, or CI-run `ts-pf-codegen pull` and pin `catalog.lock.json`:
 
