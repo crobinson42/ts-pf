@@ -43,16 +43,19 @@ export const app = impl.use(requireUser).router({
 
 `.use()` runs before input validation (`input: unknown`). `.useAfter()` runs after. Input checks default on, so `.useAfter()` then sees the parsed input. `validation: { input: false }` skips the input schema, including stream input items, and `.useAfter()` sees the raw value. Output checks, including stream output items, run only when `validation: { output: true }`. Unary output failure is `INTERNAL` with no issues. A bad stream output item is `VALIDATION` with issues. Parsed output (strip, defaults, transforms) is applied only when output checks run. Declared error `data` is always checked. `$context<C>()` is the context type source; middleware runtime-merges and does not infer added keys. Pass HTTP `Request` in `FetchHandler.handle(..., { context })`, not via `$context` alone. Name the implemented router `app`. Default `DedupePlugin` keys every unary call — pass `key` to restrict to reads.
 
+`impl.router()` returns `ImplementedRouter<T, TCtx>`: `TCtx` is the `$context<C>()` type and each handler is an `ImplementedProcedure<typeof contract.planet.find, TCtx>` (type-only brands; the runtime object is unchanged). A missing key, an extra key, a handler built from another procedure under this key, or a slice built with a different `$context` is a type error that names the key. `FetchHandler`, the message handlers, `createLocalClient`, and `@ts-pf/astro` read `TCtx` from `app`, so `context` is checked against it. A tree not produced by `impl.router()` (a plain object of handlers) infers `unknown`; use `impl.router()`, or pick procedures into a second `impl.router()` call, to keep the check.
+
 ```ts no-check
-createLocalClient(app, { context, validation: { output: true } })
+createLocalClient(app, { context, validation: { output: true } }) // context: TCtx from app
 runProcedure(proc, input, context, { validation: { input: false } })
 ```
 
-Nest finished slice apps: `impl.router({ planet: planetApp, star: starApp })`. Each slice is `createImplementer(sliceContract).$context<AppCtx>().router({ ... })` with the same `AppCtx`. Root `.use(mw)` prepends onto nested procedures. Procedure `path` is the composed tree (`planet.find`). Pick an implemented procedure into a smaller server: `{ list: usersApp.list }`.
+Nest finished slice apps: `impl.router({ planet: planetApp, star: starApp })`. Each slice is `createImplementer(sliceContract).$context<AppCtx>().router({ ... })` with the same `AppCtx` (a slice that needs less than the root provides also nests; one that needs other keys does not). Root `.use(mw)` prepends onto nested procedures. Procedure `path` is the composed tree (`planet.find`). Pick an implemented procedure into a smaller server: `{ list: usersApp.list }`.
 
 ## API
 
 - `createImplementer`, `createLocalClient`, `runProcedure`, `lookupProcedure`, `ProcedureValidation`
+- `ImplementedRouter<T, TCtx>`, `ImplementedProcedure<TContract, TCtx>`, `RouterImpl<T, TCtx>`
 - `applyPlugins`, `CallPlugin`, `CallInterceptor`, `DedupePlugin`
 - `onStart` / `onSuccess` / `onError` / `onFinish`
 

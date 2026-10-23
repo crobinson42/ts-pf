@@ -1,14 +1,14 @@
-import {
-  type ContractBuilder,
-  type ContractProcedure,
-  isContractProcedure,
-} from '@ts-pf/contract'
+import { type ContractProcedure, isContractProcedure } from '@ts-pf/contract'
 import type { MiddlewareFn } from './middleware.js'
 import {
+  type ContractKeys,
+  type ContractShape,
   type HandlerFn,
   type ImplementedProcedure,
   type ImplementedRouter,
+  type IsContractProcedure,
   isImplementedProcedure,
+  type RouterImplCheck,
 } from './runtime.js'
 
 type Inherited = {
@@ -181,18 +181,24 @@ export function createImplementer<T>(contract: T) {
   }) as Implementer<T, object>
 }
 
+/**
+ * Builder for one contract procedure. `TContract` is the contract procedure
+ * type (`typeof contract.planet.find`); `handler()` returns an
+ * `ImplementedProcedure` branded with it and with `TCtx`.
+ */
 export type ProcedureBuilder<
   TInput,
   TOutput,
   TCtx,
   TErrors extends Record<string, unknown> = Record<string, unknown>,
+  TContract = unknown,
 > = {
   use: (
     mw: MiddlewareFn<TCtx, unknown, TOutput>,
-  ) => ProcedureBuilder<TInput, TOutput, TCtx, TErrors>
+  ) => ProcedureBuilder<TInput, TOutput, TCtx, TErrors, TContract>
   useAfter: (
     mw: MiddlewareFn<TCtx, TInput, TOutput>,
-  ) => ProcedureBuilder<TInput, TOutput, TCtx, TErrors>
+  ) => ProcedureBuilder<TInput, TOutput, TCtx, TErrors, TContract>
   handler: (
     fn: (opts: {
       input: TInput
@@ -201,7 +207,7 @@ export type ProcedureBuilder<
       path: string[]
       signal?: AbortSignal
     }) => TOutput | Promise<TOutput>,
-  ) => ImplementedProcedure
+  ) => ImplementedProcedure<TContract, TCtx>
 }
 
 export type Implementer<T, TCtx> = {
@@ -211,29 +217,27 @@ export type Implementer<T, TCtx> = {
   middleware: (
     fn: MiddlewareFn<TCtx, unknown, unknown>,
   ) => MiddlewareFn<TCtx, unknown, unknown>
-  router: (impl: RouterImpl<T, TCtx>) => ImplementedRouter<T>
+  /**
+   * Builds the finished tree. The argument must implement exactly the
+   * contract: a missing key, an extra key, a handler built from another
+   * procedure, or a slice built with a different `$context` is a type error
+   * that names the key. `I` is inferred so the error shows that key, not the
+   * whole contract. Runtime `assertComplete` enforces the same.
+   */
+  router: <I>(
+    impl: I & RouterImplCheck<T, TCtx, I>,
+  ) => ImplementedRouter<T, TCtx>
 } & {
-  [K in keyof T as K extends '~pf' ? never : K]: T[K] extends ContractBuilder<
-    infer I,
-    infer O,
-    infer _E,
-    infer _M
-  >
-    ? ProcedureBuilder<I, O, TCtx, _E>
-    : T[K] extends ContractProcedure<infer I, infer O, infer _E, infer _M>
-      ? ProcedureBuilder<I, O, TCtx, _E>
-      : Implementer<T[K], TCtx>
+  [K in ContractKeys<T>]: IsContractProcedure<T[K]> extends true
+    ? ProcedureBuilderFor<T[K], TCtx>
+    : Implementer<T[K], TCtx>
 }
 
-export type RouterImpl<T, TCtx> = {
-  [K in keyof T as K extends '~pf' ? never : K]: T[K] extends ContractBuilder<
-    infer _I,
-    infer _O,
-    infer _E,
-    infer _M
-  >
-    ? ImplementedProcedure
-    : T[K] extends ContractProcedure<infer _I, infer _O, infer _E, infer _M>
-      ? ImplementedProcedure
-      : RouterImpl<T[K], TCtx>
-}
+type ProcedureBuilderFor<TContract, TCtx> =
+  ContractShape<TContract> extends {
+    input: infer I
+    output: infer O
+    errors: infer E extends Record<string, unknown>
+  }
+    ? ProcedureBuilder<I, O, TCtx, E, TContract>
+    : never

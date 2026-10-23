@@ -2,9 +2,10 @@ import { createPortDuplex } from '@ts-pf/message'
 import type { ImplementedRouter } from '@ts-pf/server'
 import { attachRouter, type HandlerOptions } from './shared.js'
 
+/** `TCtx` is inferred from the router's context brand; see `FetchHandler`. */
 export class PortHandler<TCtx = unknown> {
   constructor(
-    private readonly router: ImplementedRouter,
+    private readonly router: ImplementedRouter<unknown, TCtx>,
     private readonly options?: HandlerOptions,
   ) {}
 

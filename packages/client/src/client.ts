@@ -4,13 +4,26 @@ import { intercept } from './intercept.js'
 import type { Link } from './link.js'
 import type { CallPlugin } from './plugin.js'
 
-export function createClient<T>(
+type CreateClientOptions = {
+  interceptors?: readonly CallInterceptor[]
+  plugins?: readonly CallPlugin[]
+}
+
+/**
+ * Typed client over a `Link`. Pass the contract type:
+ * `createClient<typeof contract>(link)`. Without it `T` is `never` and the
+ * result is a single `~error` member naming the fix, instead of a silent `{}`.
+ */
+export function createClient<T = never>(
   link: Link,
-  options?: {
-    interceptors?: readonly CallInterceptor[]
-    plugins?: readonly CallPlugin[]
-  },
-): ContractClient<T> {
+  options?: CreateClientOptions,
+): [T] extends [never]
+  ? { readonly '~error': 'Pass createClient<typeof contract>(link)' }
+  : ContractClient<T>
+export function createClient(
+  link: Link,
+  options?: CreateClientOptions,
+): unknown {
   const resolved = intercept(link, options)
   const create = (path: string[]): unknown =>
     new Proxy(
@@ -29,7 +42,7 @@ export function createClient<T>(
         },
       },
     )
-  return create([]) as ContractClient<T>
+  return create([])
 }
 
 function splitCallArgs(args: unknown[]): {

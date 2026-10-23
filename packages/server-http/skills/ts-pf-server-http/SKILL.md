@@ -36,6 +36,8 @@ if (!result.matched) return new Response('Not Found', { status: 404 })
 return result.response
 ```
 
+`new FetchHandler(app)` infers its context type from `app` (the `$context<C>()` behind `impl.router()`), so `handle(request, { context })` is checked against it and a factory gets `req: Request` for free: `context: (req) => ({ db, req })`. An explicit `new FetchHandler<AppCtx>(app)` still works when `AppCtx` satisfies the app's context. A tree not produced by `impl.router()` infers `unknown`; use `impl.router()`, or pick procedures into a second `impl.router()` call, to keep the check.
+
 `plugins` is HTTP-only (`HandlerPlugin`). RPC call interceptors go on `{ interceptors }` from `@ts-pf/server`. `validation` is the same `ProcedureValidation` as `runProcedure`: input checks default on, output and stream output items run only with `{ validation: { output: true } }`. Set it on the constructor, not on `handle()`. `CORSPlugin` answers `OPTIONS` preflight.
 
 ## Errors

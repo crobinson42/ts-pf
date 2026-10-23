@@ -53,6 +53,26 @@ describe('createClient call signatures', () => {
     expectTypeOf(client).toEqualTypeOf<ContractClient<typeof contract>>()
   })
 
+  it('surfaces a missing contract type argument at the call site', () => {
+    const untyped = createClient(link)
+    expectTypeOf(untyped).toEqualTypeOf<{
+      readonly '~error': 'Pass createClient<typeof contract>(link)'
+    }>()
+    // @ts-expect-error the untyped result has no procedures
+    untyped.planet
+    // @ts-expect-error nor any other key
+    untyped.anything
+  })
+
+  it('still infers T from a return-type annotation', () => {
+    const annotated: ContractClient<typeof contract> = createClient(link)
+    expectTypeOf(annotated).toEqualTypeOf<ContractClient<typeof contract>>()
+    function make(): ContractClient<typeof contract> {
+      return createClient(link, { plugins: [] })
+    }
+    expectTypeOf(make).returns.toEqualTypeOf<ContractClient<typeof contract>>()
+  })
+
   it('accepts input and CallOptions', () => {
     expectTypeOf(client.planet.find).parameters.toEqualTypeOf<
       [{ id: number }, CallOptions?]
