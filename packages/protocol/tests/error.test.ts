@@ -1,5 +1,10 @@
-import { isPFError, localFailure, PFError } from '@ts-pf/protocol'
-import { describe, expect, it } from 'vitest'
+import {
+  isPFError,
+  localFailure,
+  PFError,
+  type PFErrorInit,
+} from '@ts-pf/protocol'
+import { describe, expect, expectTypeOf, it } from 'vitest'
 
 describe('PFError', () => {
   it('is an Error with code, status, data', () => {
@@ -18,10 +23,17 @@ describe('PFError', () => {
     expect(isPFError(new Error('x'))).toBe(false)
   })
 
-  it('defaults status to 400 and message to code', () => {
+  it('leaves status undefined when omitted and defaults message to code', () => {
     const err = new PFError({ code: 'BAD_REQUEST' })
-    expect(err.status).toBe(400)
+    expect(err.status).toBeUndefined()
     expect(err.message).toBe('BAD_REQUEST')
+  })
+
+  it('types status as optional', () => {
+    expectTypeOf<PFError['status']>().toEqualTypeOf<number | undefined>()
+    expectTypeOf<PFErrorInit['status']>().toEqualTypeOf<number | undefined>()
+    const init: PFErrorInit = { code: 'TEAPOT' }
+    expectTypeOf(init).toEqualTypeOf<PFErrorInit>()
   })
 
   it('toJSON matches the wire error object', () => {

@@ -73,7 +73,7 @@ x-ts-pf-protocol: 1
 | `PAYLOAD_TOO_LARGE` | 413 | Request body larger than the configured handler limit |
 | `INTERNAL` | 500 | Unknown throw. A unary output schema failure is also 500 (server bug). Output schema checks are optional. |
 
-The discriminator is `error.code`. HTTP status is unary transport only; it is not in the JSON body.
+The discriminator is `error.code`. HTTP status is unary transport only; it is not in the JSON body. The TypeScript `PFError.status` is optional transport metadata, never identity (see [`status` on the TypeScript client](#status-on-the-typescript-client)).
 
 The table above is a **closed** set. Procedure-declared codes are application-defined strings with optional `data`. `VALIDATION` is the only protocol code with a specified `data` shape: `{ issues: { message, path }[] }` where `path` is `(string | number)[]`. Other protocol codes omit `data`. `INTERNAL` never includes a stack or output-schema issues. Servers may skip output schema checks. When a server checks a unary output schema and it fails, the code is `INTERNAL` and `data` is omitted. When a server checks a stream item and it fails, the code is `VALIDATION` with `issues`, in-band after the stream has started.
 
@@ -83,7 +83,19 @@ After a stream starts, HTTP status stays 200; the same `{ ok: false, error }` ob
 
 TypeScript `PFError`, `instanceof`, and `asResult` are JS conveniences. They are not required to consume the API. Any HTTP client parses this envelope.
 
-Contract-declared error codes use the status on the error definition.
+Contract-declared error codes use the status on the error definition when the HTTP binding sends a unary failure; a declared code with no `status` is sent as HTTP 400 (`httpStatus()` in `@ts-pf/http`).
+
+### `status` on the TypeScript client
+
+`PFError.status` is `number | undefined`. It is set only where a transport really has one. Switch on `error.code`; treat `status` as a hint and guard it (`err.status ?? 400`).
+
+| Transport | `status` on the rejected `PFError` |
+|---|---|
+| HTTP unary failure (`FetchLink`) | The HTTP response status (declared `NOT_FOUND { status: 404 }` → `404`; declared code without `status` → `400`; protocol codes → the table above) |
+| HTTP after a stream started (JSONL line / SSE `event: error`) | `undefined` (the response was already 200) |
+| WebSocket / stdio / MessagePort | `undefined` (no HTTP status on a frame; `errorFromEnvelope` does not synthesize one) |
+| Local failure (`localFailure`, `isLocalFailure`) | `0` with `local: true` |
+| In-process `createLocalClient` | The declared `ErrorDef.status` when there is one, else `undefined` |
 
 The TypeScript client maps **local** failures (never got a protocol result) to `INTERNAL` with `local: true` and `status: 0`. `local` and `status` are TypeScript client conventions, not protocol fields, and are **not** on the wire. `isLocalFailure` is `local === true`. Abort uses message `Request aborted`. Network throws keep `error.message` and set `Error.cause` to the thrown value (Node’s `ECONNREFUSED` is then `error.cause.cause`). HTTP responses **without** `x-ts-pf-protocol` that fail `decodeResponse` become `INTERNAL` with the HTTP status and message `Non-RPC response (HTTP …)` — do not surface codec `BAD_REQUEST` 400 for proxy HTML. Codec `PFError` is rethrown only when `x-ts-pf-protocol` is present (truncated JSONL/SSE at decode time, malformed ts-pf JSON). `toJSON()` still omits `status`, `cause`, and `local`.
 
@@ -579,7 +591,7 @@ Clients distinguish three ways:
 2. `error.code` — declared / protocol codes from the envelope
 3. `INTERNAL` without `local` — protocol `INTERNAL`
 
-Declared `.errors()` `status` is Fetch-only. Mid-stream Fetch JSONL keeps HTTP 200. Message transports do **not** reconstruct HTTP status from `error.code`; the TypeScript `PFError.status` default is 400. Non-JS clients ignore `status` and switch on `error.code`. Do not copy `status: 200`.
+Declared `.errors()` `status` is Fetch-only. Mid-stream Fetch JSONL keeps HTTP 200. Message transports do **not** reconstruct HTTP status from `error.code`; the TypeScript `PFError.status` is `undefined` on this pipe (there is no default). Non-JS clients ignore `status` and switch on `error.code`. Do not copy `status: 200`.
 
 | Event | TypeScript `PFError` | `isLocalFailure` |
 |---|---|---|
@@ -589,7 +601,7 @@ Declared `.errors()` `status` is Fetch-only. Mid-stream Fetch JSONL keeps HTTP 2
 | Hello timeout / connect fail / hello stringify fail | `INTERNAL`, `local: true`, status `0`, message `Network error`, `cause` set; close | true |
 | Malformed frame from peer with no usable id (connection closes) | Inflight: `INTERNAL`, `local: true`, status `0`, message `Invalid response` or `Connection closed`, `cause` set | true |
 | First frame for an id is illegal | `INTERNAL`, `local: true`, status `0`, message `Invalid response`; that call only | true |
-| Protocol `result` `{ "ok": false, "error" }` | code / message / data from the envelope; `status` defaults to 400 | false |
+| Protocol `result` `{ "ok": false, "error" }` | code / message / data from the envelope; `status` is `undefined` | false |
 | `NOT_FOUND` / `VALIDATION` / `BAD_REQUEST` from the server | as envelope | false |
 | Version mismatch `hello-error` | `BAD_REQUEST` from the envelope (if received) or `local: true` if the connection closed first | depends |
 | Client refused to send oversize / could not stringify a `call` | `PAYLOAD_TOO_LARGE` or `INTERNAL` (stringify) | false |

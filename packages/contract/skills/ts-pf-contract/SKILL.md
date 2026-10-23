@@ -34,6 +34,8 @@ export const contract = router({
 
 Schemas: Standard Schema (Zod, Valibot, ArkType) or TypeBox. More via `registerSchemaAdapter`. `.output()` is optional (`unknown` if omitted). `.input()` once.
 
+`.errors()` `status` is optional HTTP / OpenAPI metadata (omitted → HTTP 400). `ClientError` carries `status?: number`: the HTTP response status over Fetch, `undefined` on message transports and mid-stream items. Narrow on `code`; guard `status`.
+
 Nest slice routers: `router({ planet: planetContract, star: starContract })`. Pick a procedure into a smaller tree: `router({ list: users.list })`. No `mergeRouters`.
 
 ## API

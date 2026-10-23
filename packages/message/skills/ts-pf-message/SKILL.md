@@ -20,6 +20,8 @@ import { createStdioDuplex } from '@ts-pf/message/stdio'
 
 Bindings live in `@ts-pf/message-server` / `@ts-pf/message-client`. Inject a `WebSocket` constructor — do not depend on the `ws` npm package. User owns listen / upgrade / spawn / Worker bootstrap.
 
+`errorFromEnvelope({ code, message, data? })` builds a `PFError` with `status` left `undefined` — frames carry no HTTP status and none is synthesized. Switch on `code`.
+
 ## API
 
 - `MessageSession`, `Duplex`, `encodeFrame`, `decodeFrame`

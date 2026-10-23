@@ -37,6 +37,20 @@ if (!result.ok) {
 }
 ```
 
+## Errors
+
+`result.error` (and a thrown `PFError`) is `{ code, message, data?, status? }`. Switch on `code`. `status` is optional transport metadata and means something different per `Link`:
+
+| Link | `status` |
+|---|---|
+| `FetchLink`, unary failure | HTTP response status (declared `{ status: 404 }` → `404`, declared with no status → `400`, protocol codes → their HTTP table) |
+| `FetchLink`, after a stream started (JSONL / SSE) | `undefined` |
+| `PortLink` / `WsLink` / `StdioLink` | `undefined` |
+| Local failure (`isLocalFailure`) | `0` |
+| `createLocalClient` (server package) | declared `ErrorDef.status` or `undefined` |
+
+`if (err.status === 404)` is only right over HTTP; write `if (err.code === 'NOT_FOUND')`. Arithmetic or `.toFixed()` on `status` needs `?? 400` or a guard.
+
 Procedure calls take optional `{ signal?: AbortSignal }`. `createClient` options are `{ plugins, interceptors }`. Client-side input validation is off by default. `CachePlugin` needs `ttl` and caches success only. First-party plugins skip `AsyncIterable` input.
 
 `DedupePlugin` and `CachePlugin` default key is `JSON.stringify([path, input])` for every unary call, mutations included — two concurrent `planet.create({ name })` calls share one request and one result. Pass `key` and return `undefined` for anything that is not a read (same `readKey` works for both; runnable form `examples/plugins/src/read-key.ts`). `RetryPlugin` retries local failures (not aborts) up to 3 times; a connection dropped after send is a local failure too, so pass `retry` to exclude non-idempotent writes.

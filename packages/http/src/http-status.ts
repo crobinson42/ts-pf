@@ -9,12 +9,11 @@ export const PROTOCOL_HTTP_STATUS = {
   INTERNAL: 500,
 } as const
 
+const DEFAULT_HTTP_STATUS = 400
+
 export function httpStatus(error: PFError): number {
-  if (error.local === true) {
-    return 0
-  }
   if (Object.hasOwn(PROTOCOL_HTTP_STATUS, error.code)) {
     return PROTOCOL_HTTP_STATUS[error.code as keyof typeof PROTOCOL_HTTP_STATUS]
   }
-  return error.status
+  return error.status ?? DEFAULT_HTTP_STATUS
 }

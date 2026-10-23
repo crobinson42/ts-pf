@@ -1,4 +1,5 @@
 import { JSONCodec, type RpcBodySource } from '@ts-pf/http'
+import { PFError } from '@ts-pf/protocol'
 import { SSE_CONTENT_TYPE, SseCodec } from '@ts-pf/sse'
 import { StreamCodec } from '@ts-pf/stream'
 import { describe, expect, it, vi } from 'vitest'
@@ -149,7 +150,14 @@ describe('SseCodec', () => {
       done: false,
       value: { token: 'Hel' },
     })
-    await expect(iter.next()).rejects.toMatchObject({ code: 'INTERNAL' })
+    const error = await iter.next().then(
+      () => undefined,
+      (reason: unknown) => reason as PFError,
+    )
+    expect(error).toBeInstanceOf(PFError)
+    expect(error?.code).toBe('INTERNAL')
+    // In-band failures arrive on an HTTP 200 body; status is not stamped.
+    expect(error?.status).toBeUndefined()
   })
 
   it('throws INTERNAL when the stream ends without close', async () => {
@@ -161,7 +169,11 @@ describe('SseCodec', () => {
     }
     await expect(
       collect(decoded.output as AsyncIterable<unknown>),
-    ).rejects.toMatchObject({ code: 'INTERNAL', message: 'Stream truncated' })
+    ).rejects.toMatchObject({
+      code: 'INTERNAL',
+      message: 'Stream truncated',
+      status: undefined,
+    })
   })
 
   it('rejects SSE as a request content type', async () => {

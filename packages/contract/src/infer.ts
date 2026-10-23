@@ -42,10 +42,10 @@ export type ContractProtocolErrorCode = ProtocolErrorCode
 
 type DeclaredClientError<E extends ErrorMap> = {
   [K in keyof E & string]: [InferErrorData<E[K]>] extends [never]
-    ? { code: K; status: number; message: string; data?: undefined }
+    ? { code: K; status?: number; message: string; data?: undefined }
     : {
         code: K
-        status: number
+        status?: number
         message: string
         data: InferErrorData<E[K]>
       }
@@ -54,11 +54,11 @@ type DeclaredClientError<E extends ErrorMap> = {
 type ProtocolErrorByCode<C extends ProtocolErrorCode> = C extends 'VALIDATION'
   ? {
       code: 'VALIDATION'
-      status: number
+      status?: number
       message: string
       data: { issues: ValidationIssue[] }
     }
-  : { code: C; status: number; message: string; data?: unknown }
+  : { code: C; status?: number; message: string; data?: unknown }
 
 type ProtocolClientError = ProtocolErrorByCode<ProtocolErrorCode>
 

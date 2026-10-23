@@ -86,6 +86,14 @@ describe('createClient', () => {
     await expect(client.planet.find({ id: -1 })).rejects.toSatisfy(isPFError)
   })
 
+  it('sets status from the HTTP response on declared errors', async () => {
+    await expect(client.planet.find({ id: -1 })).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+      status: 404,
+      data: { id: -1 },
+    })
+  })
+
   it('rethrows PFError from decodeResponse', async () => {
     const inner = new JSONCodec()
     const clientWithCodec = createClient<typeof contract>(

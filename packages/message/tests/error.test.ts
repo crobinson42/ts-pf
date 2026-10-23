@@ -10,18 +10,18 @@ describe('errorFromEnvelope', () => {
     })
     expect(isPFError(error)).toBe(true)
     expect(error.code).toBe('NOT_FOUND')
-    expect(error.status).toBe(400)
+    expect(error.status).toBeUndefined()
     expect(error.local).toBeUndefined()
     expect(error.message).toBe('missing')
   })
 
-  it('maps an unknown application code to default 400', () => {
+  it('leaves status undefined for an application code', () => {
     const error = errorFromEnvelope({
       code: 'NOT_EARTH',
       message: 'not a planet',
     })
     expect(error.code).toBe('NOT_EARTH')
-    expect(error.status).toBe(400)
+    expect(error.status).toBeUndefined()
     expect(error.message).toBe('not a planet')
   })
 
@@ -69,14 +69,13 @@ describe('errorFromEnvelope', () => {
     expect('data' in json).toBe(false)
   })
 
-  it('does not reconstruct INTERNAL as status 0', () => {
+  it('does not reconstruct INTERNAL as a local failure', () => {
     const error = errorFromEnvelope({
       code: 'INTERNAL',
       message: 'Internal server error',
     })
-    expect(error.status).toBe(400)
+    expect(error.status).toBeUndefined()
     expect(error.local).toBeUndefined()
-    expect(error.status).not.toBe(0)
   })
 })
 

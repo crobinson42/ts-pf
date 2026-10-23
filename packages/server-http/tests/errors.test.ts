@@ -16,6 +16,7 @@ const contract = router({
       }),
     crash: procedure.input(z.object({ id: z.number() })),
     ping: procedure.output(z.string()),
+    teapot: procedure.errors({ TEAPOT: { message: 'short and stout' } }),
   },
 })
 
@@ -30,6 +31,9 @@ const app = impl.router({
       throw new TypeError('db connection refused')
     }),
     ping: impl.planet.ping.handler(async () => 1 as never),
+    teapot: impl.planet.teapot.handler(async ({ errors }) => {
+      throw errors.TEAPOT()
+    }),
   },
 })
 
@@ -100,6 +104,15 @@ describe('FetchHandler default error logging', () => {
     const notAllowed = await call(handler, post('planet/find', '', 'GET'))
     expect(notAllowed.status).toBe(405)
 
+    expect(errorSpy).not.toHaveBeenCalled()
+  })
+
+  it('maps a declared error without status to HTTP 400', async () => {
+    const handler = new FetchHandler(app)
+    const { status, json } = await call(handler, post('planet/teapot', '{}'))
+    expect(status).toBe(400)
+    expect(json.error?.code).toBe('TEAPOT')
+    expect(json.error).not.toHaveProperty('status')
     expect(errorSpy).not.toHaveBeenCalled()
   })
 

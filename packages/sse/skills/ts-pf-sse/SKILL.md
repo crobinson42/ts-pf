@@ -28,6 +28,8 @@ procedure.output(stream(z.object({ token: z.string() })))
 
 Contracts still use `stream()` from `@ts-pf/stream`. This package does not re-export it.
 
+An `event: error` after the stream started rejects the iterator with a `PFError` whose `status` is `undefined` (the response was already 200); switch on `code`.
+
 ## API
 
 - `SseCodec`

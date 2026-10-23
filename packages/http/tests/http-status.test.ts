@@ -16,10 +16,19 @@ describe('httpStatus', () => {
     expect(httpStatus(new PFError({ code: 'UNAUTHORIZED', status: 401 }))).toBe(
       401,
     )
+  })
+
+  it('defaults to 400 when a non-protocol error has no status', () => {
     expect(httpStatus(new PFError({ code: 'PAYMENT_REQUIRED' }))).toBe(400)
   })
 
-  it('returns 0 for local failures', () => {
-    expect(httpStatus(localFailure('Request aborted'))).toBe(0)
+  it('ignores status on protocol codes', () => {
+    expect(httpStatus(new PFError({ code: 'NOT_FOUND', status: 200 }))).toBe(
+      404,
+    )
+  })
+
+  it('maps a local failure like any INTERNAL (the server never sees one)', () => {
+    expect(httpStatus(localFailure('Request aborted'))).toBe(500)
   })
 })

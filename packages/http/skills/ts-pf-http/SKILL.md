@@ -18,7 +18,7 @@ import { JSONCodec, PROTOCOL_HEADER, httpStatus, joinProcedurePath } from '@ts-p
 
 const codec = new JSONCodec()
 joinProcedurePath('/rpc', ['planet', 'find']) // '/rpc/planet/find'
-httpStatus(error) // Response.status from PFError
+httpStatus(error) // Response.status from PFError: protocol table, else error.status ?? 400
 // header name: PROTOCOL_HEADER ('x-ts-pf-protocol')
 ```
 

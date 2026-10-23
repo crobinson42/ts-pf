@@ -33,6 +33,8 @@ const client = createClient<typeof contract>(
 
 Fetch interceptors see raw `Request` / `Response` / fetch throws, not mapped `PFError`. Retry, cache, and dedupe belong on `createClient`.
 
+On a unary failure the rejected `PFError.status` is the HTTP response status (declared `NOT_FOUND { status: 404 }` → `404`; declared code with no status → `400`). Failures after a stream has started (`StreamCodec` / `SseCodec`) have `status` `undefined`; network / abort failures are `localFailure` (`status: 0`, `local: true`). Switch on `code`.
+
 ## API
 
 - `FetchLink`

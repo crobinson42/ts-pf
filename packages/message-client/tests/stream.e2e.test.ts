@@ -470,9 +470,9 @@ describe('message stream e2e', () => {
     expect(isLocalFailure(error)).toBe(false)
     expect(error).toMatchObject({
       code: 'BAD_REQUEST',
-      status: 400,
       message: 'Nested streams are not supported',
     })
+    expect((error as { status?: number }).status).toBeUndefined()
 
     link.close()
     bind.close()
@@ -503,9 +503,9 @@ describe('message stream e2e', () => {
     expect(isLocalFailure(error)).toBe(false)
     expect(error).toMatchObject({
       code: 'BAD_REQUEST',
-      status: 400,
       message: 'File values are not supported in streams',
     })
+    expect((error as { status?: number }).status).toBeUndefined()
 
     link.close()
     bind.close()
