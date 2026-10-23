@@ -1,10 +1,10 @@
 {
-  "extends": "../../tsconfig.base.json",
+  // Builds under the template's Node16 resolution on purpose: tsconfig.json
+  // switches to "bundler" for the tests only (see the note there).
+  "extends": "../../tsconfig.dom.json",
   "compilerOptions": {
     "outDir": "dist",
-    "rootDir": "src",
-    "lib": ["ES2022", "DOM"],
-    "noEmit": false
+    "rootDir": "src"
   },
   "include": ["src"]
 }

@@ -25,7 +25,7 @@
     "test:root": "vitest run",
     "type-check": "turbo run type-check",
     "lint": "turbo run lint -- --error-on-warnings",
-    "lint:root": "biome check --error-on-warnings scripts turbo.json biome.json tsconfig.base.json vitest.config.ts",
+    "lint:root": "biome check --error-on-warnings scripts turbo.json biome.json tsconfig.base.json tsconfig.dom.json vitest.config.ts vitest.shared.ts",
     "format": "biome format --write .",
     "check:skills": "node scripts/check-skills.mjs",
     "check:deps": "node scripts/check-deps.mjs",
