@@ -21,8 +21,8 @@ Hub `ts-pf-app` on `@ts-pf/contract` is the capability catalog. `npx skills expe
 | `ts-pf-openapi` | `packages/openapi/skills/ts-pf-openapi/` | `openapi()` OpenAPI 3.1 |
 | `ts-pf-codegen` | `packages/codegen/skills/ts-pf-codegen/` | `emit()` / `catalogHash()` |
 | `ts-pf-message` | `packages/message/skills/ts-pf-message/` | JSON text frames, duplex adapters |
-| `ts-pf-message-server` | `packages/message-server/skills/ts-pf-message-server/` | `PortHandler` / `WsHandler` / `StdioHandler` |
-| `ts-pf-message-client` | `packages/message-client/skills/ts-pf-message-client/` | `PortLink` / `WsLink` / `StdioLink` |
+| `ts-pf-message-server` | `packages/message-server/skills/ts-pf-message-server/` | `DuplexHandler` / `PortHandler` / `WsHandler` / `StdioHandler` |
+| `ts-pf-message-client` | `packages/message-client/skills/ts-pf-message-client/` | `DuplexLink` / `PortLink` / `WsLink` / `StdioLink` |
 | `ts-pf-swr` | `packages/swr/skills/ts-pf-swr/` | `createSwr` |
 | `ts-pf-mvc-kit` | `packages/mvc-kit/skills/ts-pf-mvc-kit/` | `bindClient` / `issuesToFieldErrors` |
 | `ts-pf-astro` | `packages/astro/skills/ts-pf-astro/` | `createAstroHandler` / `createAstroLocalClient` / `createAstroClient` |

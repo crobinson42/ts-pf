@@ -53,6 +53,9 @@ async function collect<T>(items: AsyncIterable<T>): Promise<T[]> {
   return out
 }
 
+/** Counts how many times the chat generator's finally block ran. */
+let finallyRuns = 0
+
 function openApp(onAbort?: () => void) {
   const app = impl.router({
     planet: {
@@ -64,23 +67,27 @@ function openApp(onAbort?: () => void) {
         return { id: input.id, name }
       }),
       chat: impl.planet.chat.handler(async function* ({ input, signal }) {
-        yield { token: input.prompt.slice(0, 1) }
-        yield { token: input.prompt.slice(1) }
-        if (onAbort === undefined) {
-          return
-        }
-        await new Promise<void>((resolve) => {
-          const done = () => {
-            onAbort()
-            resolve()
-          }
-          if (signal?.aborted) {
-            done()
+        try {
+          yield { token: input.prompt.slice(0, 1) }
+          yield { token: input.prompt.slice(1) }
+          if (onAbort === undefined) {
             return
           }
-          signal?.addEventListener('abort', done)
-        })
-        yield { token: 'late' }
+          await new Promise<void>((resolve) => {
+            const done = () => {
+              onAbort()
+              resolve()
+            }
+            if (signal?.aborted) {
+              done()
+              return
+            }
+            signal?.addEventListener('abort', done)
+          })
+          yield { token: 'late' }
+        } finally {
+          finallyRuns += 1
+        }
       }),
     },
   })
@@ -134,6 +141,7 @@ describe('DuplexHandler + DuplexLink over createMemoryDuplex', () => {
 
   it('cancels the server handler when the client breaks out of the stream', async () => {
     let aborted = false
+    finallyRuns = 0
     const { bind, client, link } = openApp(() => {
       aborted = true
     })
@@ -147,6 +155,9 @@ describe('DuplexHandler + DuplexLink over createMemoryDuplex', () => {
     }
     expect(seen).toEqual([{ token: 'H' }, { token: 'i' }])
     await waitUntil(() => aborted)
+    await waitUntil(() => finallyRuns === 1)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(finallyRuns).toBe(1)
 
     link.close()
     bind.close()

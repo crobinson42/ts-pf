@@ -53,7 +53,7 @@ CI runs the same chain on Node 20, 22, and 24, plus `changeset status` on pull r
 
 ## Making a change
 
-1. **Find the owner.** The "Owns" table in `.agents/rules.md` and the file map in the internal skill say which package a change belongs in. A new pipe (another transport) is a new adapter package that calls `runProcedure` / implements `Link`; a new paradigm (REST, GraphQL) is a projection like `@ts-pf/openapi`. Neither touches `createImplementer`, middleware, or `createClient`.
+1. **Find the owner.** The "Owns" table in `.agents/rules.md` and the file map in the internal skill say which package a change belongs in. A new pipe (another transport) is a `Duplex` adapter bound with `DuplexHandler` / `DuplexLink` from the message packages, or a new adapter package that calls `runProcedure` / implements `Link`; a new paradigm (REST, GraphQL) is a projection like `@ts-pf/openapi`. Neither touches `createImplementer`, middleware, or `createClient`.
 2. **Respect the DAG.** `scripts/check-deps.mjs` encodes it. A new edge is a `.agents/rules.md` change and a `check-deps.mjs` change in the same PR, with the reason in `DECISIONS.md`.
 3. **Use the public names.** The "Public names" table lists the oRPC names that must not come back. `check:skills` greps for them.
 4. **Keep docs in the same PR.** A public API, name, or happy-path change updates `packages/<pkg>/skills/ts-pf-<pkg>/SKILL.md` and that package's `README.md`. If the change is an opt-in happy path, also update the matching snippet in the hub skill `packages/contract/skills/ts-pf-app/SKILL.md`. The README is narrative plus install plus one snippet; the skill is `Do` / `API` / `Pair with` / `Don't`, and `check:skills` asserts every `API` symbol appears in the README.

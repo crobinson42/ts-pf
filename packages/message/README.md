@@ -11,7 +11,7 @@ import { createPortDuplex, createWsDuplex, type WebSocketLike } from '@ts-pf/mes
 import { createStdioDuplex } from '@ts-pf/message/stdio'
 ```
 
-`createPushQueue()` is the primitive a transport adapter uses to turn frames into an `AsyncIterable`: `push(value)` from a frame callback, `end()` to complete, `fail(error)` to reject the next pull. Both closes are one-shot. `@ts-pf/message-server` (streamed input) and `@ts-pf/message-client` (streamed output) use it; so can a custom `Duplex` binding.
+`createPushQueue()` is the primitive a transport adapter uses to turn frames into an `AsyncIterable`: `push(value)` from a frame callback, `end()` to complete, `fail(error)` to reject the next pull. Both closes are one-shot. `@ts-pf/message-server` (streamed input) and `@ts-pf/message-client` (streamed output) use it; so can a custom `Duplex` binding. A custom `Duplex` does not need it directly: `DuplexHandler` (`@ts-pf/message-server`) and `DuplexLink` (`@ts-pf/message-client`) own the queues and multiplexing.
 
 ```ts
 import { createPushQueue } from '@ts-pf/message'
