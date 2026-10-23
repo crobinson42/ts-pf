@@ -6,7 +6,6 @@
 "@ts-pf/sse": patch
 "@ts-pf/message-server": patch
 "@ts-pf/message-client": patch
-"@ts-pf/swr": patch
 ---
 
 Internal refactor, no behaviour change: the "unknown throw becomes `INTERNAL`" mapping and the "is this a stream" predicate now come from `@ts-pf/protocol` (`toWireError`, `isAsyncIterable`) instead of a private copy in each package.
