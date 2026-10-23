@@ -57,6 +57,6 @@
     "@ts-pf/protocol": "0.1.2"
   },
   "devDependencies": {
-    "@types/node": "^22.15.0"
+    "@types/node": "^26.6.5"
   }
 }
