@@ -6,7 +6,7 @@ Source: [github.com/crobinson42/ts-pf](https://github.com/crobinson42/ts-pf)
 
 **This procedure model, any pipe.** oRPC-like DX without the dual-protocol platform. You write a contract, implement it on the server, and call it from a client that never imports server code. Fetch is the default adapter, not the runtime.
 
-Requires Node.js 18+.
+Requires Node.js 20+.
 
 ## Install
 
