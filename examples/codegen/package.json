@@ -5,15 +5,11 @@
   "engines": {
     "node": ">=20"
   },
-  "workspaces": [
-    "server",
-    "client"
-  ],
   "scripts": {
-    "generate": "UPDATE=1 vitest run tests/smoke.test.ts",
+    "generate": "node scripts/generate.mjs",
     "test": "vitest run",
     "type-check": "tsc --noEmit",
-    "lint": "biome check tests"
+    "lint": "biome check scripts tests"
   },
   "dependencies": {
     "@ts-pf/client": "0.1.5",
