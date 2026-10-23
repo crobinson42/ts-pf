@@ -1,9 +1,12 @@
 {
-  "extends": "../../tsconfig.base.json",
+  // mvc-kit ships "type": "module" typings whose relative imports are
+  // extensionless (dist/core/index.d.ts: `from './Channel'`). Node16 resolution
+  // cannot follow those, so tests that use mvc-kit classes only type-check under
+  // "bundler". tsconfig.build.json still compiles src under the template's Node16
+  // settings, so src cannot depend on bundler-only resolution.
+  "extends": "../../tsconfig.dom.json",
   "compilerOptions": {
     "noEmit": true,
-    "rootDir": ".",
-    "lib": ["ES2022", "DOM"],
     "module": "ESNext",
     "moduleResolution": "bundler"
   },
