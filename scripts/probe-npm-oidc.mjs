@@ -1,12 +1,24 @@
-// CI helper: exchange a GitHub OIDC token with the npm registry and print
-// the real error. `npm publish` swallows exchange failures as ENEEDAUTH.
-const PACKAGE = '@ts-pf/contract'
+// CI helper: exchange a GitHub OIDC token with the npm registry for every
+// published @ts-pf/* package and print the real error. `npm publish`
+// swallows exchange failures as ENEEDAUTH.
+//
+// Packages are discovered from packages/*/package.json (non-private), the
+// same set scripts/trust-github-publishers.sh creates publishers for.
+import { readFile, readdir } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const root = join(dirname(fileURLToPath(import.meta.url)), '..')
+const packagesDir = join(root, 'packages')
 const AUDIENCE = 'npm:registry.npmjs.org'
-const EXCHANGE = `https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/${encodeURIComponent(PACKAGE)}`
 
 function fail(message) {
   console.error(message)
   process.exit(1)
+}
+
+function exchangeUrl(pkg) {
+  return `https://registry.npmjs.org/-/npm/v1/oidc/token/exchange/package/${encodeURIComponent(pkg)}`
 }
 
 function decodeJwtPayload(token) {
@@ -22,6 +34,23 @@ function redact(value) {
     return copy
   }
   return value
+}
+
+async function publishedPackages() {
+  const names = []
+  for (const entry of await readdir(packagesDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue
+    let pkg
+    try {
+      pkg = JSON.parse(await readFile(join(packagesDir, entry.name, 'package.json'), 'utf8'))
+    } catch {
+      continue
+    }
+    if (pkg.private || typeof pkg.name !== 'string') continue
+    names.push(pkg.name)
+  }
+  if (names.length === 0) fail('no public packages found under packages/')
+  return names.sort()
 }
 
 async function githubIdToken() {
@@ -70,17 +99,16 @@ function printClaims(payload) {
   console.log(JSON.stringify(shown, null, 2))
 }
 
-function hint(payload, status, body) {
+function hint(payload, failures) {
   const workflowFile = String(payload.job_workflow_ref ?? payload.workflow_ref ?? '')
     .split('@')[0]
     .split('/')
     .pop()
   const env = payload.environment ? `"${payload.environment}"` : '(empty)'
-  const text = typeof body === 'string' ? body : JSON.stringify(body)
   const lines = [
     '',
-    `npm OIDC exchange failed for ${PACKAGE}: HTTP ${status}`,
-    `body: ${text}`,
+    `npm OIDC exchange failed for ${failures.length} package(s):`,
+    ...failures.map(({ pkg, status, body }) => `  ${pkg}: HTTP ${status} ${body}`),
     '',
     'Trusted publisher on npmjs.com must match this identity (filename only, case-sensitive):',
     `  Organization or user: ${payload.repository_owner}`,
@@ -92,41 +120,57 @@ function hint(payload, status, body) {
     'Configs created after 3 Sep 2026 default to npm stage publish only.',
     'Changesets runs npm publish, so allow direct publish on every @ts-pf/* package.',
     'Existing connections cannot be edited — delete and recreate if a field is wrong.',
-    'https://www.npmjs.com/package/@ts-pf/contract → Settings → Trusted publishing',
+    'https://www.npmjs.com/package/<name> → Settings → Trusted publishing',
     'Local (interactive 2FA; a bypass-2FA GAT cannot do this): bash scripts/trust-github-publishers.sh',
   ]
-  if (status === 404 || /package not found/i.test(text)) {
+  const texts = failures.map((f) => f.body)
+  if (failures.some((f) => f.status === 404) || texts.some((t) => /package not found/i.test(t))) {
     lines.push(
       '',
       'HTTP 404 "package not found" does not mean the npm package is missing.',
-      `${PACKAGE} is on the registry. npm returns this when no trusted publisher matches this GitHub identity.`,
+      'npm returns this when no trusted publisher matches this GitHub identity.',
     )
   }
-  if (/stage/i.test(text) && !/publish/i.test(text)) {
+  if (texts.some((t) => /stage/i.test(t) && !/publish/i.test(t))) {
     lines.push('', 'This looks like a stage-only publisher. Check "allow npm publish".')
   }
   return lines.join('\n')
 }
 
-const token = process.env.NPM_ID_TOKEN || (await githubIdToken())
-const payload = decodeJwtPayload(token)
+// NPM_ID_TOKEN (manual runs) is reused for every package. In Actions a fresh
+// GitHub token is requested per exchange, like `npm publish` does.
+const fixedToken = process.env.NPM_ID_TOKEN || null
+const nextToken = () => (fixedToken ? Promise.resolve(fixedToken) : githubIdToken())
+
+const packages = await publishedPackages()
+const firstToken = await nextToken()
+const payload = decodeJwtPayload(firstToken)
 printClaims(payload)
+console.log(`Probing ${packages.length} packages`)
 
-const res = await fetch(EXCHANGE, {
-  method: 'POST',
-  headers: { Authorization: `Bearer ${token}` },
-})
-const raw = await res.text()
-let parsed
-try {
-  parsed = JSON.parse(raw)
-} catch {
-  parsed = raw
+const failures = []
+let token = firstToken
+for (const pkg of packages) {
+  const res = await fetch(exchangeUrl(pkg), {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  const raw = await res.text()
+  let parsed
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    parsed = raw
+  }
+  if (res.ok && parsed && typeof parsed === 'object' && parsed.token) {
+    console.log(`ok: ${pkg} (HTTP ${res.status}, token_type=${parsed.token_type ?? 'unknown'})`)
+  } else {
+    const body = typeof parsed === 'string' ? parsed : JSON.stringify(redact(parsed))
+    console.log(`FAIL: ${pkg} (HTTP ${res.status}) ${body}`)
+    failures.push({ pkg, status: res.status, body })
+  }
+  if (pkg !== packages[packages.length - 1]) token = await nextToken()
 }
 
-if (res.ok && parsed && typeof parsed === 'object' && parsed.token) {
-  console.log(`OIDC exchange ok for ${PACKAGE} (HTTP ${res.status}, token_type=${parsed.token_type ?? 'unknown'})`)
-  process.exit(0)
-}
-
-fail(hint(payload, res.status, redact(parsed)))
+if (failures.length > 0) fail(hint(payload, failures))
+console.log(`ok: ${packages.length} packages`)

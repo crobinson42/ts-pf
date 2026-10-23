@@ -170,7 +170,7 @@ Live in `examples/`: `hello` (Fetch), `codegen` (split-repo `emit` / `createClie
 ## Done means verified
 
 ```
-npm run lint && npm run check:skills && npm run type-check && npm test && npm run build && npm run check:exports
+npm run lint && npm run check:skills && npm run check:deps && npm run type-check && npm test && npm run build && npm run check:exports
 ```
 
 Wire changes must update `packages/protocol/PROTOCOL.md`. Public API / name / happy-path changes must update `packages/<pkg>/skills/ts-pf-<pkg>/SKILL.md`. Opt-in happy-path changes also update the matching snippet on `packages/contract/skills/ts-pf-app/SKILL.md`.

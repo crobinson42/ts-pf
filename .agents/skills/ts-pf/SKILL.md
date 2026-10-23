@@ -24,6 +24,7 @@ examples/
   stream/             StreamCodec + stream()
   plugins/            CallPlugin / CallInterceptor; first-party retry/cache/dedupe; local TimeoutPlugin / AuditPlugin; CORSPlugin is HTTP-only
 scripts/check-skills.mjs
+scripts/check-deps.mjs                   @ts-pf/* DAG allow-list (mirrors rules.md "Packages"); package.json + src/tests imports; cycles
 scripts/check-exports.mjs
 skills/README.md                         consumer skill index (not published)
 packages/*/skills/ts-pf-<pkg>/SKILL.md   consumer usage (hub catalog ts-pf-app on contract)
@@ -318,6 +319,6 @@ New **published** packages: `version` `0.0.0`, `license: "MIT"`, `files: ["dist"
 - Procedure completeness: `impl.router()` rejects missing/extra keys (types + runtime)
 - Errors: unknown throws → `INTERNAL`, no stack in JSON. Input checks default on. Output checks, including stream output items, default off (`validation.output: true`). Unary output schema failure → `INTERNAL`, no issues. A bad stream output item → `VALIDATION` with `issues`. Invalid declared error `data` → `INTERNAL`, never serialize the bad payload (always, not behind `validation.output`). `ClientError` narrows `data` from `code`. `asResult` is `CallResult<T, E>`.
 - Protocol error-code edits update every copy of the closed set: (1) `ProtocolErrorCode` in `packages/protocol/src/error.ts` (source of truth), (2) the duplicated **private** `ProtocolErrorCode` union in `packages/contract/src/infer.ts` (exported as `ContractProtocolErrorCode`; still no protocol import), (3) `PROTOCOL_HTTP_STATUS` in `packages/http/src/http-status.ts`, (4) `packages/docs/src/catalog.ts` — derived from (1) + (3), so it needs no edit but its `VALIDATION` data branch may, and (5) the "Protocol errors" table in `packages/protocol/PROTOCOL.md`. Conformance tests: `packages/http/tests/protocol-table.test.ts` (3 = 1 codes; 3 = 5 statuses), `packages/server/tests/protocol-error-code.test.ts` (2 = 1, type), `packages/protocol/tests/protocol-md.test.ts` (5 = 1 codes).
-- `npm run lint && npm run check:skills && npm run type-check && npm test && npm run build && npm run check:exports`
+- `npm run lint && npm run check:skills && npm run check:deps && npm run type-check && npm test && npm run build && npm run check:exports`
 - Published-package changes include a `.changeset/*.md`. Releases publish to npm dist-tag `latest`. New published packages: `license` / `exports` → `dist` / `publishConfig.access` only / `files: ["dist", "skills"]` / `keywords` / `skills/ts-pf-<pkg>/SKILL.md`. Do not restore `"*"` after a version bump.
 - Matching `packages/<pkg>/skills/ts-pf-<pkg>` still matches public exports and names. Hub `ts-pf-app` description still names opt-in capabilities. `skills/README.md` lists every published skill path. Published `package.json` files include npm `keywords` (shared family terms plus package-specific). `npm run check:skills`.
