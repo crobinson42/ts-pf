@@ -1,6 +1,6 @@
 #!/usr/bin/env node
+import { realpathSync } from 'node:fs'
 import { readFile, writeFile } from 'node:fs/promises'
-import { resolve } from 'node:path'
 import {
   stderr as nodeStderr,
   stdin as nodeStdin,
@@ -22,12 +22,17 @@ export type CliIo = {
 
 const USAGE =
   'Usage: ts-pf-codegen <emit|pull|hash> …\n' +
-  '  ts-pf-codegen emit <catalog.json> [-o contract.d.ts] [--name Contract] [--fail-on-unavailable]\n' +
+  '  ts-pf-codegen emit <catalog.json|-> [-o contract.d.ts] [--name Contract] [--fail-on-unavailable]\n' +
   '  ts-pf-codegen pull <url> [-o contract.d.ts] [--lock catalog.lock.json]\n' +
-  '  ts-pf-codegen hash <catalog.json>\n'
+  '  ts-pf-codegen hash <catalog.json|->\n' +
+  '  ts-pf-codegen --help\n'
 
 export async function runCli(argv: string[], io: CliIo): Promise<number> {
   const [cmd, ...rest] = argv
+  if (cmd === '--help' || cmd === '-h') {
+    io.stdout.write(USAGE)
+    return 0
+  }
   if (cmd === 'emit') {
     return emitCmd(rest, io)
   }
@@ -235,13 +240,18 @@ async function readStdin(): Promise<string> {
   return Buffer.concat(chunks).toString('utf8')
 }
 
+/**
+ * True when this module is the entry script. `process.argv[1]` is the
+ * `node_modules/.bin/ts-pf-codegen` symlink under `npx` / npm scripts, so
+ * both sides go through `realpathSync` before comparing.
+ */
 function isMain(): boolean {
   const argv1 = process.argv[1]
   if (argv1 === undefined) {
     return false
   }
   try {
-    return fileURLToPath(import.meta.url) === resolve(argv1)
+    return realpathSync(fileURLToPath(import.meta.url)) === realpathSync(argv1)
   } catch {
     return false
   }

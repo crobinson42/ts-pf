@@ -34,7 +34,7 @@ const client = createClient<Contract>(new FetchLink({ url: '/rpc' }))
 
 `emit()` prints JSDoc from `docs()` (`description` / `summary` / `@deprecated`) onto `Contract` members. Other `.meta()` stays on the catalog — ship `catalog.json` beside the `.d.ts` for runtime policy (`CachePlugin` `key`, etc.). Hover on `client.planet.find` may not show that JSDoc (`ContractClient` is a mapped type).
 
-CLI: `ts-pf-codegen emit <catalog.json|-> [-o contract.d.ts]`. Also `pull` / `hash`. Serve `catalog.json` in userland, not `FetchHandler`.
+CLI: `npx ts-pf-codegen emit <catalog.json|-> [-o contract.d.ts]`. Also `pull` / `hash`; `--help` / `-h` print usage. Serve `catalog.json` in userland, not `FetchHandler`.
 
 ## API
 
