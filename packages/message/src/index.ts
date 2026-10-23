@@ -20,6 +20,7 @@ export type {
 } from './frame.js'
 export { decodeFrame, encodeFrame } from './frame.js'
 export { createPortDuplex } from './port.js'
+export { createPushQueue, type PushQueue } from './push-queue.js'
 export {
   frameByteLength,
   MessageSession,

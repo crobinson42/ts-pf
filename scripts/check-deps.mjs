@@ -41,7 +41,7 @@ const PROD = {
   astro: ['server-http', 'server', 'client-http', 'client'],
   message: ['protocol'],
   'message-server': ['message', 'server', 'protocol'],
-  'message-client': ['message', 'client'],
+  'message-client': ['message', 'client', 'protocol'],
 }
 
 // Dev-only exceptions: devDependencies and tests/ only, never prod.

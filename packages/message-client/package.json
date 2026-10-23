@@ -55,7 +55,8 @@
   },
   "dependencies": {
     "@ts-pf/client": "0.1.5",
-    "@ts-pf/message": "0.1.2"
+    "@ts-pf/message": "0.1.2",
+    "@ts-pf/protocol": "0.1.2"
   },
   "devDependencies": {
     "@ts-pf/contract": "0.1.5",

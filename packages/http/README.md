@@ -1,6 +1,6 @@
 # @ts-pf/http
 
-HTTP wire helpers for [ts-pf](https://github.com/crobinson42/ts-pf#readme): `JSONCodec`, the `RpcCodec` interface, `PROTOCOL_HEADER`, `joinProcedurePath` / `parseProcedurePath`, and `httpStatus`. `FetchHandler` (`@ts-pf/server-http`) and `FetchLink` (`@ts-pf/client-http`) are built on these; use them directly for a raw `fetch` call, a custom codec, or your own adapter. Does **not** include `FetchHandler` or `FetchLink`.
+HTTP wire helpers for [ts-pf](https://github.com/crobinson42/ts-pf#readme): `JSONCodec`, the `RpcCodec` interface, `PROTOCOL_HEADER`, `joinProcedurePath` / `parseProcedurePath`, `httpStatus`, and the content-type / body-source helpers the wrapping codecs share. `FetchHandler` (`@ts-pf/server-http`) and `FetchLink` (`@ts-pf/client-http`) are built on these; use them directly for a raw `fetch` call, a custom codec, or your own adapter. Does **not** include `FetchHandler` or `FetchLink`.
 
 ## Install
 
@@ -35,11 +35,29 @@ httpStatus(new PFError({ code: 'NOT_FOUND', status: 404 })) // 404
 
 A custom body encoding implements `RpcCodec` (`encode` returns `{ contentType, body }`; `decode` takes `{ contentType, text(), formData(), body() }`) and goes on `FetchHandler` / `FetchLink` via `{ codec }`. First-party codecs: `@ts-pf/file`, `@ts-pf/stream`, `@ts-pf/sse`. The message-transport analog is `@ts-pf/message`.
 
+### Wrapping codecs
+
+`MultipartCodec`, `StreamCodec`, and `SseCodec` embed one JSON envelope per multipart `rpc` part, JSONL line, or SSE event, so their `inner` codec must produce text. That role is `EnvelopeTextCodec`: an `RpcCodec` whose encoded bodies are `RpcEncodedText` (`body: string`). `JSONCodec` implements it; handlers and links still accept any `RpcCodec`. The helpers they share are exported for your own wrapper:
+
+```ts
+import { type EnvelopeTextCodec, isJsonContentType, JSONCodec, jsonBodySource, mimeType } from '@ts-pf/http'
+
+mimeType('application/json; charset=utf-8') // 'application/json' (lower-cased, no parameters; '' when missing)
+isJsonContentType(null) // true — a missing Content-Type is treated as JSON, like JSONCodec does
+const inner: EnvelopeTextCodec = new JSONCodec()
+const line = (await inner.encodeSuccess({ id: 1 })).body // a string, by type
+await inner.decodeResponse(jsonBodySource(line)) // { ok: true, output: { id: 1 } }
+```
+
+`jsonBodySource(text)` is an `RpcBodySource` over one in-memory envelope (`contentType: 'application/json'`, empty `formData()`, `body()` null).
+
 Wire spec: [`PROTOCOL.md`](https://github.com/crobinson42/ts-pf/blob/main/packages/protocol/PROTOCOL.md). Happy path: [root README](https://github.com/crobinson42/ts-pf#readme).
 
 ## API
 
 - `JSONCodec`, `RpcCodec`, `RpcEncodedBody`, `RpcBodySource`
+- `EnvelopeTextCodec`, `RpcEncodedText` (the `inner` role of `MultipartCodec` / `StreamCodec` / `SseCodec`)
+- `mimeType`, `isJsonContentType`, `jsonBodySource`
 - `PROTOCOL_HEADER`, `joinProcedurePath`, `parseProcedurePath`
 - `httpStatus`, `PROTOCOL_HTTP_STATUS`
 
