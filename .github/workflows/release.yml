@@ -5,7 +5,7 @@ name: release
 # runs the repo's "done" chain (lint, check:skills, type-check, test, build,
 # check:exports) before changesets/action may version or publish anything.
 #
-# Node: ci tests 20/22/24 and .nvmrc pins 22 for local work. Release stays on
+# Node: ci tests 22/24 and .nvmrc pins 22 for local work. Release stays on
 # Node 24 with a global npm@11.12.1 because that is the runtime the npm OIDC
 # trusted-publishing flow below was verified with; it is not switched to
 # node-version-file so a Node bump cannot alter the publish path.

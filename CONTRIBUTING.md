@@ -11,10 +11,10 @@ ts-pf is a contract-first TypeScript RPC library published as 19 `@ts-pf/*` pack
 
 ## Setup
 
-Node 20 or newer; `.nvmrc` pins 22, which is what CI treats as primary (the matrix also runs 20 and 24).
+Node 22 or newer (a recent 22.x: dev tooling such as jsdom needs >= 22.22); `.nvmrc` pins 22, which is what CI treats as primary (the matrix also runs 24).
 
 ```sh
-nvm use            # or any Node >= 20
+nvm use            # or any Node >= 22.22
 npm ci             # npm workspaces + Turborepo; do not use another package manager
 npm run build      # tsc -p tsconfig.build.json in every package, in DAG order
 npm test
@@ -49,7 +49,7 @@ npm run lint && npm run lint:root && npm run check:skills && npm run check:deps 
 | `check:exports` | `exports` point at `dist`, `publishConfig` is `access` only, the packed tarball carries `LICENSE` and every export target |
 | `check:snippets` | every fenced `ts` block in `README.md`, `docs/**/*.md`, `packages/*/README.md`, `packages/*/skills/**/SKILL.md`, and `examples/**/README.md` compiles under `strict` + NodeNext against `dist` (needs a build). Flags: `ts no-check` for prose fragments, `ts bundler` for Vite / Astro / mvc-kit blocks |
 
-CI runs the same chain on Node 20, 22, and 24, plus `changeset status` on pull requests.
+CI runs the same chain on Node 22 and 24, plus `changeset status` on pull requests.
 
 ## Making a change
 

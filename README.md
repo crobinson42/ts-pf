@@ -6,7 +6,7 @@ Source: [github.com/crobinson42/ts-pf](https://github.com/crobinson42/ts-pf)
 
 **This procedure model, any pipe.** oRPC-like DX without the dual-protocol platform. You write a contract, implement it on the server, and call it from a client that never imports server code. Fetch is the default adapter, not the runtime.
 
-Requires Node.js 20+.
+Requires Node.js 22+.
 
 ## Install
 
@@ -18,7 +18,7 @@ npm install @ts-pf/contract @ts-pf/server @ts-pf/server-http @ts-pf/client @ts-p
 
 ### TypeScript setup
 
-The packages are ESM and ship `exports` only, so `tsconfig.json` needs `"moduleResolution": "node16"`, `"nodenext"`, or `"bundler"` (the classic `"node"` resolver cannot see them). `FetchHandler` and `FetchLink` are typed against the Fetch `Request` / `Response` globals: on a Node project that is `"lib": ["ES2022", "DOM", "DOM.AsyncIterable"]`, or Node 20+ globals through `@types/node` (`"types": ["node"]`). Bundler and Workers projects usually have both already.
+The packages are ESM and ship `exports` only, so `tsconfig.json` needs `"moduleResolution": "node16"`, `"nodenext"`, or `"bundler"` (the classic `"node"` resolver cannot see them). `FetchHandler` and `FetchLink` are typed against the Fetch `Request` / `Response` globals: on a Node project that is `"lib": ["ES2022", "DOM", "DOM.AsyncIterable"]`, or Node 22+ globals through `@types/node` (`"types": ["node"]`). Bundler and Workers projects usually have both already.
 
 ## Packages
 

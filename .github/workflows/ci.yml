@@ -16,8 +16,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Node floor is >=20; 22 is the primary version (.nvmrc).
-        node: [20, 22, 24]
+        # Node floor is >=22; 22 is the primary version (.nvmrc).
+        node: [22, 24]
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
