@@ -1,3 +1,4 @@
+import { PROTOCOL_MAJOR } from '@ts-pf/protocol'
 import type { Duplex } from './duplex.js'
 import { errorFromEnvelope, localFailure } from './error.js'
 import {
@@ -151,7 +152,7 @@ export class MessageSession {
   }
 
   private sendClientHello(helloMeta: unknown): void {
-    const hello: HelloFrame = { type: 'hello', v: 1 }
+    const hello: HelloFrame = { type: 'hello', v: PROTOCOL_MAJOR }
     if (helloMeta !== undefined) {
       hello.meta = helloMeta
     }
@@ -226,7 +227,7 @@ export class MessageSession {
     if (
       decoded.ok &&
       decoded.frame.type === 'hello-ok' &&
-      decoded.frame.v === 1
+      decoded.frame.v === PROTOCOL_MAJOR
     ) {
       this.clearHelloTimeout()
       this.state = 'ready'
@@ -250,7 +251,7 @@ export class MessageSession {
     if (
       decoded.ok &&
       decoded.frame.type === 'hello' &&
-      decoded.frame.v === 1 &&
+      decoded.frame.v === PROTOCOL_MAJOR &&
       !this.helloInFlight
     ) {
       await this.acceptHello(decoded.frame)
@@ -259,7 +260,7 @@ export class MessageSession {
     if (
       parsed.type === 'hello' &&
       typeof parsed.v === 'number' &&
-      parsed.v !== 1
+      parsed.v !== PROTOCOL_MAJOR
     ) {
       this.failHandshake('BAD_REQUEST', 'Unsupported protocol version')
       return
@@ -287,7 +288,7 @@ export class MessageSession {
     if (this.state === 'closed' || generation !== this.helloGeneration) {
       return
     }
-    const sent = this.send({ type: 'hello-ok', v: 1 })
+    const sent = this.send({ type: 'hello-ok', v: PROTOCOL_MAJOR })
     if (!sent.ok) {
       this.failReady(localFailure('Network error'))
       this.close()

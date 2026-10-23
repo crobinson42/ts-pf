@@ -84,14 +84,21 @@ Every `Duplex` adapter's `send` returns `void`, `PushQueue` is unbounded, and `e
 
 Context is created once per connection in `onHello` (or per `bind()` for `context: (info) => ctx`), not per frame, because a connection is the unit of authentication for a socket and because a per-frame factory would run on every `call`, `cancel`, and stream item. `MessageSession.onFrame` must return without awaiting `runProcedure`: awaiting it would serialise calls on one connection and make a single slow procedure block every other in-flight call and every `cancel` frame.
 
-## Protocol items deferred to a later revision
+## Protocol 1.1 design spike
 
 These come from the protocol 1.1 design spike (maintainer notes, see the top of this file). The governing fact is that the v1 `hello` / `hello-ok` handshake rejects unknown keys, so nothing in 1.x can advertise a capability during the handshake without breaking 1.0 peers; only `hello.meta` and HTTP headers are tolerant channels.
+
+### Deferred to a later revision
 
 - **A8-B3, bounded `PushQueue` with `pause` / `resume` and a `highWaterMark` option** — deferred to a 1.x minor after A8-B1; it needs the drain-aware `send` first and has no wire change.
 - **A8-A, a `credit` frame with a handshake-negotiated window** — deferred to v2 because the handshake cannot carry the negotiation in 1.x; it is the only backpressure design that bounds the *sender* rather than the adapter.
 - **A9 (client side), a third `Link.call` parameter for per-call `meta`** — deferred to v2 because it is a `Link` API redesign; the server-side tolerant reader (accepting an object-typed `meta` on `call`) is a 1.x additive change and can land first.
-- **A10, codec negotiation (`RpcCodec.contentTypes`, `encodeSuccess(output, { accept })`, `FetchHandler({ codecs })`, `FetchLink` sending `Accept`)** — deferred until requested; additive and header-only, but it reintroduces the mismatch class that one-codec-per-handler avoids. The `Accept` advisory paragraph in `PROTOCOL.md` lands with the A2 version-header rule.
+- **A10, codec negotiation (`RpcCodec.contentTypes`, `encodeSuccess(output, { accept })`, `FetchHandler({ codecs })`, `FetchLink` sending `Accept`)** — deferred until requested; additive and header-only, but it reintroduces the mismatch class that one-codec-per-handler avoids. The `Accept` advisory paragraph in `PROTOCOL.md` landed with the A2 version-header rule (below).
+
+### Shipped in revision 1.1
+
+- **A2, version header read on HTTP; one version source** — `FetchHandler` reads the request `x-ts-pf-protocol` (absent → accept; present and not `1` → `400 BAD_REQUEST` `Unsupported protocol version`, the message handshake's string, after the method check and before procedure lookup and the body) and `FetchLink` rejects a response whose header is present and not `1`, body unread, with `INTERNAL` + the HTTP status + `Unsupported protocol version (x-ts-pf-protocol: <value>)` + `cause` = the `Response`. That failure is deliberately **not** local: `isLocalFailure` means "the request never reached the server", a response carrying `x-ts-pf-protocol: 2` demonstrably did, and a local failure would make `RetryPlugin`'s default predicate retry a deterministic mismatch. It is the same shape as the non-RPC decode failure. `PROTOCOL_MAJOR = 1 as const` in `@ts-pf/protocol` is the single source; `PROTOCOL_VERSION` is its string (still the value inside `catalog()` / `catalogHash()`), and `@ts-pf/message` uses the constant for `v`. Wire bytes of accepted calls are unchanged; `PROTOCOL.md` gained the "Revisions" and "Content negotiation" paragraphs and its title now carries the revision. The only stricter case is a non-ts-pf client sending any value other than `1` (`1.0`, `2`, empty), which no shipped client does.
+- **A7, per-execution state in `runProcedure`** — the `.use()` / input check / `.useAfter()` / handler chain is built inside an `execute(state)` closure that `runCallInterceptors` calls each time the innermost interceptor calls `next()`, so an interceptor that calls `next()` twice concurrently gives each run its own `input` / `context` / `signal` instead of racing on three variables shared across the whole `runProcedure` call. `runCallInterceptors` already built a fresh state per `next()`; the fix only moved the chain to match. Sequential `next()` behaves exactly as before; the empty-interceptor fast path is still a length check.
 
 ## Process
 

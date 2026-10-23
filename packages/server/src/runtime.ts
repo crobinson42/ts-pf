@@ -186,6 +186,13 @@ export type RunProcedureOptions = {
   validation?: ProcedureValidation
 }
 
+/** What one execution of the middleware chain starts from; an interceptor's `next()` may replace any of it. */
+type ExecutionState = {
+  input: unknown
+  context: unknown
+  signal?: AbortSignal
+}
+
 export async function runProcedure(
   proc: ImplementedProcedure,
   rawInput: unknown,
@@ -196,89 +203,94 @@ export async function runProcedure(
   const errors = createErrorFactory(def.contract['~pf'].errors)
   const validateInput = options?.validation?.input !== false
   const validateOutput = options?.validation?.output === true
-  let ctx: Record<string, unknown> = { ...(context as Record<string, unknown>) }
-  let input = rawInput
-  let signal = options?.signal
+  const map = def.contract['~pf'].errors
 
-  const runUseAfter = async (index: number): Promise<unknown> => {
-    const mw = def.useAfter[index]
-    if (!mw) {
-      const output = await def.handler({
-        input,
+  // One closure per execution: an interceptor may call `next()` more than
+  // once, concurrently (hedging, shadowing), and each run must own its
+  // `input` / `ctx` / `signal` rather than share them through `runProcedure`.
+  const execute = async (state: ExecutionState): Promise<unknown> => {
+    let ctx: Record<string, unknown> = {
+      ...(state.context as Record<string, unknown>),
+    }
+    let input = state.input
+    const signal = state.signal
+
+    const runUseAfter = async (index: number): Promise<unknown> => {
+      const mw = def.useAfter[index]
+      if (!mw) {
+        const output = await def.handler({
+          input,
+          context: ctx,
+          errors,
+          path: def.path,
+          ...defined({ signal }),
+        })
+        const outputSchema = def.contract['~pf'].output
+        if (validateOutput && outputSchema) {
+          const result = await validateSchema(outputSchema, output)
+          if (!result.success) {
+            // `cause` is for the server log only; `toJSON()` omits it.
+            throw new PFError({
+              code: 'INTERNAL',
+              message: 'Internal server error',
+              cause: result.issues,
+            })
+          }
+          return result.value
+        }
+        return output
+      }
+      return mw({
         context: ctx,
+        input,
         errors,
         path: def.path,
-        ...defined({ signal }),
+        next: async (opts) => {
+          if (opts?.context) {
+            ctx = { ...ctx, ...opts.context }
+          }
+          if (opts && 'input' in opts) {
+            input = opts.input
+          }
+          return runUseAfter(index + 1)
+        },
       })
-      const outputSchema = def.contract['~pf'].output
-      if (validateOutput && outputSchema) {
-        const result = await validateSchema(outputSchema, output)
-        if (!result.success) {
-          // `cause` is for the server log only; `toJSON()` omits it.
-          throw new PFError({
-            code: 'INTERNAL',
-            message: 'Internal server error',
-            cause: result.issues,
-          })
-        }
-        return result.value
-      }
-      return output
     }
-    return mw({
-      context: ctx,
-      input,
-      errors,
-      path: def.path,
-      next: async (opts) => {
-        if (opts?.context) {
-          ctx = { ...ctx, ...opts.context }
-        }
-        if (opts && 'input' in opts) {
-          input = opts.input
-        }
-        return runUseAfter(index + 1)
-      },
-    })
-  }
 
-  const runUse = async (index: number): Promise<unknown> => {
-    const mw = def.use[index]
-    if (!mw) {
-      const inputSchema = def.contract['~pf'].input
-      if (validateInput && inputSchema) {
-        const result = await validateSchema(inputSchema, input)
-        if (!result.success) {
-          throw new PFError({
-            code: 'VALIDATION',
-            message: 'Validation failed',
-            data: { issues: result.issues },
-          })
+    const runUse = async (index: number): Promise<unknown> => {
+      const mw = def.use[index]
+      if (!mw) {
+        const inputSchema = def.contract['~pf'].input
+        if (validateInput && inputSchema) {
+          const result = await validateSchema(inputSchema, input)
+          if (!result.success) {
+            throw new PFError({
+              code: 'VALIDATION',
+              message: 'Validation failed',
+              data: { issues: result.issues },
+            })
+          }
+          input = result.value
         }
-        input = result.value
+        return runUseAfter(0)
       }
-      return runUseAfter(0)
+      return mw({
+        context: ctx,
+        input,
+        errors,
+        path: def.path,
+        next: async (opts) => {
+          if (opts?.context) {
+            ctx = { ...ctx, ...opts.context }
+          }
+          if (opts && 'input' in opts) {
+            input = opts.input
+          }
+          return runUse(index + 1)
+        },
+      })
     }
-    return mw({
-      context: ctx,
-      input,
-      errors,
-      path: def.path,
-      next: async (opts) => {
-        if (opts?.context) {
-          ctx = { ...ctx, ...opts.context }
-        }
-        if (opts && 'input' in opts) {
-          input = opts.input
-        }
-        return runUse(index + 1)
-      },
-    })
-  }
 
-  const map = def.contract['~pf'].errors
-  const interceptors = options?.interceptors
-  if (!interceptors?.length) {
     try {
       const output = await runUse(0)
       return wrapIfAsyncIterable(output, map)
@@ -287,26 +299,19 @@ export async function runProcedure(
     }
   }
 
+  const initial: ExecutionState = {
+    input: rawInput,
+    context,
+    ...defined({ signal: options?.signal }),
+  }
+  const interceptors = options?.interceptors
+  if (!interceptors?.length) {
+    return execute(initial)
+  }
   return runCallInterceptors(
     interceptors,
-    {
-      procedure: proc,
-      path: def.path,
-      input: rawInput,
-      context,
-      ...defined({ signal }),
-    },
-    async (current) => {
-      input = current.input
-      ctx = { ...(current.context as Record<string, unknown>) }
-      signal = current.signal
-      try {
-        const output = await runUse(0)
-        return wrapIfAsyncIterable(output, map)
-      } catch (error) {
-        return await finalizeDeclaredError(error, map)
-      }
-    },
+    { procedure: proc, path: def.path, ...initial },
+    execute,
   )
 }
 

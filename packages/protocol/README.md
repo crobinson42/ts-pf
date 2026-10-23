@@ -35,7 +35,7 @@ export function describeFailure(error: unknown): string {
 //   POST /rpc/planet/find            { "input": { "id": 1 } }
 //   200  { "ok": true, "output": { "id": 1, "name": "Earth" } }
 //   404  { "ok": false, "error": { "code": "NOT_FOUND", "message": "…", "data": { "id": 9 } } }
-PROTOCOL_VERSION // value of the x-ts-pf-protocol header on every RPC response
+PROTOCOL_VERSION // x-ts-pf-protocol header value on every RPC request and response; FetchHandler / FetchLink reject other values
 localFailure('Request aborted') // INTERNAL with local: true, status 0 (never on the wire)
 ```
 
@@ -48,7 +48,7 @@ Wire spec: [`PROTOCOL.md`](https://github.com/crobinson42/ts-pf/blob/main/packag
 ## API
 
 - `PFError`, `PFErrorInit`, `isPFError`, `localFailure`, `ProtocolErrorCode`
-- `PROTOCOL_VERSION`, `RpcRequest`, `RpcResponse`, `RpcSuccess`, `RpcFailure`, `PFResultPromise`
+- `PROTOCOL_MAJOR` (`1`, the wire major: `v` on message `hello`), `PROTOCOL_VERSION` (`'1'`, its string: the `x-ts-pf-protocol` header value), `RpcRequest`, `RpcResponse`, `RpcSuccess`, `RpcFailure`, `PFResultPromise`
 - `toWireError`, `isAsyncIterable`
 - `defined`, `Defined` — `defined(obj)` drops the keys whose value is `undefined`, so `{ ...required, ...defined({ signal }) }` builds an `exactOptionalPropertyTypes` option bag without one spread per field
 

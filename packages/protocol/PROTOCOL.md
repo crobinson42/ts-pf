@@ -1,4 +1,4 @@
-# ts-pf RPC Protocol v1
+# ts-pf RPC Protocol 1 (revision 1.1)
 
 Canonical JSON envelope language for ts-pf. Same `{ "input" }`, `{ "ok": true, "output" }`, `{ "ok": false, "error": { "code", "message", "data?" } }` on every pipe. Discriminator is `error.code`. Implementable from TypeScript, Kotlin, Swift, or any HTTP client.
 
@@ -41,6 +41,10 @@ x-ts-pf-protocol: 1
 Procedure path is the nested router keys joined by `/`. Example: `planet.find` → `/rpc/planet/find` when the prefix is `/rpc`.
 
 v1 accepts **POST only**. Other methods return HTTP 405 with `error.code: "METHOD_NOT_ALLOWED"`.
+
+Servers read the request header `x-ts-pf-protocol`. Absent → accept (plain HTTP clients). Present and equal to `1` (after trimming surrounding whitespace) → accept. Any other value → HTTP 400 with `error.code: "BAD_REQUEST"` and `message: "Unsupported protocol version"`; the response still carries `x-ts-pf-protocol: 1`. The check runs after the method check and before the body is read.
+
+Clients send `x-ts-pf-protocol: 1` on every request. A response whose `x-ts-pf-protocol` is present and not `1` must not be decoded; the TypeScript client rejects it with `INTERNAL`, the HTTP status, and message `Unsupported protocol version (x-ts-pf-protocol: <value>)` — it is not a local failure, because the response came from a server. A response without the header follows the `Non-RPC response` rule below.
 
 Success:
 
@@ -97,11 +101,15 @@ Contract-declared error codes use the status on the error definition when the HT
 | Local failure (`localFailure`, `isLocalFailure`) | `0` with `local: true` |
 | In-process `createLocalClient` | The declared `ErrorDef.status` when there is one, else `undefined` |
 
-The TypeScript client maps **local** failures (never got a protocol result) to `INTERNAL` with `local: true` and `status: 0`. `local` and `status` are TypeScript client conventions, not protocol fields, and are **not** on the wire. `isLocalFailure` is `local === true`. Abort uses message `Request aborted`. Network throws keep `error.message` and set `Error.cause` to the thrown value (Node’s `ECONNREFUSED` is then `error.cause.cause`). HTTP responses **without** `x-ts-pf-protocol` that fail `decodeResponse` become `INTERNAL` with the HTTP status and message `Non-RPC response (HTTP …)` — do not surface codec `BAD_REQUEST` 400 for proxy HTML. Codec `PFError` is rethrown only when `x-ts-pf-protocol` is present (truncated JSONL/SSE at decode time, malformed ts-pf JSON). `toJSON()` still omits `status`, `cause`, and `local`.
+The TypeScript client maps **local** failures (never got a protocol result) to `INTERNAL` with `local: true` and `status: 0`. `local` and `status` are TypeScript client conventions, not protocol fields, and are **not** on the wire. `isLocalFailure` is `local === true`. Abort uses message `Request aborted`. Network throws keep `error.message` and set `Error.cause` to the thrown value (Node’s `ECONNREFUSED` is then `error.cause.cause`). HTTP responses **without** `x-ts-pf-protocol` that fail `decodeResponse` become `INTERNAL` with the HTTP status and message `Non-RPC response (HTTP …)` — do not surface codec `BAD_REQUEST` 400 for proxy HTML. Codec `PFError` is rethrown only when `x-ts-pf-protocol` is present and equal to `1` (truncated JSONL/SSE at decode time, malformed ts-pf JSON); a different value is never decoded (see [HTTP Fetch binding](#http-fetch-binding-default)). `toJSON()` still omits `status`, `cause`, and `local`.
 
 ## Versioning
 
-Header `x-ts-pf-protocol` is `1`. JSON is the default content type and the envelope above does not change for JSON calls. Other content types are codec-defined (see [Binary attachments](#binary-attachments-optional), [Message streams](#message-streams-optional), and [SSE](#sse-optional)). A codec may stream the HTTP body (`ReadableStream`) without changing this envelope. Optional [message transports](#message-transports-optional) carry the same version as `v: 1` on `hello` instead of this header. Bump the header only if the JSON contract breaks.
+Header `x-ts-pf-protocol` and `v` on `hello` / `hello-ok` carry the **wire major**, currently `1` (`PROTOCOL_MAJOR`; the header is its decimal string, `PROTOCOL_VERSION`). JSON is the default content type and the envelope above does not change for JSON calls. Other content types are codec-defined (see [Binary attachments](#binary-attachments-optional), [Message streams](#message-streams-optional), and [SSE](#sse-optional)). A codec may stream the HTTP body (`ReadableStream`) without changing this envelope. Optional [message transports](#message-transports-optional) carry the same major as `v: 1` on `hello` instead of this header.
+
+**Revisions.** This document has a revision number (this is 1.1). Revisions are additive and keep the wire major: a peer cannot tell 1.0 from 1.1 on the wire. Additive means a 1.x sender emits a new key, frame type, header, or content type only when the user opted in, and a 1.0 receiver that does not understand it fails **that call** (`BAD_REQUEST`), never the connection and never silently. Receivers must not reject a value that 1.0 defined as valid. Bump the wire major only when the JSON envelope, a required frame field, or the handshake changes.
+
+**Content negotiation.** Clients MAY send `Accept` listing the response media types they can decode (`application/json`, `application/jsonl`, `text/event-stream`). Servers MAY use it to choose the framing of a streamed response and MUST ignore it when they cannot satisfy it (never 406; the JSON failure envelope is always `application/json`). `Content-Type` on the request selects the request codec as today.
 
 ## Binary attachments (optional)
 
@@ -284,7 +292,7 @@ These bindings are not HTTP:
 - `METHOD_NOT_ALLOWED` is Fetch-only. There is no HTTP method on a frame.
 - Procedure-declared `.errors()` `status` is Fetch-only. Every client, including TypeScript, switches on `error.code`.
 
-`v: 1` on `hello` / `hello-ok` is the same protocol version as header `x-ts-pf-protocol: 1`. Different carrier, same number.
+`v: 1` on `hello` / `hello-ok` is the same wire major as header `x-ts-pf-protocol: 1`. Different carrier, same number.
 
 ### Framing
 
