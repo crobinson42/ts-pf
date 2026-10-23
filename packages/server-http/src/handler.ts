@@ -115,9 +115,14 @@ export class FetchHandler<TCtx = unknown> {
     }
 
     const state: CallState<TCtx> = { request, context: undefined }
+    // The plugin steps (0, 3, 7) are skipped outright, not awaited as
+    // no-ops, when there are no plugins: that is the common unary path.
+    const hasPlugins = this.plugins.length > 0
     try {
       // 0. HandlerPlugin.onRequest: wrap the request or short-circuit (CORS preflight)
-      const shortCircuit = await this.applyOnRequest(state)
+      const shortCircuit = hasPlugins
+        ? await this.applyOnRequest(state)
+        : undefined
       if (shortCircuit !== undefined) {
         return await this.respond(state, shortCircuit)
       }
@@ -130,7 +135,9 @@ export class FetchHandler<TCtx = unknown> {
       const decoded = await this.codec.decodeRequest(bodySource(state.request))
       // 3. context factory, then HandlerPlugin.onContext
       state.context = await resolveContext(state.request, opts.context)
-      await this.applyOnContext(state)
+      if (hasPlugins) {
+        await this.applyOnContext(state)
+      }
       // 4–5. call-interceptor onion around runProcedure, then encode
       const output = await this.run(procedure, decoded.input, state)
       return await this.respond(state, await this.successResponse(output))
@@ -263,6 +270,9 @@ export class FetchHandler<TCtx = unknown> {
     state: CallState<TCtx>,
     response: Response,
   ): Promise<HandleResult> {
+    if (this.plugins.length === 0) {
+      return { matched: true, response }
+    }
     return {
       matched: true,
       response: await this.applyOnResponse(
@@ -320,12 +330,12 @@ function assertProtocolVersion(request: Request): void {
 }
 
 /** Step 3, factory half: a value or a `(req) => ctx` function. */
-async function resolveContext<TCtx>(
+function resolveContext<TCtx>(
   request: Request,
   context: TCtx | ((req: Request) => TCtx | Promise<TCtx>),
-): Promise<TCtx> {
+): TCtx | Promise<TCtx> {
   return typeof context === 'function'
-    ? await (context as (req: Request) => TCtx | Promise<TCtx>)(request)
+    ? (context as (req: Request) => TCtx | Promise<TCtx>)(request)
     : context
 }
 

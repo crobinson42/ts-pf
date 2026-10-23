@@ -5,7 +5,7 @@ import {
   type IsContractProcedure,
   validateSchema,
 } from '@ts-pf/contract'
-import { defined, isAsyncIterable, PFError } from '@ts-pf/protocol'
+import { isAsyncIterable, PFError } from '@ts-pf/protocol'
 import {
   type CallInterceptor,
   runCallInterceptors,
@@ -193,6 +193,25 @@ type ExecutionState = {
   signal?: AbortSignal
 }
 
+/**
+ * One execution of the `.use()` → input check → `.useAfter()` → handler
+ * chain. An interceptor may call `next()` more than once, concurrently
+ * (hedging, shadowing), so each run owns its `input` / `ctx` / `signal` here
+ * instead of sharing closure variables through `runProcedure`. The chain
+ * steps below are module-level functions that take the execution as a
+ * parameter, so a run allocates this one object (plus the handler's option
+ * bag) rather than a closure per step.
+ */
+type Execution = {
+  def: ImplementedProcedure['~pf']
+  errors: ReturnType<typeof createErrorFactory>
+  validateInput: boolean
+  validateOutput: boolean
+  ctx: Record<string, unknown>
+  input: unknown
+  signal: AbortSignal | undefined
+}
+
 export async function runProcedure(
   proc: ImplementedProcedure,
   rawInput: unknown,
@@ -203,106 +222,22 @@ export async function runProcedure(
   const errors = createErrorFactory(def.contract['~pf'].errors)
   const validateInput = options?.validation?.input !== false
   const validateOutput = options?.validation?.output === true
-  const map = def.contract['~pf'].errors
+  const execute = (state: ExecutionState): Promise<unknown> =>
+    runExecution({
+      def,
+      errors,
+      validateInput,
+      validateOutput,
+      // A copy: middleware `next({ context })` merges into it and must not
+      // write through to the caller's object.
+      ctx: { ...(state.context as Record<string, unknown>) },
+      input: state.input,
+      signal: state.signal,
+    })
 
-  // One closure per execution: an interceptor may call `next()` more than
-  // once, concurrently (hedging, shadowing), and each run must own its
-  // `input` / `ctx` / `signal` rather than share them through `runProcedure`.
-  const execute = async (state: ExecutionState): Promise<unknown> => {
-    let ctx: Record<string, unknown> = {
-      ...(state.context as Record<string, unknown>),
-    }
-    let input = state.input
-    const signal = state.signal
-
-    const runUseAfter = async (index: number): Promise<unknown> => {
-      const mw = def.useAfter[index]
-      if (!mw) {
-        const output = await def.handler({
-          input,
-          context: ctx,
-          errors,
-          path: def.path,
-          ...defined({ signal }),
-        })
-        const outputSchema = def.contract['~pf'].output
-        if (validateOutput && outputSchema) {
-          const result = await validateSchema(outputSchema, output)
-          if (!result.success) {
-            // `cause` is for the server log only; `toJSON()` omits it.
-            throw new PFError({
-              code: 'INTERNAL',
-              message: 'Internal server error',
-              cause: result.issues,
-            })
-          }
-          return result.value
-        }
-        return output
-      }
-      return mw({
-        context: ctx,
-        input,
-        errors,
-        path: def.path,
-        next: async (opts) => {
-          if (opts?.context) {
-            ctx = { ...ctx, ...opts.context }
-          }
-          if (opts && 'input' in opts) {
-            input = opts.input
-          }
-          return runUseAfter(index + 1)
-        },
-      })
-    }
-
-    const runUse = async (index: number): Promise<unknown> => {
-      const mw = def.use[index]
-      if (!mw) {
-        const inputSchema = def.contract['~pf'].input
-        if (validateInput && inputSchema) {
-          const result = await validateSchema(inputSchema, input)
-          if (!result.success) {
-            throw new PFError({
-              code: 'VALIDATION',
-              message: 'Validation failed',
-              data: { issues: result.issues },
-            })
-          }
-          input = result.value
-        }
-        return runUseAfter(0)
-      }
-      return mw({
-        context: ctx,
-        input,
-        errors,
-        path: def.path,
-        next: async (opts) => {
-          if (opts?.context) {
-            ctx = { ...ctx, ...opts.context }
-          }
-          if (opts && 'input' in opts) {
-            input = opts.input
-          }
-          return runUse(index + 1)
-        },
-      })
-    }
-
-    try {
-      const output = await runUse(0)
-      return wrapIfAsyncIterable(output, map)
-    } catch (error) {
-      return await finalizeDeclaredError(error, map)
-    }
-  }
-
-  const initial: ExecutionState = {
-    input: rawInput,
-    context,
-    ...defined({ signal: options?.signal }),
+  const initial: ExecutionState = { input: rawInput, context }
+  if (options?.signal !== undefined) {
+    initial.signal = options.signal
   }
   const interceptors = options?.interceptors
   if (!interceptors?.length) {
@@ -313,6 +248,102 @@ export async function runProcedure(
     { procedure: proc, path: def.path, ...initial },
     execute,
   )
+}
+
+async function runExecution(run: Execution): Promise<unknown> {
+  const map = run.def.contract['~pf'].errors
+  try {
+    const output = await runUse(run, 0)
+    return wrapIfAsyncIterable(output, map)
+  } catch (error) {
+    return await finalizeDeclaredError(error, map)
+  }
+}
+
+async function runUse(run: Execution, index: number): Promise<unknown> {
+  const mw = run.def.use[index]
+  if (!mw) {
+    const inputSchema = run.def.contract['~pf'].input
+    if (run.validateInput && inputSchema) {
+      const result = await validateSchema(inputSchema, run.input)
+      if (!result.success) {
+        throw new PFError({
+          code: 'VALIDATION',
+          message: 'Validation failed',
+          data: { issues: result.issues },
+        })
+      }
+      run.input = result.value
+    }
+    return runUseAfter(run, 0)
+  }
+  return mw({
+    context: run.ctx,
+    input: run.input,
+    errors: run.errors,
+    path: run.def.path,
+    next: async (opts) => {
+      applyNext(run, opts)
+      return runUse(run, index + 1)
+    },
+  })
+}
+
+async function runUseAfter(run: Execution, index: number): Promise<unknown> {
+  const mw = run.def.useAfter[index]
+  if (!mw) {
+    return runHandler(run)
+  }
+  return mw({
+    context: run.ctx,
+    input: run.input,
+    errors: run.errors,
+    path: run.def.path,
+    next: async (opts) => {
+      applyNext(run, opts)
+      return runUseAfter(run, index + 1)
+    },
+  })
+}
+
+/** Middleware `next(opts)`: `context` merges into the current one; `input` replaces it. */
+function applyNext(
+  run: Execution,
+  opts: { context?: unknown; input?: unknown } | undefined,
+): void {
+  if (opts?.context) {
+    run.ctx = { ...run.ctx, ...(opts.context as Record<string, unknown>) }
+  }
+  if (opts && 'input' in opts) {
+    run.input = opts.input
+  }
+}
+
+async function runHandler(run: Execution): Promise<unknown> {
+  const handlerOpts: Parameters<HandlerFn>[0] = {
+    input: run.input,
+    context: run.ctx,
+    errors: run.errors,
+    path: run.def.path,
+  }
+  if (run.signal !== undefined) {
+    handlerOpts.signal = run.signal
+  }
+  const output = await run.def.handler(handlerOpts)
+  const outputSchema = run.def.contract['~pf'].output
+  if (run.validateOutput && outputSchema) {
+    const result = await validateSchema(outputSchema, output)
+    if (!result.success) {
+      // `cause` is for the server log only; `toJSON()` omits it.
+      throw new PFError({
+        code: 'INTERNAL',
+        message: 'Internal server error',
+        cause: result.issues,
+      })
+    }
+    return result.value
+  }
+  return output
 }
 
 function wrapIfAsyncIterable(value: unknown, map: ErrorMap): unknown {
