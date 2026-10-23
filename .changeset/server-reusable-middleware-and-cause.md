@@ -1,8 +1,0 @@
----
-"@ts-pf/server": minor
----
-
-- A per-procedure `.use()` now accepts the same `MiddlewareFn<TCtx, unknown, unknown>` as `impl.use()`, so a middleware created with `impl.middleware(fn)` fits both `impl.use(mw)` and `impl.planet.find.use(mw)` (previously TS2345 on the output type, which forced inline functions). Inline `.use()` middleware now sees `next(): Promise<unknown>` instead of the procedure's output type; `.useAfter()` keeps the per-procedure input and output typing.
-- The `INTERNAL` `PFError` thrown for an output-schema failure (`validation.output: true`) carries the schema issues as `cause`, and the one thrown for invalid declared error `data` carries the original error as `cause`. `toJSON()` still omits `cause`, so the wire body is unchanged; a server log (for example `FetchHandler`'s default `console.error`) can now show why.
-- `lookupProcedure` reads own keys only (`Object.hasOwn`), so a path segment such as `constructor` or `__proto__` misses instead of reaching `Object.prototype` (the `isImplementedProcedure` guard already rejected those; this removes the walk).
-- Internal: `ContractShape` / `IsContractProcedure` derive from `@ts-pf/contract`'s new `InferContractProcedure`; `createImplementer`'s node factory is split into a router node (immutable) and a procedure node (short-lived builder) with the semantics documented; optional-field spreads use `defined()` from `@ts-pf/protocol`; the unused `assertContractProcedure` is removed from the source (it was never on the package index). `applyPlugins` and the two `next()` option types document ordering and merge-vs-replace semantics.
