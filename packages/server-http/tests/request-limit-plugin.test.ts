@@ -107,6 +107,62 @@ describe('RequestLimitPlugin', () => {
     })
   })
 
+  it('answers 404 for an unknown path with an oversized streamed body (never read)', async () => {
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('{"input":{"id":1}}'))
+        controller.close()
+      },
+    })
+    const handler = new FetchHandler(app, {
+      plugins: [new RequestLimitPlugin({ maxBodySize: 5 })],
+    })
+    const result = await handler.handle(
+      new Request('http://localhost/rpc/nope', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body,
+        duplex: 'half',
+      } as RequestInit & { duplex: 'half' }),
+      { prefix: '/rpc', context: {} },
+    )
+    expect(result.matched).toBe(true)
+    if (!result.matched) {
+      throw new Error('expected match')
+    }
+    expect(result.response.status).toBe(404)
+    expect(await result.response.json()).toMatchObject({
+      ok: false,
+      error: { code: 'NOT_FOUND' },
+    })
+  })
+
+  it('still answers 413 for an unknown path when Content-Length exceeds maxBodySize', async () => {
+    const handler = new FetchHandler(app, {
+      plugins: [new RequestLimitPlugin({ maxBodySize: 10 })],
+    })
+    const result = await handler.handle(
+      new Request('http://localhost/rpc/nope', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'content-length': '100',
+        },
+        body: '{}',
+      }),
+      { prefix: '/rpc', context: {} },
+    )
+    expect(result.matched).toBe(true)
+    if (!result.matched) {
+      throw new Error('expected match')
+    }
+    expect(result.response.status).toBe(413)
+    expect(await result.response.json()).toMatchObject({
+      ok: false,
+      error: { code: 'PAYLOAD_TOO_LARGE' },
+    })
+  })
+
   it('still applies CORS headers on a 413', async () => {
     const handler = new FetchHandler(app, {
       plugins: [new CORSPlugin(), new RequestLimitPlugin({ maxBodySize: 10 })],

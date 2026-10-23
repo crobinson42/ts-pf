@@ -58,6 +58,8 @@ new FetchHandler(app, {
 
 Errors thrown after a streamed response has started (`StreamCodec` / `SseCodec` output) are written in-band by the codec as `INTERNAL` items; they do not reach `onError` or the default log.
 
+`FetchHandler` checks the method and looks the procedure up before it reads the body. A non-POST is `405 METHOD_NOT_ALLOWED` and an unknown path under the prefix is `404 NOT_FOUND` whatever the body holds (invalid JSON, a multipart upload, an oversized stream): the body is never buffered or decoded. `RequestLimitPlugin`'s `Content-Length` check runs earlier, in `onRequest`, so a declared oversize body is still `413 PAYLOAD_TOO_LARGE` on any path and for any method; only its streamed-body cap is skipped on a 404 because nothing reads the stream.
+
 A JSON envelope object with keys but no `input` key (`{"id":1}` instead of `{"input":{"id":1}}`) is `400 BAD_REQUEST` `Request body must be {"input": ...}`, whichever codec carries it (plain JSON, the multipart `rpc` part, or a JSONL input line). `{}` and `{"input":null}` still mean no input.
 
 ## API

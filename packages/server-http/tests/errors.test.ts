@@ -213,6 +213,19 @@ describe('FetchHandler onError option', () => {
     ])
   })
 
+  it('sees NOT_FOUND, not BAD_REQUEST, for an unknown path with an invalid body', async () => {
+    const codes: string[] = []
+    const handler = new FetchHandler(app, {
+      onError(error) {
+        codes.push(isPFError(error) ? error.code : 'unknown')
+      },
+    })
+    const { status } = await call(handler, post('planet/nope', 'not json'))
+    expect(status).toBe(404)
+    expect(codes).toEqual(['NOT_FOUND'])
+    expect(errorSpy).not.toHaveBeenCalled()
+  })
+
   it('runs after HandlerPlugin.onError and cannot replace the response', async () => {
     const order: string[] = []
     const plugin: HandlerPlugin = {
