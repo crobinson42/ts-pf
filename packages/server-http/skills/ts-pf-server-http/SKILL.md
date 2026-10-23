@@ -32,6 +32,22 @@ return result.response
 
 `plugins` is HTTP-only (`HandlerPlugin`). RPC call interceptors go on `{ interceptors }` from `@ts-pf/server`. `validation` is the same `ProcedureValidation` as `runProcedure`: input checks default on, output and stream output items run only with `{ validation: { output: true } }`. Set it on the constructor, not on `handle()`. `CORSPlugin` answers `OPTIONS` preflight.
 
+## Errors
+
+Unknown throws become `500 INTERNAL` with no stack on the wire. By default `FetchHandler` logs them with `console.error` (the original thrown value, tagged `[ts-pf/server-http]` with the procedure path). It also logs `INTERNAL` `PFError`s — an output schema failure under `validation.output`, invalid declared error `data`, or an explicit `INTERNAL` throw — naming those causes. Declared errors, `VALIDATION`, `NOT_FOUND`, `BAD_REQUEST`, and `METHOD_NOT_ALLOWED` are expected and are not logged.
+
+Pass `onError` to route errors to your own logger. It receives the original error (before `INTERNAL` mapping) for every error response, runs after each `HandlerPlugin.onError`, cannot replace the response, and turns the default logging off:
+
+```ts
+new FetchHandler(app, {
+  onError(error, { request, path, context }) {
+    logger.error({ err: error, path: path.join('/'), url: request.url })
+  },
+})
+```
+
+A JSON body with keys but no `input` key (`{"id":1}` instead of `{"input":{"id":1}}`) is `400 BAD_REQUEST` `Request body must be {"input": ...}`. `{}` and `{"input":null}` still mean no input.
+
 ## API
 
 - `FetchHandler`, `HandleResult`, `HandlerPlugin`

@@ -54,7 +54,7 @@ packages/server/src/
   events.ts           onStart / onSuccess / onError / onFinish
   dedupe-plugin.ts    DedupePlugin (in-flight; pass `key` to restrict to reads)
 packages/server-http/src/
-  handler.ts          FetchHandler (anti-buffering headers on ReadableStream bodies; httpStatus on errors; `interceptors` around runProcedure; `validation` forwarded into it)
+  handler.ts          FetchHandler (anti-buffering headers on ReadableStream bodies; httpStatus on errors; `interceptors` around runProcedure; `validation` forwarded into it; `onError` option or default console.error for unknown / INTERNAL; unwrapped JSON body → BAD_REQUEST)
   plugins.ts          HandlerPlugin
   cors-plugin.ts      CORSPlugin / CORSPluginOptions
   request-limit-plugin.ts RequestLimitPlugin / RequestLimitPluginOptions
@@ -231,7 +231,7 @@ Compose is nested objects. `router({ planet: planetContract })` nests slice cont
    - Output schema only when `validation.output === true` (default off; unary failure is `INTERNAL` — server bug; no issues leaked). Stream output items follow this flag (`VALIDATION` with `issues` from `stream()`)
    - `finalizeDeclaredError` on any throw (invalid declared `data` → `INTERNAL`, no payload). Declared error `data` is always checked
 5. Encode body (`RpcCodec`)
-6. On throw: `HandlerPlugin.onError` (side-effect only), then encode failure. HTTP status from `httpStatus(error)`.
+6. On throw (including `METHOD_NOT_ALLOWED`, `NOT_FOUND`, codec `BAD_REQUEST`, and an unwrapped `{ "input" }` body): `HandlerPlugin.onError` (side-effect only, array order), then the `onError` option — or, when absent, `console.error` for non-`PFError` throws and `INTERNAL` `PFError`s only — then encode failure. HTTP status from `httpStatus(error)`.
 7. `HandlerPlugin.onResponse` — every matched `Response` (success, 405, errors, short-circuit)
 
 `createImplementer(contract).use(mw).router({...})` prepends `mw` onto every procedure in that tree.

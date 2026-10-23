@@ -22,11 +22,17 @@ export type HandleResult =
   | { matched: false; response?: undefined }
   | { matched: true; response: Response }
 
+type OnError = (
+  error: unknown,
+  info: { request: Request; path: readonly string[]; context: unknown },
+) => void | Promise<void>
+
 export class FetchHandler<TCtx = unknown> {
   private readonly codec: RpcCodec
   private readonly plugins: HandlerPlugin[]
   private readonly interceptors: readonly CallInterceptor[]
   private readonly validation: ProcedureValidation | undefined
+  private readonly onError: OnError | undefined
 
   constructor(
     private readonly router: ImplementedRouter,
@@ -35,12 +41,28 @@ export class FetchHandler<TCtx = unknown> {
       plugins?: HandlerPlugin[]
       interceptors?: readonly CallInterceptor[]
       validation?: ProcedureValidation
+      /**
+       * Side-effect hook for every error that becomes an error response.
+       * Receives the original thrown value (before an unknown throw is
+       * mapped to `INTERNAL`), including `METHOD_NOT_ALLOWED`, `NOT_FOUND`,
+       * codec `BAD_REQUEST`, and `VALIDATION`. Runs after every
+       * `HandlerPlugin.onError` (array order) and before the failure is
+       * encoded. It cannot replace the response.
+       *
+       * When omitted, `FetchHandler` logs with `console.error`: unknown
+       * (non-`PFError`) throws, and `INTERNAL` `PFError`s (an output schema
+       * failure under `validation.output`, invalid declared error `data`, or
+       * an explicit `INTERNAL` throw). Declared and other protocol errors are
+       * not logged. Passing `onError` replaces that default logging entirely.
+       */
+      onError?: OnError
     },
   ) {
     this.codec = options?.codec ?? new JSONCodec()
     this.plugins = options?.plugins ?? []
     this.interceptors = options?.interceptors ?? []
     this.validation = options?.validation
+    this.onError = options?.onError
   }
 
   async handle(
@@ -74,22 +96,17 @@ export class FetchHandler<TCtx = unknown> {
       }
 
       if (inbound.method !== 'POST') {
-        return {
-          matched: true,
-          response: await this.applyOnResponse(
-            inbound,
-            await this.errorResponse(
-              new PFError({
-                code: 'METHOD_NOT_ALLOWED',
-                message: 'Method not allowed',
-              }),
-            ),
-            context,
-          ),
-        }
+        throw new PFError({
+          code: 'METHOD_NOT_ALLOWED',
+          message: 'Method not allowed',
+        })
       }
 
-      const decoded = await this.codec.decodeRequest(bodySource(inbound))
+      const source = bodySource(inbound)
+      const decoded = await this.codec.decodeRequest(source)
+      if (decoded.input === undefined && source.rawText !== undefined) {
+        assertWrappedBody(source.rawText)
+      }
       const procedure = lookupProcedure(this.router, path)
       if (!procedure) {
         throw new PFError({
@@ -141,6 +158,11 @@ export class FetchHandler<TCtx = unknown> {
             : { request: inbound, error, context },
         )
       }
+      if (this.onError) {
+        await this.onError(error, { request: inbound, path, context })
+      } else {
+        this.logError(error, path)
+      }
       const failure = isPFError(error)
         ? error
         : new PFError({
@@ -177,6 +199,25 @@ export class FetchHandler<TCtx = unknown> {
     return current
   }
 
+  private logError(error: unknown, path: readonly string[]): void {
+    const where = `"${path.join('/')}"`
+    if (!isPFError(error)) {
+      console.error(`[ts-pf/server-http] Unhandled error in ${where}:`, error)
+      return
+    }
+    if (error.code !== 'INTERNAL') {
+      return
+    }
+    const causes =
+      this.validation?.output === true
+        ? 'output schema failure, invalid declared error data, or an INTERNAL throw'
+        : 'invalid declared error data or an INTERNAL throw'
+    console.error(
+      `[ts-pf/server-http] INTERNAL error in ${where} (${causes}):`,
+      error,
+    )
+  }
+
   private async successResponse(output: unknown): Promise<Response> {
     return encodedResponse(await this.codec.encodeSuccess(output), 200)
   }
@@ -189,13 +230,46 @@ export class FetchHandler<TCtx = unknown> {
   }
 }
 
-function bodySource(request: Request): RpcBodySource {
-  return {
+/**
+ * `RpcBodySource` that remembers the text the codec read, so the handler can
+ * reject an unwrapped JSON body after decode without re-reading the request.
+ */
+function bodySource(request: Request): RpcBodySource & { rawText?: string } {
+  const source: RpcBodySource & { rawText?: string } = {
     contentType: request.headers.get('content-type'),
-    text: () => request.text(),
+    text: async () => {
+      source.rawText = await request.text()
+      return source.rawText
+    },
     formData: () => request.formData(),
     body: () => request.body,
   }
+  return source
+}
+
+/**
+ * A JSON object body with keys but no `input` key (`{"name":"x"}` instead of
+ * `{"input":{"name":"x"}}`) is an invalid envelope, not an undefined input.
+ * `{}` and `{"input": null}` still decode to `input: undefined`.
+ */
+function assertWrappedBody(text: string): void {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(text) as unknown
+  } catch {
+    return
+  }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return
+  }
+  if ('input' in parsed || Object.keys(parsed).length === 0) {
+    return
+  }
+  throw new PFError({
+    code: 'BAD_REQUEST',
+    status: 400,
+    message: 'Request body must be {"input": ...}',
+  })
 }
 
 function encodedResponse(encoded: RpcEncodedBody, status: number): Response {

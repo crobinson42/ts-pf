@@ -1,7 +1,7 @@
 import { procedure, router } from '@ts-pf/contract'
 import { createImplementer } from '@ts-pf/server'
 import { FetchHandler } from '@ts-pf/server-http'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 
 const contract = router({
@@ -54,9 +54,12 @@ describe('FetchHandler validation', () => {
   })
 
   it('returns INTERNAL when output validation is on', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const response = await post(
       new FetchHandler(pingApp, { validation: { output: true } }),
     )
+    expect(errorSpy).toHaveBeenCalledTimes(1)
+    errorSpy.mockRestore()
     expect(response.status).toBe(500)
     const body = (await response.json()) as {
       ok: false
