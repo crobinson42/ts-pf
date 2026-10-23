@@ -33,14 +33,15 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: npm run check:exports
+      - run: npm run check:snippets
 
   # PRs that change a published packages/* package must include a .changeset/*.md
   # (.agents/rules.md). `changeset status` exits non-zero when a package changed
   # since the base branch without a changeset covering it. The Version packages PR
   # (changesets/action, branch changeset-release/main) consumes changesets by
-  # design, so it is skipped.
+  # design, so it is skipped; so are Dependabot PRs (dependency bumps carry no changeset).
   changesets:
-    if: github.event_name == 'pull_request' && github.head_ref != 'changeset-release/main'
+    if: github.event_name == 'pull_request' && github.head_ref != 'changeset-release/main' && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:

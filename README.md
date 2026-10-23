@@ -434,7 +434,7 @@ const { data } = useSWR(
 
 mvc-kit is opt-in too. Do not put this in the default happy path:
 
-```ts
+```ts bundler
 // planets-resource.ts
 import { bindClient } from '@ts-pf/mvc-kit'
 import { Resource } from 'mvc-kit'
@@ -458,11 +458,13 @@ Smoke-tested examples in [`examples/`](examples/): [`hello`](examples/hello) (Fe
 
 ## Development
 
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for setup, the verify chain, changesets, and releasing; [`DECISIONS.md`](DECISIONS.md) records why each lock exists.
+
 ```sh
 npm install
-npm run lint && npm run lint:root && npm run check:skills && npm run check:deps && npm run type-check && npm test && npm run build && npm run check:exports
+npm run lint && npm run lint:root && npm run check:skills && npm run check:deps && npm run type-check && npm test && npm run build && npm run check:exports && npm run check:snippets
 ```
 
-A public API / name / happy-path change updates `packages/<pkg>/skills/ts-pf-<pkg>/SKILL.md` in the same PR (`npm run check:skills`). Opt-in happy-path changes also update the matching snippet on `ts-pf-app`.
+A public API / name / happy-path change updates `packages/<pkg>/skills/ts-pf-<pkg>/SKILL.md` and that package's `README.md` in the same PR (`npm run check:skills` asserts every skill `API` symbol is named in the README; `npm run check:snippets` type-checks the fenced `ts` blocks). Opt-in happy-path changes also update the matching snippet on `ts-pf-app`.
 
 Releases use [Changesets](https://github.com/changesets/changesets) (`latest` on npm). See [`.changeset/README.md`](.changeset/README.md). A PR that changes a published `packages/*` package must include a changeset (`npx changeset`).

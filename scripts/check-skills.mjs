@@ -3,6 +3,9 @@
 // package.json keywords must include the shared family terms.
 // ts-pf-app description must name every opt-in (non-core) package.
 // skills/README.md must list every published package skill path.
+// Every symbol a ts-pf-<pkg> skill lists under "## API" must be named in that
+// package's README (README = narrative + install + one snippet; SKILL = Do /
+// API / Pair with / Don't; the two surfaces must not drift).
 // Code, skills, READMEs, and examples must not use oRPC names
 // (.agents/rules.md "Public names").
 import { readdir, readFile } from 'node:fs/promises'
@@ -207,6 +210,46 @@ function checkBannedNames(rel, text) {
 for (const path of await bannedNameTargets()) {
   if (!/\.(?:ts|tsx|mts|cts|js|mjs|cjs|astro|md)$/.test(path)) continue
   checkBannedNames(relative(root, path), await readFile(path, 'utf8'))
+}
+
+// Backticked exported identifiers in a skill's "## API" section (`stream()` →
+// `stream`; `./stdio`, `"."`, `.call`, and option sketches are not symbols).
+const IDENT = /^[A-Za-z_$][\w$]*(?:\(\))?$/
+function apiSymbols(skill) {
+  const section = skill.match(/^## API[ \t]*$([\s\S]*?)(?=^## |(?![\s\S]))/m)
+  if (!section) return null
+  const out = new Set()
+  for (const [, token] of section[1].matchAll(/`([^`]+)`/g)) {
+    if (IDENT.test(token)) out.add(token.replace(/\(\)$/, ''))
+  }
+  return out
+}
+
+for (const name of published) {
+  const skillRel = `${name}/skills/ts-pf-${name}/SKILL.md`
+  let skill
+  let readme
+  try {
+    skill = await readFile(join(packagesDir, skillRel), 'utf8')
+    readme = await readFile(join(packagesDir, name, 'README.md'), 'utf8')
+  } catch {
+    if (skill === undefined) continue // reported by checkSkill
+    errors.push(`${name}: missing README.md`)
+    continue
+  }
+  const symbols = apiSymbols(skill)
+  if (!symbols) {
+    errors.push(`${skillRel}: missing "## API" section`)
+    continue
+  }
+  for (const symbol of symbols) {
+    const mentioned = new RegExp(`(?<![\\w$])${symbol}(?![\\w$])`).test(readme)
+    if (!mentioned) {
+      errors.push(
+        `${name}: README.md does not mention ${symbol} (listed in SKILL API)`,
+      )
+    }
+  }
 }
 
 const indexRel = 'skills/README.md'

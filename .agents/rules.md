@@ -1,5 +1,7 @@
 # ts-pf rules
 
+Rationale for each lock: [`DECISIONS.md`](../DECISIONS.md).
+
 Contract-first TypeScript RPC library (`@ts-pf/*`). oRPC-like DX is the bar; oRPC's surface area is not. One procedure model. Every wire is an adapter. Do not grow the core into a dual-protocol platform.
 
 ## Packages
@@ -172,7 +174,7 @@ Live in `examples/`: `hello` (Fetch), `codegen` (split-repo `emit` / `createClie
 ## Done means verified
 
 ```
-npm run lint && npm run lint:root && npm run check:skills && npm run check:deps && npm run type-check && npm test && npm run build && npm run check:exports
+npm run lint && npm run lint:root && npm run check:skills && npm run check:deps && npm run type-check && npm test && npm run build && npm run check:exports && npm run check:snippets
 ```
 
 Wire changes must update `packages/protocol/PROTOCOL.md`. Public API / name / happy-path changes must update `packages/<pkg>/skills/ts-pf-<pkg>/SKILL.md`. Opt-in happy-path changes also update the matching snippet on `packages/contract/skills/ts-pf-app/SKILL.md`.
