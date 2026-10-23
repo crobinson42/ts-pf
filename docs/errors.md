@@ -53,7 +53,7 @@ Defaults worth knowing:
 - `data` is always validated against its schema when the error is thrown, regardless of `validation.output`. Data that fails the schema is a server bug and is sent as `INTERNAL` with no issues.
 - Do not redeclare `VALIDATION`, `INTERNAL`, `BAD_REQUEST`, `METHOD_NOT_ALLOWED`, or `PAYLOAD_TOO_LARGE`. They belong to the protocol. Reusing `NOT_FOUND` for a missing entity is fine.
 
-A `PFError` thrown directly (`throw new PFError({ code: 'UNAUTHORIZED' })`) also reaches the client, with its code as-is; it is just not in the client's declared union, so the client sees it through the catch-all branch.
+A `PFError` thrown directly (`throw new PFError({ code: 'UNAUTHORIZED' })`) also reaches the client at runtime, with its code as-is. It is not in the client's `ClientError` union, though, which is exactly the declared codes plus the protocol codes with no string catch-all: `result.error.code === 'UNAUTHORIZED'` fails to type-check. Declare the code on `.errors()` (on the procedure, or on every procedure a shared middleware guards) when the client needs to narrow on it.
 
 ## The protocol code set
 
@@ -65,7 +65,7 @@ These six codes are closed. Every ts-pf server can emit them, no contract declar
 | `VALIDATION` | 422 | Input schema failed, or a stream item schema failed after the stream started. `data.issues` is `{ message, path }[]` |
 | `NOT_FOUND` | 404 | Prefix matched, procedure missing (a declared `NOT_FOUND` reuses the code) |
 | `METHOD_NOT_ALLOWED` | 405 | Non-POST (Fetch only) |
-| `PAYLOAD_TOO_LARGE` | 413 | Body over `RequestLimitPlugin`'s cap, or an oversize message frame |
+| `PAYLOAD_TOO_LARGE` | 413 | Body over `RequestLimitPlugin`'s cap, or a server-to-client message frame too large to send (`Frame too large`); an oversize inbound frame closes the connection instead |
 | `INTERNAL` | 500 | Unknown throw, a unary output schema failure, invalid declared error `data` |
 
 The HTTP column is `PROTOCOL_HTTP_STATUS` in `@ts-pf/http`, applied by `httpStatus()` in `FetchHandler`. Nothing stamps it into the JSON.
@@ -113,7 +113,7 @@ if (result.ok) {
 } else if (result.error.code === 'VALIDATION') {
   result.error.data.issues // { message, path }[]
 } else {
-  result.error.code // other protocol codes, or a PFError thrown by hand
+  result.error.code // the remaining protocol codes (a hand-thrown undeclared code lands here at runtime but is not in the type)
 }
 ```
 

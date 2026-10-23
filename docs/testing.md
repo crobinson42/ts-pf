@@ -2,7 +2,7 @@
 
 ts-pf apps are tested without a port. Every example in [`examples/`](../examples/README.md) runs its client against its handler in-process, and the two patterns below are all they use. Snippets assume [Vitest](https://vitest.dev) but nothing here depends on it.
 
-The app under test on this page: the README contract (`planet.list` / `find` / `create`) with a `requireUser` middleware on `create`.
+The app under test on this page: the README contract (`planet.list` / `find` / `create`) with an inline auth middleware on `create`.
 
 ```ts
 // server.ts
@@ -136,7 +136,7 @@ import { app } from './server.js'
 it('rejects anonymous callers', async () => {
   const anonymous = createLocalClient(app, { context: { db } })
   const result = await asResult(anonymous.planet.create({ name: 'Venus' }))
-  expect(!result.ok && result.error.code).toBe('UNAUTHORIZED')
+  expect(result.error?.code).toBe('UNAUTHORIZED')
 })
 
 it('lets a user through', async () => {
@@ -145,7 +145,7 @@ it('lets a user through', async () => {
 })
 ```
 
-Keys that middleware adds or reads (`user`) are declared on `$context<AppCtx>()` as optional, so a test can pre-fill them and skip the real `auth()`. A `PFError` thrown by middleware with an undeclared code (`UNAUTHORIZED` above) still reaches the client; `asResult` types it through the catch-all branch, so compare `code` as a string.
+Keys that middleware adds or reads (`user`) are declared on `$context<AppCtx>()` as optional, so a test can pre-fill them and skip the real `auth()`. A `PFError` thrown by middleware with an undeclared code (`UNAUTHORIZED` above) reaches the client at runtime, but it is not in the `ClientError` union (declared codes plus protocol codes, no catch-all), so `result.error.code === 'UNAUTHORIZED'` does not type-check. Assert through `expect(...).toBe(...)` as above, or declare the code on `.errors()` of the procedures the middleware guards.
 
 ## Streams
 
