@@ -57,7 +57,8 @@ describe('router completeness', () => {
   })
 
   it('throws at runtime when a nested slice app has keys beyond its contract', () => {
-    // The types accept this (see implement.test-d.ts); the runtime does not.
+    // The types reject this too (implement.test-d.ts); `as never` reaches the
+    // runtime check, which is the backstop for untyped callers.
     const starContract = router({
       find: procedure
         .input(z.object({ id: z.number() }))
@@ -74,7 +75,7 @@ describe('router completeness', () => {
       list: starImpl.list.handler(async () => []),
     })
     const impl = createImplementer(contract)
-    expect(() => impl.router({ planet: starApp })).toThrow(
+    expect(() => impl.router({ planet: starApp } as never)).toThrow(
       'Unexpected implementation key "planet.list"',
     )
   })

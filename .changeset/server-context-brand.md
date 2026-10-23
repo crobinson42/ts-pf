@@ -1,0 +1,9 @@
+---
+"@ts-pf/server": minor
+---
+
+`impl.router()` now returns `ImplementedRouter<T, TCtx>` and every handler is an `ImplementedProcedure<TContract, TCtx>`: the contract procedure type and the `$context<C>()` type travel with the tree as phantom brands (optional, type-only members; the runtime shape is unchanged). Adapters read `TCtx` from the brand: `createLocalClient(app, { context })` now types `context` from it instead of `unknown`. A hand-built tree, or a value annotated with the unparameterized `ImplementedRouter` / `ImplementedProcedure`, has no brand and keeps `unknown`.
+
+`impl.router()` is now `<I>(impl: I & RouterImplCheck<T, TCtx, I>)`. It rejects, naming the key: a missing key (`Missing implementation for "create"`), an extra key on a literal or a variable (`"list" is not in the contract`), a handler built from another procedure under this key (`star.find` in the `planet.find` slot), a slice built with a different `$context`, and a slice whose contract is a superset. Picked procedures (`{ list: usersApp.list }`) and same-`AppCtx` slices still compose; a slice that needs less context than the root provides is accepted. `ProcedureBuilder` gains a trailing `TContract` type parameter (default `unknown`), and `RouterImpl<T, TCtx = unknown>` now has branded leaves.
+
+Previously compiling code that can stop compiling, all of it intended: `createLocalClient(app, { context })` with a context that does not satisfy `$context<C>()`; `impl.router()` calls that nested a slice with a different `$context`, placed a handler under another procedure's key, or passed a variable with keys beyond the contract (the runtime already threw for extra and missing keys); and `expectTypeOf(find).toEqualTypeOf<ImplementedProcedure>()`-style exact-type assertions (`find` is now `ImplementedProcedure<typeof contract.planet.find, Ctx>`; `toExtend<ImplementedProcedure>()` holds).

@@ -72,10 +72,15 @@ function createNode(
   return nested
 }
 
-export function createLocalClient<T>(
-  router: ImplementedRouter<T>,
+/**
+ * In-process typed client. `TCtx` is inferred from the router's context brand
+ * (`impl.router()` output), so `context` is checked against `$context<C>()`.
+ * A hand-built tree has no brand and `context` is `unknown`.
+ */
+export function createLocalClient<T, TCtx>(
+  router: ImplementedRouter<T, TCtx>,
   opts: {
-    context: unknown
+    context: NoInfer<TCtx>
     interceptors?: readonly CallInterceptor[]
     plugins?: readonly CallPlugin[]
     validation?: ProcedureValidation
