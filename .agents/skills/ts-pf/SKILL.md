@@ -241,7 +241,7 @@ Compose is nested objects. `router({ planet: planetContract })` nests slice cont
 1. Method check, then protocol version, then lookup procedure. Non-POST → `METHOD_NOT_ALLOWED` (Fetch; no call interceptors). Request `x-ts-pf-protocol` present and not `PROTOCOL_VERSION` (trimmed) → `BAD_REQUEST` `Unsupported protocol version` (absent is accepted). Miss → `NOT_FOUND` (no call interceptors). All three answer before the body is read.
 2. Decode body (`RpcCodec`; JSONCodec is JSON, MultipartCodec may be multipart, StreamCodec may be JSONL, SseCodec may be JSONL input / SSE output). Runs only for a known procedure.
 3. Context factory, then `HandlerPlugin.onContext` — replace context (header bags)
-4. CallInterceptor onion around `runProcedure` (`FetchHandler({ interceptors, validation })`, `HandlerOptions.interceptors` / `HandlerOptions.validation`, `createLocalClient` `{ interceptors, plugins, validation }`). `[0]` outermost. Inside `next()`:
+4. CallInterceptor onion around `runProcedure` (`FetchHandler({ interceptors, validation })`, `HandlerOptions.interceptors` / `HandlerOptions.validation`, `createLocalClient` `{ interceptors, plugins, validation }`). `[0]` outermost. `next()` may be called more than once, concurrently; `runProcedure` builds the chain below inside a per-`next()` `execute(state)` closure, so each run owns its `input` / `context` / `signal` (do not hoist them back to `runProcedure` scope). Inside `next()`:
    - `.use()` middleware — `input` is unvalidated
    - Input schema when `validation.input !== false` (default on; `VALIDATION` on fail). Stream input items follow this flag
    - `.useAfter()` middleware — typed `input` when the input check ran; raw value when it was skipped
