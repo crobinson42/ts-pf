@@ -57,10 +57,10 @@ describe('ContractClient inference', () => {
 
   it('types call signatures with CallOptions', () => {
     expectTypeOf<Client['planet']['find']>().parameters.toEqualTypeOf<
-      [{ id: number }, CallOptions?]
+      [{ id: number }, (CallOptions | undefined)?]
     >()
     expectTypeOf<Client['planet']['list']>().parameters.toEqualTypeOf<
-      [CallOptions?]
+      [(CallOptions | undefined)?]
     >()
     expectTypeOf<CallOptions>().toEqualTypeOf<{ signal?: AbortSignal }>()
     expectTypeOf<Client['planet']['find']>().returns.toEqualTypeOf<

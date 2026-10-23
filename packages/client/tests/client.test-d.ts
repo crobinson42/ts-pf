@@ -75,9 +75,11 @@ describe('createClient call signatures', () => {
 
   it('accepts input and CallOptions', () => {
     expectTypeOf(client.planet.find).parameters.toEqualTypeOf<
-      [{ id: number }, CallOptions?]
+      [{ id: number }, (CallOptions | undefined)?]
     >()
-    expectTypeOf(client.planet.list).parameters.toEqualTypeOf<[CallOptions?]>()
+    expectTypeOf(client.planet.list).parameters.toEqualTypeOf<
+      [(CallOptions | undefined)?]
+    >()
     expectTypeOf(client.planet.find({ id: 1 })).resolves.toEqualTypeOf<{
       id: number
       name: string

@@ -27,7 +27,7 @@ describe('SwrClient types', () => {
       [{ input: { id: number } }]
     >()
     expectTypeOf<Client['planet']['list']['key']>().parameters.toEqualTypeOf<
-      [{ input?: undefined }?]
+      [({ input?: undefined } | undefined)?]
     >()
   })
 

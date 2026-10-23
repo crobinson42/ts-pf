@@ -13,17 +13,19 @@ const client = createClient<Contract>(link)
 describe('createClient<Contract>', () => {
   it('types find as a one-arg client and list as zero-arg', () => {
     expectTypeOf(client.planet.find).parameters.toEqualTypeOf<
-      [{ id: number }, { signal?: AbortSignal }?]
+      [{ id: number }, ({ signal?: AbortSignal } | undefined)?]
     >()
     expectTypeOf(client.planet.list).parameters.toEqualTypeOf<
-      [{ signal?: AbortSignal }?]
+      [({ signal?: AbortSignal } | undefined)?]
     >()
     expectTypeOf<
       ContractClient<Contract>['planet']['find']
-    >().parameters.toEqualTypeOf<[{ id: number }, { signal?: AbortSignal }?]>()
+    >().parameters.toEqualTypeOf<
+      [{ id: number }, ({ signal?: AbortSignal } | undefined)?]
+    >()
     expectTypeOf<
       ContractClient<Contract>['planet']['list']
-    >().parameters.toEqualTypeOf<[{ signal?: AbortSignal }?]>()
+    >().parameters.toEqualTypeOf<[({ signal?: AbortSignal } | undefined)?]>()
   })
 
   it('narrows asResult NOT_FOUND data and protocol VALIDATION issues', () => {
