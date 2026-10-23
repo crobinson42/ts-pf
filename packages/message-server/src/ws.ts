@@ -1,15 +1,20 @@
 import { createWsDuplex, type WebSocketLike } from '@ts-pf/message'
 import type { ImplementedRouter } from '@ts-pf/server'
-import { attachRouter, type HandlerOptions } from './shared.js'
+import { DuplexHandler } from './duplex.js'
+import { contextWithInfo, type HandlerOptions } from './shared.js'
 
 export type { WebSocketLike }
 
-/** `TCtx` is inferred from the router's context brand; see `FetchHandler`. */
+/** `DuplexHandler` over `createWsDuplex`. `TCtx` is inferred from the router's context brand; see `FetchHandler`. */
 export class WsHandler<TCtx = unknown> {
+  private readonly handler: DuplexHandler<TCtx>
+
   constructor(
-    private readonly router: ImplementedRouter<unknown, TCtx>,
-    private readonly options?: HandlerOptions,
-  ) {}
+    router: ImplementedRouter<unknown, TCtx>,
+    options?: HandlerOptions,
+  ) {
+    this.handler = new DuplexHandler(router, options)
+  }
 
   bind(
     socket: WebSocketLike,
@@ -22,39 +27,8 @@ export class WsHandler<TCtx = unknown> {
           }) => TCtx | Promise<TCtx>)
     },
   ): { close(): void } {
-    const duplex = createWsDuplex(socket)
-    const context =
-      typeof opts.context === 'function'
-        ? (info: { meta?: unknown }) => {
-            const factory = opts.context as (info: {
-              socket: WebSocketLike
-              meta?: unknown
-            }) => TCtx | Promise<TCtx>
-            return info.meta !== undefined
-              ? factory({ socket, meta: info.meta })
-              : factory({ socket })
-          }
-        : opts.context
-
-    const attached = attachRouter({
-      duplex,
-      router: this.router,
-      context,
-      ...(this.options?.maxFrameBytes !== undefined
-        ? { maxFrameBytes: this.options.maxFrameBytes }
-        : {}),
-      ...(this.options?.helloTimeoutMs !== undefined
-        ? { helloTimeoutMs: this.options.helloTimeoutMs }
-        : {}),
-      ...(this.options?.onError !== undefined
-        ? { onError: this.options.onError }
-        : {}),
-      ...(this.options?.interceptors !== undefined
-        ? { interceptors: this.options.interceptors }
-        : {}),
-      ...(this.options?.validation !== undefined
-        ? { validation: this.options.validation }
-        : {}),
+    const attached = this.handler.bind(createWsDuplex(socket), {
+      context: contextWithInfo(opts.context, { socket }),
     })
 
     let closed = false

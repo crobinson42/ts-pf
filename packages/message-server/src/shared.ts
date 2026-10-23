@@ -1,27 +1,16 @@
 import {
   type CallFrame,
-  createPushQueue,
   type Duplex,
-  type ItemFrame,
   type MessageFrame,
   MessageSession,
-  type PushQueue,
   type WireError,
 } from '@ts-pf/message'
-import {
-  isAsyncIterable,
-  isPFError,
-  PFError,
-  toWireError,
-} from '@ts-pf/protocol'
-import {
-  type CallInterceptor,
-  type ImplementedRouter,
-  lookupProcedure,
-  type ProcedureValidation,
-  type RunProcedureOptions,
-  runProcedure,
+import type {
+  CallInterceptor,
+  ImplementedRouter,
+  ProcedureValidation,
 } from '@ts-pf/server'
+import { dispatchCall, ServerCall, type ServerCallHost } from './call.js'
 
 export type HandlerOptions = {
   maxFrameBytes?: number
@@ -37,79 +26,36 @@ export type AttachRouterOptions<TCtx = unknown> = HandlerOptions & {
   context: TCtx | ((info: { meta?: unknown }) => TCtx | Promise<TCtx>)
 }
 
-type ServerInflight = {
-  ac: AbortController
-  cancelled: boolean
-  iterator?: AsyncIterator<unknown>
-  inputQueue?: PushQueue<unknown>
+/**
+ * Adds a transport's bind-time connection info (`port`, `socket`, stdio
+ * streams) to the `{ meta }` context factory `attachRouter` calls on hello.
+ * A context value passes through unchanged.
+ */
+export function contextWithInfo<TCtx, TInfo extends object>(
+  context: TCtx | ((info: TInfo & { meta?: unknown }) => TCtx | Promise<TCtx>),
+  info: TInfo,
+): TCtx | ((info: { meta?: unknown }) => TCtx | Promise<TCtx>) {
+  if (typeof context !== 'function') {
+    return context
+  }
+  const factory = context as (
+    info: TInfo & { meta?: unknown },
+  ) => TCtx | Promise<TCtx>
+  return ({ meta }) =>
+    meta !== undefined ? factory({ ...info, meta }) : factory({ ...info })
 }
 
-function isAbortError(error: unknown): boolean {
-  return error instanceof Error && error.name === 'AbortError'
-}
-
-/** Envelope items only: a `ReadableStream` is bytes, not items; it stays a plain JSON value. */
-function isItemStream(value: unknown): value is AsyncIterable<unknown> {
-  return (
-    isAsyncIterable(value) &&
-    !(typeof ReadableStream !== 'undefined' && value instanceof ReadableStream)
-  )
-}
-
-function assertItem(value: unknown): void {
-  if (isItemStream(value)) {
-    throw new PFError({
-      code: 'BAD_REQUEST',
-      status: 400,
-      message: 'Nested streams are not supported',
-    })
-  }
-  if (typeof Blob !== 'undefined' && value instanceof Blob) {
-    throw new PFError({
-      code: 'BAD_REQUEST',
-      status: 400,
-      message: 'File values are not supported in streams',
-    })
-  }
-}
-
-async function dispatchCall(
-  router: ImplementedRouter,
-  frame: CallFrame,
-  rec: ServerInflight,
-  context: unknown,
-  interceptors?: readonly CallInterceptor[],
-  validation?: ProcedureValidation,
-): Promise<unknown> {
-  const procedure = lookupProcedure(router, frame.path)
-  if (!procedure) {
-    throw new PFError({
-      code: 'NOT_FOUND',
-      status: 404,
-      message: 'Procedure not found',
-    })
-  }
-  const rawInput =
-    frame.stream === true
-      ? rec.inputQueue
-      : frame.input === null
-        ? undefined
-        : frame.input
-  const runOpts: RunProcedureOptions = { signal: rec.ac.signal }
-  if (interceptors !== undefined && interceptors.length > 0) {
-    runOpts.interceptors = interceptors
-  }
-  if (validation) {
-    runOpts.validation = validation
-  }
-  return runProcedure(procedure, rawInput, context, runOpts)
-}
-
+/**
+ * The server-side multiplexer: one `MessageSession` over `duplex`, an
+ * `inflight` map of ids to `ServerCall`s, and the `PROTOCOL.md` "Multiplex"
+ * rules for routing each frame to one of them. Context is created once per
+ * connection in `onHello`; `onFrame` returns without awaiting `runProcedure`.
+ */
 export function attachRouter<TCtx = unknown>(
   options: AttachRouterOptions<TCtx>,
 ): { close(): void; ready: Promise<void> } {
   let context!: TCtx
-  const inflight = new Map<string, ServerInflight>()
+  const inflight = new Map<string, ServerCall>()
 
   const session = new MessageSession({
     duplex: options.duplex,
@@ -120,6 +66,8 @@ export function attachRouter<TCtx = unknown>(
     ...(options.helloTimeoutMs !== undefined
       ? { helloTimeoutMs: options.helloTimeoutMs }
       : {}),
+    // A value context settles without an await: the stdio duplex closes one
+    // microtask after a trailing partial line, and hello-ok must beat it.
     onHello: async (meta) => {
       try {
         if (typeof options.context === 'function') {
@@ -152,33 +100,13 @@ export function attachRouter<TCtx = unknown>(
     // handshake / close rejects ready; bind() does not await it
   })
 
-  function closeIterator(rec: ServerInflight): void {
-    const iterator = rec.iterator
-    delete rec.iterator
-    if (iterator?.return === undefined) {
-      return
-    }
-    void Promise.resolve(iterator.return()).then(
-      () => {},
-      (error) => {
-        if (isPFError(error) || isAbortError(error)) {
-          return
-        }
-        if (options.onError !== undefined) {
-          void options.onError(error)
-        }
-      },
-    )
-  }
-
-  function abortAll(): void {
-    for (const rec of inflight.values()) {
-      rec.cancelled = true
-      rec.ac.abort()
-      rec.inputQueue?.end()
-      closeIterator(rec)
-    }
-    inflight.clear()
+  const host: ServerCallHost = {
+    send: (frame) => session.send(frame),
+    settle: (id) => {
+      inflight.delete(id)
+    },
+    sendResultErr,
+    onError: options.onError,
   }
 
   function sendResultErr(id: string, error: WireError): void {
@@ -198,35 +126,7 @@ export function attachRouter<TCtx = unknown>(
     session.close()
   }
 
-  function sendOutbound(
-    rec: ServerInflight,
-    id: string,
-    frame: MessageFrame,
-  ): boolean {
-    if (rec.cancelled) {
-      return false
-    }
-    const sent = session.send(frame)
-    if (sent.ok) {
-      if (frame.type === 'result' || frame.type === 'done') {
-        inflight.delete(id)
-      }
-      return true
-    }
-    if (sent.reason === 'closed') {
-      return false
-    }
-    const error: WireError =
-      sent.reason === 'oversize'
-        ? { code: 'PAYLOAD_TOO_LARGE', message: 'Frame too large' }
-        : { code: 'INTERNAL', message: 'Internal server error' }
-    if (sent.reason === 'stringify' && options.onError !== undefined) {
-      void options.onError(new TypeError('stringify'))
-    }
-    sendResultErr(id, error)
-    return false
-  }
-
+  /** Invalid frame with a usable id: `BAD_REQUEST` unless that id is in flight. */
   function handleInvalid(info: { id: string; message: string }): void {
     if (inflight.has(info.id)) {
       return
@@ -235,152 +135,64 @@ export function attachRouter<TCtx = unknown>(
   }
 
   function handleFrame(frame: MessageFrame): void {
-    if (frame.type === 'call') {
-      if (inflight.has(frame.id)) {
+    switch (frame.type) {
+      case 'call':
+        startCall(frame)
+        return
+      case 'in-item':
+      case 'in-done':
+        inflight.get(frame.id)?.pushInput(frame)
+        return
+      case 'cancel': {
+        const call = inflight.get(frame.id)
+        if (call === undefined) {
+          return
+        }
+        call.cancel()
+        inflight.delete(frame.id)
         return
       }
-      const rec: ServerInflight = {
-        ac: new AbortController(),
-        cancelled: false,
-      }
-      if (frame.stream === true) {
-        rec.inputQueue = createPushQueue()
-      }
-      inflight.set(frame.id, rec)
-      void runCall(frame, rec)
-      return
-    }
-    if (frame.type === 'in-item' || frame.type === 'in-done') {
-      const rec = inflight.get(frame.id)
-      if (!rec?.inputQueue) {
+      case 'hello':
+      case 'hello-ok':
+      case 'hello-error':
+        session.close()
         return
-      }
-      if (frame.type === 'in-done') {
-        rec.inputQueue.end()
-      } else {
-        rec.inputQueue.push(frame.input)
-      }
-      return
+      default:
+        // wrong-direction frame: ignore for an in-flight id, else terminal BAD_REQUEST
+        if (inflight.has(frame.id)) {
+          return
+        }
+        sendResultErr(frame.id, {
+          code: 'BAD_REQUEST',
+          message: 'Unexpected frame',
+        })
     }
-    if (frame.type === 'cancel') {
-      const rec = inflight.get(frame.id)
-      if (!rec) {
-        return
-      }
-      rec.cancelled = true
-      rec.ac.abort()
-      rec.inputQueue?.end()
-      closeIterator(rec)
-      inflight.delete(frame.id)
-      return
-    }
-    if (
-      frame.type === 'hello' ||
-      frame.type === 'hello-ok' ||
-      frame.type === 'hello-error'
-    ) {
-      session.close()
-      return
-    }
+  }
+
+  /** A duplicate `call` for an in-flight id is ignored (never a second terminal frame). */
+  function startCall(frame: CallFrame): void {
     if (inflight.has(frame.id)) {
       return
     }
-    sendResultErr(frame.id, {
-      code: 'BAD_REQUEST',
-      message: 'Unexpected frame',
-    })
-  }
-
-  async function failCall(
-    rec: ServerInflight,
-    id: string,
-    error: unknown,
-  ): Promise<void> {
-    if (rec.cancelled) {
-      if (
-        !isPFError(error) &&
-        !isAbortError(error) &&
-        options.onError !== undefined
-      ) {
-        await options.onError(error)
-      }
-      return
-    }
-    if (!isPFError(error)) {
-      if (options.onError !== undefined) {
-        await options.onError(error)
-      }
-      if (rec.cancelled) {
-        return
-      }
-    }
-    sendOutbound(rec, id, {
-      type: 'result',
-      id,
-      ok: false,
-      error: toWireError(error),
-    })
-  }
-
-  async function emitStream(
-    rec: ServerInflight,
-    id: string,
-    output: AsyncIterable<unknown>,
-  ): Promise<void> {
-    const iterator = output[Symbol.asyncIterator]()
-    rec.iterator = iterator
-    try {
-      while (true) {
-        const next = await iterator.next()
-        if (rec.cancelled) {
-          return
-        }
-        if (next.done) {
-          sendOutbound(rec, id, { type: 'done', id })
-          return
-        }
-        assertItem(next.value)
-        const item: ItemFrame = { type: 'item', id }
-        if (next.value !== undefined) {
-          item.output = next.value
-        }
-        if (!sendOutbound(rec, id, item)) {
-          closeIterator(rec)
-          return
-        }
-      }
-    } catch (error) {
-      closeIterator(rec)
-      await failCall(rec, id, error)
-    }
-  }
-
-  async function runCall(frame: CallFrame, rec: ServerInflight): Promise<void> {
-    try {
-      const output = await dispatchCall(
+    const call = new ServerCall(frame.id, frame.stream === true, host)
+    inflight.set(frame.id, call)
+    void call.run(() =>
+      dispatchCall(
         options.router,
         frame,
-        rec,
+        call,
         context,
         options.interceptors,
         options.validation,
-      )
-      if (rec.cancelled) {
-        return
-      }
-      if (isItemStream(output)) {
-        await emitStream(rec, frame.id, output)
-        return
-      }
-      sendOutbound(rec, frame.id, {
-        type: 'result',
-        id: frame.id,
-        ok: true,
-        ...(output !== undefined ? { output } : {}),
-      })
-    } catch (error) {
-      await failCall(rec, frame.id, error)
+      ),
+    )
+  }
+
+  function abortAll(): void {
+    for (const call of inflight.values()) {
+      call.cancel()
     }
+    inflight.clear()
   }
 
   return {

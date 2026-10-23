@@ -86,7 +86,11 @@ describe('StdioHandler', () => {
   it('is not exported from the package root and index does not import stdio', async () => {
     const exported = await import('../src/index.js')
     expect(exported).not.toHaveProperty('StdioHandler')
-    expect(Object.keys(exported).sort()).toEqual(['PortHandler', 'WsHandler'])
+    expect(Object.keys(exported).sort()).toEqual([
+      'DuplexHandler',
+      'PortHandler',
+      'WsHandler',
+    ])
     const index = await readFile(join(srcDir, 'index.ts'), 'utf8')
     expect(index).not.toMatch(/stdio/)
     const shared = await readFile(join(srcDir, 'shared.ts'), 'utf8')

@@ -1,7 +1,8 @@
 import type { Readable, Writable } from 'node:stream'
 import { createStdioDuplex } from '@ts-pf/message/stdio'
 import type { ImplementedRouter } from '@ts-pf/server'
-import { attachRouter, type HandlerOptions } from './shared.js'
+import { DuplexHandler } from './duplex.js'
+import { contextWithInfo, type HandlerOptions } from './shared.js'
 
 // child (handler)
 // new StdioHandler(app).bind({ input: process.stdin, output: process.stdout }, { context })
@@ -9,12 +10,18 @@ import { attachRouter, type HandlerOptions } from './shared.js'
 // const child = spawn(cmd, { stdio: ['pipe', 'pipe', 'inherit'] })
 // new StdioLink({ input: child.stdout, output: child.stdin })
 
-/** `TCtx` is inferred from the router's context brand; see `FetchHandler`. */
+/** `DuplexHandler` over `createStdioDuplex`. `TCtx` is inferred from the router's context brand; see `FetchHandler`. */
 export class StdioHandler<TCtx = unknown> {
+  private readonly handler: DuplexHandler<TCtx>
+  private readonly maxFrameBytes: number | undefined
+
   constructor(
-    private readonly router: ImplementedRouter<unknown, TCtx>,
-    private readonly options?: HandlerOptions,
-  ) {}
+    router: ImplementedRouter<unknown, TCtx>,
+    options?: HandlerOptions,
+  ) {
+    this.handler = new DuplexHandler(router, options)
+    this.maxFrameBytes = options?.maxFrameBytes
+  }
 
   bind(
     streams: { input: Readable; output: Writable },
@@ -29,47 +36,15 @@ export class StdioHandler<TCtx = unknown> {
     },
   ): { close(): void } {
     const duplexOpts: { maxFrameBytes?: number } = {}
-    if (this.options?.maxFrameBytes !== undefined) {
-      duplexOpts.maxFrameBytes = this.options.maxFrameBytes
+    if (this.maxFrameBytes !== undefined) {
+      duplexOpts.maxFrameBytes = this.maxFrameBytes
     }
     const duplex = createStdioDuplex(streams, duplexOpts)
-    const context =
-      typeof opts.context === 'function'
-        ? (info: { meta?: unknown }) => {
-            const factory = opts.context as (info: {
-              input: Readable
-              output: Writable
-              meta?: unknown
-            }) => TCtx | Promise<TCtx>
-            return info.meta !== undefined
-              ? factory({
-                  input: streams.input,
-                  output: streams.output,
-                  meta: info.meta,
-                })
-              : factory({ input: streams.input, output: streams.output })
-          }
-        : opts.context
-
-    const attached = attachRouter({
-      duplex,
-      router: this.router,
-      context,
-      ...(this.options?.maxFrameBytes !== undefined
-        ? { maxFrameBytes: this.options.maxFrameBytes }
-        : {}),
-      ...(this.options?.helloTimeoutMs !== undefined
-        ? { helloTimeoutMs: this.options.helloTimeoutMs }
-        : {}),
-      ...(this.options?.onError !== undefined
-        ? { onError: this.options.onError }
-        : {}),
-      ...(this.options?.interceptors !== undefined
-        ? { interceptors: this.options.interceptors }
-        : {}),
-      ...(this.options?.validation !== undefined
-        ? { validation: this.options.validation }
-        : {}),
+    const attached = this.handler.bind(duplex, {
+      context: contextWithInfo(opts.context, {
+        input: streams.input,
+        output: streams.output,
+      }),
     })
 
     let closed = false
