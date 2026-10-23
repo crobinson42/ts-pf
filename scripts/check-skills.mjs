@@ -5,7 +5,7 @@
 // skills/README.md must list every published package skill path.
 // Code, skills, READMEs, and examples must not use oRPC names
 // (.agents/rules.md "Public names").
-import { readFile, readdir } from 'node:fs/promises'
+import { readdir, readFile } from 'node:fs/promises'
 import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -16,7 +16,15 @@ const errors = []
 // Core packages are the default install; everything else published under
 // packages/ is an opt-in capability the hub must name. message-server /
 // message-client are named by their family token "message".
-const CORE = new Set(['contract', 'protocol', 'server', 'client', 'http', 'server-http', 'client-http'])
+const CORE = new Set([
+  'contract',
+  'protocol',
+  'server',
+  'client',
+  'http',
+  'server-http',
+  'client-http',
+])
 
 // rules.md "Public names" → "Not" column. Word-boundary matches fail in code
 // and prose; `oc.` / `os.` only in code files (prose cannot be told apart
@@ -102,11 +110,15 @@ for (const entry of entries) {
   ]
   const keywords = Array.isArray(pkg.keywords) ? pkg.keywords : []
   if (keywords.length === 0) {
-    errors.push(`${entry.name}: package.json must include a non-empty keywords array`)
+    errors.push(
+      `${entry.name}: package.json must include a non-empty keywords array`,
+    )
   } else {
     for (const keyword of requiredKeywords) {
       if (!keywords.includes(keyword)) {
-        errors.push(`${entry.name}: package.json keywords must include "${keyword}"`)
+        errors.push(
+          `${entry.name}: package.json keywords must include "${keyword}"`,
+        )
       }
     }
   }
@@ -131,7 +143,9 @@ try {
   }
   for (const token of [...requiredTokens].sort()) {
     if (!haystack.includes(token)) {
-      errors.push(`${hubRel}: description must mention "${token}" (capability catalog)`)
+      errors.push(
+        `${hubRel}: description must mention "${token}" (capability catalog)`,
+      )
     }
   }
 } catch {
@@ -162,7 +176,8 @@ async function bannedNameTargets() {
   }
   for (const path of await walk(join(root, 'examples'))) {
     const rel = relative(root, path)
-    if (rel.split('/').includes('src') || rel.endsWith('/README.md')) files.push(path)
+    if (rel.split('/').includes('src') || rel.endsWith('/README.md'))
+      files.push(path)
   }
   return files
 }

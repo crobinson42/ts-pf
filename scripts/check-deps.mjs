@@ -10,7 +10,7 @@
 // - tests/**/*.ts (and *.test.ts under src) imports are allowed in prod or
 //   dev and declared in dependencies or devDependencies
 // - the declared prod graph has no cycle
-import { readFile, readdir } from 'node:fs/promises'
+import { readdir, readFile } from 'node:fs/promises'
 import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -67,10 +67,25 @@ const DEV = {
 // covers dependencies / peerDependencies / src imports; `any` also covers
 // devDependencies and tests. First match wins.
 const NEVER = [
-  { from: 'contract', to: 'protocol', scope: 'any', why: 'contract and protocol are siblings' },
-  { from: 'protocol', to: 'contract', scope: 'any', why: 'contract and protocol are siblings' },
+  {
+    from: 'contract',
+    to: 'protocol',
+    scope: 'any',
+    why: 'contract and protocol are siblings',
+  },
+  {
+    from: 'protocol',
+    to: 'contract',
+    scope: 'any',
+    why: 'contract and protocol are siblings',
+  },
   { from: 'contract', to: 'http', scope: 'any', why: 'no HTTP in contract' },
-  { from: 'server', to: 'client', scope: 'any', why: 'server never depends on client' },
+  {
+    from: 'server',
+    to: 'client',
+    scope: 'any',
+    why: 'server never depends on client',
+  },
   {
     from: 'client',
     to: 'server',
@@ -156,13 +171,16 @@ function closure(graph, start) {
 
 function neverReason(from, to, prod) {
   const rule = NEVER.find(
-    (entry) => entry.from === from && entry.to === to && (prod || entry.scope === 'any'),
+    (entry) =>
+      entry.from === from && entry.to === to && (prod || entry.scope === 'any'),
   )
   return rule ? `: ${rule.why}` : ''
 }
 
 function violation(pkg, kind, specifier, file, line, reason) {
-  errors.push(`check-deps: ${pkg} ${kind} ${specifier} (${file}:${line}) ${reason}`)
+  errors.push(
+    `check-deps: ${pkg} ${kind} ${specifier} (${file}:${line}) ${reason}`,
+  )
 }
 
 function lineOf(text, index) {
@@ -173,7 +191,7 @@ function lineOf(text, index) {
 
 function lineOfKey(text, section, key) {
   const sectionIndex = text.indexOf(`"${section}"`)
-  const keyIndex = text.indexOf(`"${key}"`, sectionIndex < 0 ? 0 : sectionIndex)
+  const keyIndex = text.indexOf(`"${key}"`, Math.max(0, sectionIndex))
   return keyIndex < 0 ? 1 : lineOf(text, keyIndex)
 }
 
@@ -199,7 +217,8 @@ async function walk(dir, out = []) {
     if (entry.name === 'node_modules' || entry.name === 'dist') continue
     const path = join(dir, entry.name)
     if (entry.isDirectory()) await walk(path, out)
-    else if (SOURCE_EXT.test(entry.name) && !DECLARATION_EXT.test(entry.name)) out.push(path)
+    else if (SOURCE_EXT.test(entry.name) && !DECLARATION_EXT.test(entry.name))
+      out.push(path)
   }
   return out
 }
@@ -218,25 +237,40 @@ for (const entry of await readdir(packagesDir, { withFileTypes: true })) {
   if (!pkg.name?.startsWith(SCOPE)) continue
   const short = pkg.name.slice(SCOPE.length)
   if (short !== entry.name) {
-    errors.push(`check-deps: packages/${entry.name} is named ${pkg.name} (expected @ts-pf/${entry.name})`)
+    errors.push(
+      `check-deps: packages/${entry.name} is named ${pkg.name} (expected @ts-pf/${entry.name})`,
+    )
   }
   const section = (kind) =>
     Object.keys(pkg[kind] ?? {})
       .filter((name) => name.startsWith(SCOPE))
-      .map((name) => ({ name, short: name.slice(SCOPE.length), line: lineOfKey(text, kind, name) }))
+      .map((name) => ({
+        name,
+        short: name.slice(SCOPE.length),
+        line: lineOfKey(text, kind, name),
+      }))
   packages.set(entry.name, {
     dir: entry.name,
     file: `packages/${entry.name}/package.json`,
-    prod: PROD_KINDS.flatMap((kind) => section(kind).map((dep) => ({ ...dep, kind }))),
-    dev: section('devDependencies').map((dep) => ({ ...dep, kind: 'devDependencies' })),
+    prod: PROD_KINDS.flatMap((kind) =>
+      section(kind).map((dep) => ({ ...dep, kind })),
+    ),
+    dev: section('devDependencies').map((dep) => ({
+      ...dep,
+      kind: 'devDependencies',
+    })),
   })
 }
 
 for (const name of Object.keys(PROD)) {
-  if (!packages.has(name)) errors.push(`check-deps: PROD lists ${name} but packages/${name} does not exist`)
+  if (!packages.has(name))
+    errors.push(
+      `check-deps: PROD lists ${name} but packages/${name} does not exist`,
+    )
 }
 for (const name of Object.keys(DEV)) {
-  if (!PROD[name]) errors.push(`check-deps: DEV lists ${name} but PROD does not`)
+  if (!PROD[name])
+    errors.push(`check-deps: DEV lists ${name} but PROD does not`)
 }
 for (const name of packages.keys()) {
   if (!PROD[name]) {
@@ -249,13 +283,23 @@ for (const name of packages.keys()) {
 for (const info of packages.values()) {
   if (!PROD[info.dir]) continue
   const allowedProd = closure(PROD, info.dir)
-  const allowedDev = new Set([...allowedProd, ...closure({ ...PROD, [info.dir]: DEV[info.dir] ?? [] }, info.dir)])
+  const allowedDev = new Set([
+    ...allowedProd,
+    ...closure({ ...PROD, [info.dir]: DEV[info.dir] ?? [] }, info.dir),
+  ])
   const declaredProd = new Set(info.prod.map((dep) => dep.short))
   const declaredDev = new Set(info.dev.map((dep) => dep.short))
 
   for (const dep of info.prod) {
     if (dep.short === info.dir) {
-      violation(info.dir, dep.kind, dep.name, info.file, dep.line, 'depends on itself')
+      violation(
+        info.dir,
+        dep.kind,
+        dep.name,
+        info.file,
+        dep.line,
+        'depends on itself',
+      )
     } else if (!allowedProd.has(dep.short)) {
       violation(
         info.dir,
@@ -306,7 +350,14 @@ for (const info of packages.values()) {
             `not allowed by rules.md DAG${neverReason(info.dir, short, false)}`,
           )
         } else if (!declaredProd.has(short) && !declaredDev.has(short)) {
-          violation(info.dir, kind, specifier, rel, line, `not declared in ${info.file} dependencies or devDependencies`)
+          violation(
+            info.dir,
+            kind,
+            specifier,
+            rel,
+            line,
+            `not declared in ${info.file} dependencies or devDependencies`,
+          )
         }
         continue
       }
@@ -321,7 +372,14 @@ for (const info of packages.values()) {
         )
       } else if (!declaredProd.has(short)) {
         const where = declaredDev.has(short) ? 'only in devDependencies' : 'not'
-        violation(info.dir, kind, specifier, rel, line, `${where} declared in ${info.file} dependencies`)
+        violation(
+          info.dir,
+          kind,
+          specifier,
+          rel,
+          line,
+          `${where} declared in ${info.file} dependencies`,
+        )
       }
     }
   }
@@ -330,7 +388,8 @@ for (const info of packages.values()) {
 // Cycle detection on the declared prod graph.
 {
   const graph = {}
-  for (const info of packages.values()) graph[info.dir] = info.prod.map((dep) => dep.short)
+  for (const info of packages.values())
+    graph[info.dir] = info.prod.map((dep) => dep.short)
   const state = new Map()
   const path = []
   const visit = (node) => {
@@ -338,7 +397,9 @@ for (const info of packages.values()) {
     if (mark === 'done') return
     if (mark === 'active') {
       const cycle = [...path.slice(path.indexOf(node)), node]
-      errors.push(`check-deps: cycle in declared dependencies: ${cycle.map((n) => `@ts-pf/${n}`).join(' -> ')}`)
+      errors.push(
+        `check-deps: cycle in declared dependencies: ${cycle.map((n) => `@ts-pf/${n}`).join(' -> ')}`,
+      )
       return
     }
     state.set(node, 'active')

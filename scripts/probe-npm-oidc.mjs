@@ -4,7 +4,7 @@
 //
 // Packages are discovered from packages/*/package.json (non-private), the
 // same set scripts/trust-github-publishers.sh creates publishers for.
-import { readFile, readdir } from 'node:fs/promises'
+import { readdir, readFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -30,7 +30,8 @@ function decodeJwtPayload(token) {
 function redact(value) {
   if (value && typeof value === 'object') {
     const copy = { ...value }
-    if (typeof copy.token === 'string') copy.token = `(redacted, ${copy.token.length} chars)`
+    if (typeof copy.token === 'string')
+      copy.token = `(redacted, ${copy.token.length} chars)`
     return copy
   }
   return value
@@ -42,7 +43,9 @@ async function publishedPackages() {
     if (!entry.isDirectory()) continue
     let pkg
     try {
-      pkg = JSON.parse(await readFile(join(packagesDir, entry.name, 'package.json'), 'utf8'))
+      pkg = JSON.parse(
+        await readFile(join(packagesDir, entry.name, 'package.json'), 'utf8'),
+      )
     } catch {
       continue
     }
@@ -71,7 +74,9 @@ async function githubIdToken() {
   })
   const body = await res.json().catch(() => ({}))
   if (!res.ok || typeof body.value !== 'string') {
-    fail(`GitHub OIDC request failed: HTTP ${res.status} ${JSON.stringify(body)}`)
+    fail(
+      `GitHub OIDC request failed: HTTP ${res.status} ${JSON.stringify(body)}`,
+    )
   }
   return body.value
 }
@@ -100,7 +105,9 @@ function printClaims(payload) {
 }
 
 function hint(payload, failures) {
-  const workflowFile = String(payload.job_workflow_ref ?? payload.workflow_ref ?? '')
+  const workflowFile = String(
+    payload.job_workflow_ref ?? payload.workflow_ref ?? '',
+  )
     .split('@')[0]
     .split('/')
     .pop()
@@ -108,7 +115,9 @@ function hint(payload, failures) {
   const lines = [
     '',
     `npm OIDC exchange failed for ${failures.length} package(s):`,
-    ...failures.map(({ pkg, status, body }) => `  ${pkg}: HTTP ${status} ${body}`),
+    ...failures.map(
+      ({ pkg, status, body }) => `  ${pkg}: HTTP ${status} ${body}`,
+    ),
     '',
     'Trusted publisher on npmjs.com must match this identity (filename only, case-sensitive):',
     `  Organization or user: ${payload.repository_owner}`,
@@ -124,7 +133,10 @@ function hint(payload, failures) {
     'Local (interactive 2FA; a bypass-2FA GAT cannot do this): bash scripts/trust-github-publishers.sh',
   ]
   const texts = failures.map((f) => f.body)
-  if (failures.some((f) => f.status === 404) || texts.some((t) => /package not found/i.test(t))) {
+  if (
+    failures.some((f) => f.status === 404) ||
+    texts.some((t) => /package not found/i.test(t))
+  ) {
     lines.push(
       '',
       'HTTP 404 "package not found" does not mean the npm package is missing.',
@@ -132,7 +144,10 @@ function hint(payload, failures) {
     )
   }
   if (texts.some((t) => /stage/i.test(t) && !/publish/i.test(t))) {
-    lines.push('', 'This looks like a stage-only publisher. Check "allow npm publish".')
+    lines.push(
+      '',
+      'This looks like a stage-only publisher. Check "allow npm publish".',
+    )
   }
   return lines.join('\n')
 }
@@ -140,7 +155,8 @@ function hint(payload, failures) {
 // NPM_ID_TOKEN (manual runs) is reused for every package. In Actions a fresh
 // GitHub token is requested per exchange, like `npm publish` does.
 const fixedToken = process.env.NPM_ID_TOKEN || null
-const nextToken = () => (fixedToken ? Promise.resolve(fixedToken) : githubIdToken())
+const nextToken = () =>
+  fixedToken ? Promise.resolve(fixedToken) : githubIdToken()
 
 const packages = await publishedPackages()
 const firstToken = await nextToken()
@@ -163,9 +179,12 @@ for (const pkg of packages) {
     parsed = raw
   }
   if (res.ok && parsed && typeof parsed === 'object' && parsed.token) {
-    console.log(`ok: ${pkg} (HTTP ${res.status}, token_type=${parsed.token_type ?? 'unknown'})`)
+    console.log(
+      `ok: ${pkg} (HTTP ${res.status}, token_type=${parsed.token_type ?? 'unknown'})`,
+    )
   } else {
-    const body = typeof parsed === 'string' ? parsed : JSON.stringify(redact(parsed))
+    const body =
+      typeof parsed === 'string' ? parsed : JSON.stringify(redact(parsed))
     console.log(`FAIL: ${pkg} (HTTP ${res.status}) ${body}`)
     failures.push({ pkg, status: res.status, body })
   }
