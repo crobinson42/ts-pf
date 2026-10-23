@@ -6,7 +6,12 @@ import {
   MessageSession,
   type WireError,
 } from '@ts-pf/message'
-import { isPFError, PFError } from '@ts-pf/protocol'
+import {
+  isAsyncIterable,
+  isPFError,
+  PFError,
+  toWireError,
+} from '@ts-pf/protocol'
 import {
   type CallInterceptor,
   type ImplementedRouter,
@@ -15,7 +20,6 @@ import {
   type RunProcedureOptions,
   runProcedure,
 } from '@ts-pf/server'
-import { isAsyncIterable } from './is-async-iterable.js'
 import { createPushQueue, type PushQueue } from './push-queue.js'
 
 export type HandlerOptions = {
@@ -43,8 +47,16 @@ function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError'
 }
 
+/** Envelope items only: a `ReadableStream` is bytes, not items; it stays a plain JSON value. */
+function isItemStream(value: unknown): value is AsyncIterable<unknown> {
+  return (
+    isAsyncIterable(value) &&
+    !(typeof ReadableStream !== 'undefined' && value instanceof ReadableStream)
+  )
+}
+
 function assertItem(value: unknown): void {
-  if (isAsyncIterable(value)) {
+  if (isItemStream(value)) {
     throw new PFError({
       code: 'BAD_REQUEST',
       status: 400,
@@ -293,26 +305,19 @@ export function attachRouter<TCtx = unknown>(
       }
       return
     }
-    if (isPFError(error)) {
-      sendOutbound(rec, id, {
-        type: 'result',
-        id,
-        ok: false,
-        error: error.toJSON(),
-      })
-      return
-    }
-    if (options.onError !== undefined) {
-      await options.onError(error)
-    }
-    if (rec.cancelled) {
-      return
+    if (!isPFError(error)) {
+      if (options.onError !== undefined) {
+        await options.onError(error)
+      }
+      if (rec.cancelled) {
+        return
+      }
     }
     sendOutbound(rec, id, {
       type: 'result',
       id,
       ok: false,
-      error: { code: 'INTERNAL', message: 'Internal server error' },
+      error: toWireError(error),
     })
   }
 
@@ -362,7 +367,7 @@ export function attachRouter<TCtx = unknown>(
       if (rec.cancelled) {
         return
       }
-      if (isAsyncIterable(output)) {
+      if (isItemStream(output)) {
         await emitStream(rec, frame.id, output)
         return
       }

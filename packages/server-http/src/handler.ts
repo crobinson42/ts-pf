@@ -2,12 +2,18 @@ import {
   httpStatus,
   JSONCodec,
   PROTOCOL_HEADER,
+  PROTOCOL_HTTP_STATUS,
   parseProcedurePath,
   type RpcBodySource,
   type RpcCodec,
   type RpcEncodedBody,
 } from '@ts-pf/http'
-import { isPFError, PFError, PROTOCOL_VERSION } from '@ts-pf/protocol'
+import {
+  isPFError,
+  PFError,
+  PROTOCOL_VERSION,
+  toWireError,
+} from '@ts-pf/protocol'
 import {
   type CallInterceptor,
   type ImplementedRouter,
@@ -172,17 +178,11 @@ export class FetchHandler<TCtx = unknown> {
       } else {
         this.logError(error, path)
       }
-      const failure = isPFError(error)
-        ? error
-        : new PFError({
-            code: 'INTERNAL',
-            message: 'Internal server error',
-          })
       return {
         matched: true,
         response: await this.applyOnResponse(
           inbound,
-          await this.errorResponse(failure),
+          await this.errorResponse(error),
           context,
         ),
       }
@@ -231,10 +231,11 @@ export class FetchHandler<TCtx = unknown> {
     return encodedResponse(await this.codec.encodeSuccess(output), 200)
   }
 
-  private async errorResponse(error: PFError): Promise<Response> {
+  /** `toWireError` maps an unknown throw to `INTERNAL`; its status follows. */
+  private async errorResponse(error: unknown): Promise<Response> {
     return encodedResponse(
-      await this.codec.encodeFailure(error.toJSON()),
-      httpStatus(error),
+      await this.codec.encodeFailure(toWireError(error)),
+      isPFError(error) ? httpStatus(error) : PROTOCOL_HTTP_STATUS.INTERNAL,
     )
   }
 }

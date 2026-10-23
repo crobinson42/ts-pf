@@ -5,12 +5,13 @@ import {
   type RpcEncodedBody,
 } from '@ts-pf/http'
 import {
-  isPFError,
   PFError,
+  type RpcFailure,
   type RpcRequest,
   type RpcResponse,
+  toWireError,
 } from '@ts-pf/protocol'
-import { isAsyncIterable } from './is-async-iterable.js'
+import { isItemStream } from './item-stream.js'
 import {
   badRequest,
   encodeJsonl,
@@ -51,7 +52,7 @@ async function jsonText(encoded: RpcEncodedBody): Promise<string> {
 }
 
 function assertItem(value: unknown): void {
-  if (isAsyncIterable(value)) {
+  if (isItemStream(value)) {
     throw badRequest('Nested streams are not supported')
   }
   if (typeof Blob !== 'undefined' && value instanceof Blob) {
@@ -60,7 +61,7 @@ function assertItem(value: unknown): void {
 }
 
 function assertNoNestedStreams(value: unknown, atRoot: boolean): void {
-  if (isAsyncIterable(value)) {
+  if (isItemStream(value)) {
     if (!atRoot) {
       throw badRequest('Nested streams are not supported')
     }
@@ -92,7 +93,7 @@ export class StreamCodec implements RpcCodec {
   }
 
   async encodeRequest(req: RpcRequest): Promise<RpcEncodedBody> {
-    if (isAsyncIterable(req.input)) {
+    if (isItemStream(req.input)) {
       return {
         contentType: JSONL_CONTENT_TYPE,
         body: encodeJsonl(
@@ -101,7 +102,7 @@ export class StreamCodec implements RpcCodec {
             assertItem(item)
             return jsonText(await this.inner.encodeRequest({ input: item }))
           },
-          (error) => this.failureLine(error),
+          failureLine,
         ),
       }
     }
@@ -126,7 +127,7 @@ export class StreamCodec implements RpcCodec {
   }
 
   async encodeSuccess<T>(output: T): Promise<RpcEncodedBody> {
-    if (isAsyncIterable(output)) {
+    if (isItemStream(output)) {
       return {
         contentType: JSONL_CONTENT_TYPE,
         body: encodeJsonl(
@@ -135,7 +136,7 @@ export class StreamCodec implements RpcCodec {
             assertItem(item)
             return jsonText(await this.inner.encodeSuccess(item))
           },
-          (error) => this.failureLine(error),
+          failureLine,
         ),
       }
     }
@@ -193,21 +194,10 @@ export class StreamCodec implements RpcCodec {
       yield decoded.output
     }
   }
+}
 
-  private failureLine(error: unknown): string {
-    if (isPFError(error)) {
-      const payload: { code: string; message: string; data?: unknown } = {
-        code: error.code,
-        message: error.message,
-      }
-      if (error.data !== undefined) {
-        payload.data = error.data
-      }
-      return JSON.stringify({ ok: false, error: payload })
-    }
-    return JSON.stringify({
-      ok: false,
-      error: { code: 'INTERNAL', message: 'Internal server error' },
-    })
-  }
+/** In-band failure after the stream started: an unknown throw is `INTERNAL`. */
+function failureLine(error: unknown): string {
+  const failure: RpcFailure = { ok: false, error: toWireError(error) }
+  return JSON.stringify(failure)
 }

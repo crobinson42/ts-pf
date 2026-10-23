@@ -1,3 +1,4 @@
+import { isAsyncIterable } from '@ts-pf/protocol'
 import type { CallInterceptor } from './call-interceptor.js'
 import type { CallPlugin } from './plugin.js'
 
@@ -15,11 +16,7 @@ function defaultKey(ctx: {
   path: string[]
   input: unknown
 }): string | undefined {
-  if (
-    typeof ctx.input === 'object' &&
-    ctx.input !== null &&
-    Symbol.asyncIterator in ctx.input
-  ) {
+  if (isAsyncIterable(ctx.input)) {
     return undefined
   }
   try {
@@ -113,11 +110,7 @@ export class DedupePlugin implements CallPlugin {
     }
 
     this.intercept = async (ctx) => {
-      if (
-        typeof ctx.input === 'object' &&
-        ctx.input !== null &&
-        Symbol.asyncIterator in ctx.input
-      ) {
+      if (isAsyncIterable(ctx.input)) {
         return ctx.next()
       }
       const key = keyFn({ path: ctx.path, input: ctx.input })

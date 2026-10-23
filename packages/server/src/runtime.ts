@@ -5,7 +5,7 @@ import {
   isContractProcedure,
   validateSchema,
 } from '@ts-pf/contract'
-import { PFError } from '@ts-pf/protocol'
+import { isAsyncIterable, PFError } from '@ts-pf/protocol'
 import {
   type CallInterceptor,
   runCallInterceptors,
@@ -312,12 +312,6 @@ export async function runProcedure(
         return await finalizeDeclaredError(error, map)
       }
     },
-  )
-}
-
-function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
-  return (
-    typeof value === 'object' && value !== null && Symbol.asyncIterator in value
   )
 }
 
