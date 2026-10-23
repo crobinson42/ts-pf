@@ -1,3 +1,4 @@
+export { type Defined, defined } from './defined.js'
 export {
   type PFResultPromise,
   PROTOCOL_VERSION,

@@ -27,13 +27,14 @@ Envelope: `{ input }`, `{ ok: true, output }`, `{ ok: false, error: { code, mess
 
 `PFError.status?: number` is transport metadata, not identity. It is the HTTP response status on a unary Fetch failure, `undefined` on message transports and after a stream has started, and `0` on local failures. Guard it (`err.status ?? 400`); switch on `code`. The HTTP default (400 for a code with no status) is applied by `httpStatus()` in `@ts-pf/http`, not by the constructor.
 
-Writing a codec or transport adapter: `toWireError(error)` is the failure envelope's `error` for any thrown value (`PFError` → `toJSON()`; anything else → fixed `{ code: 'INTERNAL', message: 'Internal server error' }`, no stack, no message leak — log the original value yourself). `isAsyncIterable(value)` is the shared "is this a stream" predicate (object or function with a `Symbol.asyncIterator` function). A `ReadableStream` is async-iterable on Node; a site that wants bytes excludes it explicitly.
+Writing a codec or transport adapter: `toWireError(error)` is the failure envelope's `error` for any thrown value (`PFError` → `toJSON()`; anything else → fixed `{ code: 'INTERNAL', message: 'Internal server error' }`, no stack, no message leak — log the original value yourself). `isAsyncIterable(value)` is the shared "is this a stream" predicate (object or function with a `Symbol.asyncIterator` function). A `ReadableStream` is async-iterable on Node; a site that wants bytes excludes it explicitly. `defined({ signal, headers })` is the shared way to forward optional fields under `exactOptionalPropertyTypes`: it returns a copy without the `undefined`-valued keys, typed so those keys are optional (`{ ...required, ...defined({ signal }) }`).
 
 ## API
 
 - `PFError`, `PFErrorInit`, `isPFError`, `localFailure`, `ProtocolErrorCode`
 - `PROTOCOL_VERSION`, `RpcRequest`, `RpcResponse`, `RpcSuccess`, `RpcFailure`, `PFResultPromise`
 - `toWireError`, `isAsyncIterable`
+- `defined`, `Defined` — `defined(obj)` drops the keys whose value is `undefined`, so `{ ...required, ...defined({ signal }) }` builds an `exactOptionalPropertyTypes` option bag without one spread per field
 
 ## Pair with
 
