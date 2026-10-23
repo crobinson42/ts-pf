@@ -30,10 +30,10 @@ describe('bindClient types', () => {
       ContractClient<typeof contract>
     >()
     expectTypeOf<Bound['planet']['list']>().parameters.toEqualTypeOf<
-      [{ signal?: AbortSignal }?]
+      [({ signal?: AbortSignal } | undefined)?]
     >()
     expectTypeOf<Bound['planet']['find']>().parameters.toEqualTypeOf<
-      [{ id: number }, { signal?: AbortSignal }?]
+      [{ id: number }, ({ signal?: AbortSignal } | undefined)?]
     >()
   })
 

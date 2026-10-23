@@ -68,7 +68,7 @@ Every PR that changes a published `packages/*` package includes a changeset. Run
 npx changeset
 ```
 
-Pick the packages, the bump (`patch` / `minor` / `major`), and write the summary as a changelog entry a consumer will read. Anything under `packages/<pkg>/` counts as a package change, including its `README.md` and `skills/` (both ship in the tarball, and CI's `changeset status` fails without a changeset); root docs, `scripts/`, and examples do not. Do not run `changeset pre enter` and do not add `.changeset/pre.json`.
+Pick the packages, the bump (`patch` / `minor` / `major`), and write the summary as a changelog entry a consumer will read. Anything under `packages/<pkg>/` counts as a package change, including its `README.md` and `skills/` (both ship in the tarball, and CI's `changeset status` fails without a changeset); root docs, `scripts/`, and examples do not. A change under `packages/` that ships nothing (tests, devDependencies) still needs one: `npx changeset add --empty` satisfies `changeset status` without a release. Do not run `changeset pre enter` and do not add `.changeset/pre.json`.
 
 ### Adding a package
 

@@ -18,7 +18,7 @@ npm install @ts-pf/contract @ts-pf/server @ts-pf/server-http @ts-pf/client @ts-p
 
 ### TypeScript setup
 
-The packages are ESM and ship `exports` only, so `tsconfig.json` needs `"moduleResolution": "node16"`, `"nodenext"`, or `"bundler"` (the classic `"node"` resolver cannot see them). `FetchHandler` and `FetchLink` are typed against the Fetch `Request` / `Response` globals: on a Node project that is `"lib": ["ES2022", "DOM", "DOM.AsyncIterable"]`, or Node 22+ globals through `@types/node` (`"types": ["node"]`). Bundler and Workers projects usually have both already.
+The packages are ESM and ship `exports` only, so `tsconfig.json` needs `"moduleResolution": "node16"`, `"nodenext"`, or `"bundler"` (the classic `"node"` resolver cannot see them). The types reference `AbortSignal` (`CallOptions.signal`), and `FetchHandler` and `FetchLink` are typed against the Fetch `Request` / `Response` globals: on a Node project that is `"lib": ["ES2022", "DOM", "DOM.AsyncIterable"]`, or Node 22+ globals through `@types/node` listed in `"types": ["node"]` (TypeScript 6 no longer loads `@types/*` automatically). Bundler and Workers projects usually have both already.
 
 ## Packages
 
