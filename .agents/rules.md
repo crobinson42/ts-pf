@@ -177,4 +177,4 @@ Live in `examples/`: `hello` (Fetch), `codegen` (split-repo `emit` / `createClie
 npm run lint && npm run lint:root && npm run check:skills && npm run check:deps && npm run type-check && npm test && npm run build && npm run check:exports && npm run check:snippets
 ```
 
-Wire changes must update `packages/protocol/PROTOCOL.md`. Public API / name / happy-path changes must update `packages/<pkg>/skills/ts-pf-<pkg>/SKILL.md`. Opt-in happy-path changes also update the matching snippet on `packages/contract/skills/ts-pf-app/SKILL.md`.
+Wire changes must update `packages/protocol/PROTOCOL.md`. Public API / name / happy-path changes must update `packages/<pkg>/skills/ts-pf-<pkg>/SKILL.md` and the `## API` list in `packages/<pkg>/README.md` (`check:skills` cross-asserts them). Opt-in happy-path changes also update the matching snippet on `packages/contract/skills/ts-pf-app/SKILL.md`.

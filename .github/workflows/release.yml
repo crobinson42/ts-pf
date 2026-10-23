@@ -57,11 +57,14 @@ jobs:
           echo "OIDC request URL set: ${ACTIONS_ID_TOKEN_REQUEST_URL:+yes}"
       - run: npm ci
       - run: npm run lint
+      - run: npm run lint:root
       - run: npm run check:skills
+      - run: npm run check:deps
       - run: npm run type-check
       - run: npm test
       - run: npm run build
       - run: npm run check:exports
+      - run: npm run check:snippets
       - run: |
           unset NODE_AUTH_TOKEN NPM_TOKEN
           node scripts/probe-npm-oidc.mjs
