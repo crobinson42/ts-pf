@@ -25,11 +25,32 @@ new StdioHandler(app).bind(
 )
 ```
 
+Bring your own duplex. Any pipe that moves JSON text (Electron IPC, a Chrome runtime port, WebTransport, a Unix socket) is a `Duplex` from `@ts-pf/message` plus `DuplexHandler`; `PortHandler` / `WsHandler` / `StdioHandler` are exactly that over their built-in adapters. The handler owns the handshake, multiplexing, and cancel:
+
+```ts
+import type { Duplex } from '@ts-pf/message'
+import { DuplexHandler } from '@ts-pf/message-server'
+
+declare const ipc: {
+  send(text: string): void
+  on(event: 'message' | 'close', handler: (text: string) => void): () => void
+  close(): void
+}
+
+const duplex: Duplex = {
+  send: (text) => ipc.send(text),
+  onMessage: (handler) => ipc.on('message', handler),
+  onClose: (handler) => ipc.on('close', handler),
+  close: () => ipc.close(),
+}
+new DuplexHandler(app).bind(duplex, { context: { db } })
+```
+
 User owns listen / upgrade / spawn / Worker bootstrap. This package never depends on `@ts-pf/client`.
 
 Wire spec: [`packages/protocol/PROTOCOL.md`](../protocol/PROTOCOL.md) (Message transports).
 
 ## API
 
-- `PortHandler`, `WsHandler`, `HandlerOptions`, `WebSocketLike`
+- `DuplexHandler`, `PortHandler`, `WsHandler`, `HandlerOptions`, `WebSocketLike`
 - `StdioHandler` from `./stdio` only
