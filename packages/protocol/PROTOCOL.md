@@ -571,7 +571,7 @@ Nested streams and `File` / `Blob` values inside items are `BAD_REQUEST`.
 { "type": "in-done", "id": "1" }
 ```
 
-The server must accept `in-item` for that id as soon as `call` is accepted (the next-turn item must not be lost). Backpressure is implicit (JS queue / pipe buffer). No credit-based flow control in v1. Cancel of the call aborts both sides.
+The server must accept `in-item` for that id as soon as `call` is accepted (the next-turn item must not be lost). Backpressure is the transport's; see "Backpressure" under Multiplex. No credit-based flow control in v1. Cancel of the call aborts both sides.
 
 ### Cancel and mid-stream errors
 

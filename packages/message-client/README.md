@@ -58,7 +58,7 @@ import { WsLink } from '@ts-pf/message-client'
 const link = new WsLink({
   url: 'wss://example.com/rpc',
   WebSocket,
-  backpressure: { highWaterMark: 1024 * 1024, drainTimeout: 30_000, onStall: false }, // defaults shown; onStall default is one console.warn
+  backpressure: { highWaterMark: 1024 * 1024, drainTimeout: 30_000, onStall: false }, // defaults shown; onStall default is one console.warn on 'aborted'
 })
 const client = createClient<typeof contract>(link)
 ```

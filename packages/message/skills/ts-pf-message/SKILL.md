@@ -26,7 +26,7 @@ Bindings live in `@ts-pf/message-server` / `@ts-pf/message-client`. Inject a `We
 
 Backpressure is the pipe's job, not the wire's. A `Duplex.send` may return a promise ("above the write high-water mark, do not pull the next item until this resolves"; it must settle on close) and may implement `pause()` / `resume()` (stop delivering `onMessage` while a receiver's per-call queue is over its mark; connection-wide). stdio does both from the Node streams; `createWsDuplex(socket, { highWaterMark })` (default 1 MiB) polls `bufferedAmount` every 10 ms and forwards the socket's `pause` / `resume` when present (npm `ws`); `createPortDuplex` reports nothing (a `MessagePort` has no buffer signal). `createMemoryDuplex({ highWaterMark })` simulates a slow peer in tests.
 
-`BackpressureOptions` is the shared `{ highWaterMark?, drainTimeout?, onStall? }` that `HandlerOptions.backpressure` / `LinkOptions.backpressure` take (defaults 1 MiB / 30 s / one `console.warn`; `false` silences; `0` waits forever; `Infinity` unbounds). `resolveBackpressure` validates it (`TypeError` naming the option); `DrainWaiter` is the per-call wait the bindings use (`onStall('paused')` once, `onStall('aborted')` on timeout) — a custom `Duplex` does not need either.
+`BackpressureOptions` is the shared `{ highWaterMark?, drainTimeout?, onStall? }` that `HandlerOptions.backpressure` / `LinkOptions.backpressure` take (defaults 1 MiB / 30 s / one `console.warn` on `aborted` only; `false` silences; `0` waits forever; `Infinity` unbounds). `onStall` sees `paused` once per call and `aborted` on timeout; a throw from it is swallowed. The bindings validate it (`TypeError` naming the option) and share an `@internal` per-call drain wait — a custom `Duplex` needs neither.
 
 `localFailure` is a deprecated re-export; import it from `@ts-pf/protocol`.
 
@@ -35,7 +35,7 @@ Backpressure is the pipe's job, not the wire's. A `Duplex.send` may return a pro
 - `MessageSession`, `Duplex`, `encodeFrame`, `decodeFrame`
 - `createMemoryDuplex`, `createPortDuplex`, `createWsDuplex`, `WebSocketLike`
 - `createPushQueue`, `PushQueue`, `PushQueueOptions`
-- `BackpressureOptions`, `StallInfo`, `resolveBackpressure`, `Backpressure`, `DrainWaiter`, `DrainOutcome`
+- `BackpressureOptions`, `StallInfo`
 - `errorFromEnvelope`; `localFailure` (deprecated — use `@ts-pf/protocol`)
 - `createStdioDuplex` from `./stdio` only
 
