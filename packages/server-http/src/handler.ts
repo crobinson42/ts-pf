@@ -31,7 +31,7 @@ export type FetchHandlerOnError = (
 /**
  * `TCtx` is inferred from the router's context brand (the `$context<C>()`
  * type behind `impl.router()`), so `handle(request, { context })` is checked
- * against it. A hand-built tree has no brand and `TCtx` is `unknown`. An
+ * against it. A tree not produced by `impl.router()` infers `unknown`. An
  * explicit `new FetchHandler<AppCtx>(app)` is still accepted when `AppCtx`
  * satisfies the router's context.
  */

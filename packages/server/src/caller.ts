@@ -75,7 +75,7 @@ function createNode(
 /**
  * In-process typed client. `TCtx` is inferred from the router's context brand
  * (`impl.router()` output), so `context` is checked against `$context<C>()`.
- * A hand-built tree has no brand and `context` is `unknown`.
+ * A tree not produced by `impl.router()` infers `unknown`.
  */
 export function createLocalClient<T, TCtx>(
   router: ImplementedRouter<T, TCtx>,

@@ -43,23 +43,26 @@ export type IsContractProcedure<T> = [ContractShape<T>] extends [never]
 export type ContractKeys<T> = Exclude<keyof T & string, '~pf'>
 
 // Type-only brands. Never present at runtime; optional so an unbranded value
-// (the defaults, or a hand-built tree) is accepted wherever a branded one is.
+// (the defaults, or a tree not produced by `impl.router()`) is accepted
+// wherever a branded one is. The explicit `| undefined` keeps a mismatch a
+// plain TS2322 under `exactOptionalPropertyTypes` instead of a TS2375
+// "consider adding undefined" that hides the real reason.
 // Invariant (the shape is both parameter and return), so only a handler for
 // the same `{ input, output, errors }` fits a slot: `users.listPopulated` does
 // not fit `users.list` even though its output is a structural subtype.
 type ContractBrand<TContract> = unknown extends TContract
   ? {}
   : {
-      readonly '~contract'?: (
-        shape: ContractShape<TContract>,
-      ) => ContractShape<TContract>
+      readonly '~contract'?:
+        | ((shape: ContractShape<TContract>) => ContractShape<TContract>)
+        | undefined
     }
 
 // Contravariant: a procedure that needs `TCtx` fits where a subtype of `TCtx`
 // is provided, not the other way round.
 type ContextBrand<TCtx> = unknown extends TCtx
   ? {}
-  : { readonly '~context'?: (context: TCtx) => void }
+  : { readonly '~context'?: ((context: TCtx) => void) | undefined }
 
 /**
  * A handler bound to a contract procedure. `TContract` is the contract
@@ -98,17 +101,19 @@ type AnyImplementedRouter = {
 
 type RouterContractBrand<T> = unknown extends T
   ? {}
-  : { readonly [contractBrand]?: T }
+  : { readonly [contractBrand]?: T | undefined }
 
 type RouterContextBrand<TCtx> = unknown extends TCtx
   ? {}
-  : { readonly [contextBrand]?: (context: TCtx) => void }
+  : { readonly [contextBrand]?: ((context: TCtx) => void) | undefined }
 
 /**
  * A finished implementation tree. `T` is the contract and `TCtx` the
  * `$context<C>()` type every procedure in it expects; adapters infer `TCtx`
  * from the context brand (`FetchHandler`, `createLocalClient`, message
- * handlers, Astro). Both default to `unknown` for hand-built trees.
+ * handlers, Astro). Only this router-level brand is read: a tree not produced
+ * by `impl.router()` (a plain object of procedures) infers `unknown` even if
+ * its leaves are branded. Both parameters default to `unknown`.
  */
 export type ImplementedRouter<T = unknown, TCtx = unknown> = (unknown extends T
   ? AnyImplementedRouter

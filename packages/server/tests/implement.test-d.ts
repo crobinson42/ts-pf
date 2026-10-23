@@ -142,7 +142,9 @@ describe('impl.router() completeness', () => {
     >()
   })
 
-  it('accepts a tree it already built', () => {
+  it('type-checks re-passing a built app (runtime re-applies inherited middleware; see implement.ts applyInherited)', () => {
+    // Type-level only: `impl.use(mw).router(app)` on an app already built with
+    // `impl.use(mw)` runs `mw` twice at runtime. Not an endorsement.
     const app = impl.router({ planet: { find, create } })
     expectTypeOf(impl.router(app)).toEqualTypeOf<
       ImplementedRouter<typeof contract, Ctx>

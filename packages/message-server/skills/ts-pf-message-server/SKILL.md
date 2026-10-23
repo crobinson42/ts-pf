@@ -32,7 +32,7 @@ new StdioHandler(app).bind(
 )
 ```
 
-Call interceptors are `HandlerOptions.interceptors` from `@ts-pf/server`. `HandlerOptions.validation` is the same `ProcedureValidation` for `PortHandler`, `WsHandler`, and `StdioHandler`: input checks default on, output and stream output items run only with `{ validation: { output: true } }`. Set it on the constructor, not on `bind()`. Pass `context` (value or `(info) => ctx`) on `bind()`, not per frame. `new PortHandler(app)` / `WsHandler` / `StdioHandler` infer the context type from `app` (the `$context<C>()` behind `impl.router()`), so `bind(..., { context })` is checked against it; an explicit `new PortHandler<AppCtx>(app)` still works when `AppCtx` satisfies it, and a hand-built tree takes `unknown`.
+Call interceptors are `HandlerOptions.interceptors` from `@ts-pf/server`. `HandlerOptions.validation` is the same `ProcedureValidation` for `PortHandler`, `WsHandler`, and `StdioHandler`: input checks default on, output and stream output items run only with `{ validation: { output: true } }`. Set it on the constructor, not on `bind()`. Pass `context` (value or `(info) => ctx`) on `bind()`, not per frame. `new PortHandler(app)` / `WsHandler` / `StdioHandler` infer the context type from `app` (the `$context<C>()` behind `impl.router()`), so `bind(..., { context })` is checked against it; an explicit `new PortHandler<AppCtx>(app)` still works when `AppCtx` satisfies it. A tree not produced by `impl.router()` infers `unknown`; use `impl.router()` to keep the check.
 
 ## API
 
