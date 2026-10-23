@@ -14,6 +14,12 @@ Requires Node.js 20+.
 npm install @ts-pf/contract @ts-pf/server @ts-pf/server-http @ts-pf/client @ts-pf/client-http
 ```
 
+`@ts-pf/protocol` (`PFError`) comes along as a dependency of `server` and `client`; import it directly, and add it to your own `dependencies` if your package manager blocks undeclared transitive imports.
+
+### TypeScript setup
+
+The packages are ESM and ship `exports` only, so `tsconfig.json` needs `"moduleResolution": "node16"`, `"nodenext"`, or `"bundler"` (the classic `"node"` resolver cannot see them). `FetchHandler` and `FetchLink` are typed against the Fetch `Request` / `Response` globals: on a Node project that is `"lib": ["ES2022", "DOM", "DOM.AsyncIterable"]`, or Node 20+ globals through `@types/node` (`"types": ["node"]`). Bundler and Workers projects usually have both already.
+
 ## Packages
 
 | Package | Role |
@@ -39,6 +45,15 @@ npm install @ts-pf/contract @ts-pf/server @ts-pf/server-http @ts-pf/client @ts-p
 | [`@ts-pf/astro`](packages/astro) | Opt-in Astro endpoint (`createAstroHandler`) and page caller (`createAstroLocalClient` / `createAstroClient`) |
 
 Wire spec: [packages/protocol/PROTOCOL.md](packages/protocol/PROTOCOL.md).
+
+## Guides
+
+Prose for humans, between this README and the wire spec. Index: [`docs/README.md`](docs/README.md).
+
+- [Concepts](docs/concepts.md): contract vs implementer vs app, context, middleware, links, codecs, the three interceptor kinds, validation defaults.
+- [Errors](docs/errors.md): `PFError`, declared errors, the protocol code set and its JSON, `asResult`, `status` per transport, `onError`.
+- [Testing](docs/testing.md): in-process tests through a `fetch` stub or `createLocalClient`; declared errors, middleware, streams.
+- [Coming from tRPC / oRPC](docs/coming-from-trpc-orpc.md): name mapping and what is different.
 
 ## Agent skills
 
@@ -407,24 +422,29 @@ const client = createClient<Contract>(new FetchLink({ url: '/rpc' }))
 Message transports are opt-in too. Do not put this in the default happy path:
 
 ```ts
+import { router } from '@ts-pf/contract'
+import { createImplementer } from '@ts-pf/server'
 import { PortHandler } from '@ts-pf/message-server'
 import { PortLink } from '@ts-pf/message-client'
 import { createClient } from '@ts-pf/client'
-import type { contract } from './contract.js'
-import { app } from './server.js'
+import { contract } from './contract.js'
+
+// `bind` wants the context type of the app it serves. A port has no HTTP
+// request, so the HTTP `app` above (its AppCtx carries `req: Request`) is the
+// wrong app for it: pick the procedures the port needs into a second
+// implementer with a transport-neutral `$context`.
+const portContract = router({ planet: { list: contract.planet.list } })
+const portImpl = createImplementer(portContract).$context<{ db: Db }>()
+const portApp = portImpl.router({
+  planet: { list: portImpl.planet.list.handler(({ context }) => context.db.planets.all()) },
+})
 
 const { port1, port2 } = new MessageChannel()
-// `bind` wants the same AppCtx as FetchHandler (the type comes from `app`).
-// A port has no HTTP request: build one from the hello `meta`, or give
-// message servers a slice with its own `$context`.
-new PortHandler(app).bind(port1, {
-  context: ({ meta }) => ({
-    db,
-    req: new Request('http://localhost/', { headers: meta as HeadersInit }),
-  }),
-})
-const client = createClient<typeof contract>(new PortLink({ port: port2 }))
+new PortHandler(portApp).bind(port1, { context: () => ({ db }) })
+const client = createClient<typeof portContract>(new PortLink({ port: port2 }))
 ```
+
+A context that does not need the request (`{ db: Db; user?: User }`, with the user resolved in each adapter's context factory) serves one `app` over HTTP and message transports alike; see [Concepts](docs/concepts.md#context).
 
 SWR is opt-in too. Do not put this in the default happy path:
 
