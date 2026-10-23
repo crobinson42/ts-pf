@@ -68,7 +68,7 @@ jobs:
       - run: |
           unset NODE_AUTH_TOKEN NPM_TOKEN
           node scripts/probe-npm-oidc.mjs
-      - uses: changesets/action@v1
+      - uses: changesets/action@v2
         with:
           title: Version packages
           commit: 'chore: version packages'
