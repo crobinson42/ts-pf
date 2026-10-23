@@ -37,7 +37,7 @@ if (!result.ok) {
 }
 ```
 
-Procedure calls take optional `{ signal?: AbortSignal }`. `createClient` options are `{ plugins, interceptors }`. Client-side input validation is off by default. `CachePlugin` needs `ttl` and caches success only. First-party plugins skip `AsyncIterable` input.
+`createClient` needs the contract type: `createClient<typeof contract>(link)`, or a `ContractClient<typeof contract>` annotation on the variable or return type. Without either the result is `{ readonly '~error': 'Pass createClient<typeof contract>(link)' }`, not an empty client. Procedure calls take optional `{ signal?: AbortSignal }`. `createClient` options are `{ plugins, interceptors }`. Client-side input validation is off by default. `CachePlugin` needs `ttl` and caches success only. First-party plugins skip `AsyncIterable` input.
 
 `DedupePlugin` and `CachePlugin` default key is `JSON.stringify([path, input])` for every unary call, mutations included — two concurrent `planet.create({ name })` calls share one request and one result. Pass `key` and return `undefined` for anything that is not a read (same `readKey` works for both; runnable form `examples/plugins/src/read-key.ts`). `RetryPlugin` retries local failures (not aborts) up to 3 times; a connection dropped after send is a local failure too, so pass `retry` to exclude non-idempotent writes.
 
