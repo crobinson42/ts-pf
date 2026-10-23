@@ -460,7 +460,7 @@ Smoke-tested examples in [`examples/`](examples/): [`hello`](examples/hello) (Fe
 
 ```sh
 npm install
-npm run lint && npm run check:skills && npm run check:deps && npm run type-check && npm test && npm run build && npm run check:exports
+npm run lint && npm run lint:root && npm run check:skills && npm run check:deps && npm run type-check && npm test && npm run build && npm run check:exports
 ```
 
 A public API / name / happy-path change updates `packages/<pkg>/skills/ts-pf-<pkg>/SKILL.md` in the same PR (`npm run check:skills`). Opt-in happy-path changes also update the matching snippet on `ts-pf-app`.
