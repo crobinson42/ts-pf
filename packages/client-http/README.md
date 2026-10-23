@@ -24,6 +24,6 @@ const client = createClient<typeof contract>(
 )
 ```
 
-`FetchLink` sends `x-ts-pf-protocol: 1`. A response whose `x-ts-pf-protocol` is present and not `1` is not decoded; the call rejects with `localFailure('Unsupported protocol version')`. A response without the header that fails to decode is `INTERNAL` with the HTTP status (`Non-RPC response (HTTP …)`).
+`FetchLink` sends `x-ts-pf-protocol: 1`. A response whose `x-ts-pf-protocol` is present and not `1` is not decoded; the call rejects with `INTERNAL`, the HTTP status, and message `Unsupported protocol version (x-ts-pf-protocol: <value>)` — not a local failure, so `RetryPlugin` does not retry it by default. A response without the header that fails to decode is `INTERNAL` with the HTTP status (`Non-RPC response (HTTP …)`).
 
 Do not import this package from `@ts-pf/server-http` (prod).

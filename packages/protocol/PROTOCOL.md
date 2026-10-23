@@ -44,7 +44,7 @@ v1 accepts **POST only**. Other methods return HTTP 405 with `error.code: "METHO
 
 Servers read the request header `x-ts-pf-protocol`. Absent → accept (plain HTTP clients). Present and equal to `1` (after trimming surrounding whitespace) → accept. Any other value → HTTP 400 with `error.code: "BAD_REQUEST"` and `message: "Unsupported protocol version"`; the response still carries `x-ts-pf-protocol: 1`. The check runs after the method check and before the body is read.
 
-Clients send `x-ts-pf-protocol: 1` on every request. A response whose `x-ts-pf-protocol` is present and not `1` must not be decoded; the TypeScript client fails it locally (`Unsupported protocol version`). A response without the header follows the `Non-RPC response` rule below.
+Clients send `x-ts-pf-protocol: 1` on every request. A response whose `x-ts-pf-protocol` is present and not `1` must not be decoded; the TypeScript client rejects it with `INTERNAL`, the HTTP status, and message `Unsupported protocol version (x-ts-pf-protocol: <value>)` — it is not a local failure, because the response came from a server. A response without the header follows the `Non-RPC response` rule below.
 
 Success:
 
@@ -101,7 +101,7 @@ Contract-declared error codes use the status on the error definition when the HT
 | Local failure (`localFailure`, `isLocalFailure`) | `0` with `local: true` |
 | In-process `createLocalClient` | The declared `ErrorDef.status` when there is one, else `undefined` |
 
-The TypeScript client maps **local** failures (never got a protocol result, or got one from another wire major) to `INTERNAL` with `local: true` and `status: 0`. `local` and `status` are TypeScript client conventions, not protocol fields, and are **not** on the wire. `isLocalFailure` is `local === true`. Abort uses message `Request aborted`. Network throws keep `error.message` and set `Error.cause` to the thrown value (Node’s `ECONNREFUSED` is then `error.cause.cause`). HTTP responses **without** `x-ts-pf-protocol` that fail `decodeResponse` become `INTERNAL` with the HTTP status and message `Non-RPC response (HTTP …)` — do not surface codec `BAD_REQUEST` 400 for proxy HTML. Codec `PFError` is rethrown only when `x-ts-pf-protocol` is present and equal to `1` (truncated JSONL/SSE at decode time, malformed ts-pf JSON); a different value is never decoded (see [HTTP Fetch binding](#http-fetch-binding-default)). `toJSON()` still omits `status`, `cause`, and `local`.
+The TypeScript client maps **local** failures (never got a protocol result) to `INTERNAL` with `local: true` and `status: 0`. `local` and `status` are TypeScript client conventions, not protocol fields, and are **not** on the wire. `isLocalFailure` is `local === true`. Abort uses message `Request aborted`. Network throws keep `error.message` and set `Error.cause` to the thrown value (Node’s `ECONNREFUSED` is then `error.cause.cause`). HTTP responses **without** `x-ts-pf-protocol` that fail `decodeResponse` become `INTERNAL` with the HTTP status and message `Non-RPC response (HTTP …)` — do not surface codec `BAD_REQUEST` 400 for proxy HTML. Codec `PFError` is rethrown only when `x-ts-pf-protocol` is present and equal to `1` (truncated JSONL/SSE at decode time, malformed ts-pf JSON); a different value is never decoded (see [HTTP Fetch binding](#http-fetch-binding-default)). `toJSON()` still omits `status`, `cause`, and `local`.
 
 ## Versioning
 
@@ -591,7 +591,7 @@ The server must accept `in-item` for that id as soon as `call` is accepted (the 
 
 ### Local failure vs protocol failure
 
-The TypeScript client maps **local** failures (never got a protocol result, or got one from another wire major) to `INTERNAL` with `local: true` and `status: 0`. Those fields are TypeScript client conventions, **not** protocol fields, and are **not** on the wire. Do not add them to the [protocol errors](#protocol-errors) status table. `isLocalFailure` is `local === true`.
+The TypeScript client maps **local** failures (never got a protocol result) to `INTERNAL` with `local: true` and `status: 0`. Those fields are TypeScript client conventions, **not** protocol fields, and are **not** on the wire. Do not add them to the [protocol errors](#protocol-errors) status table. `isLocalFailure` is `local === true`.
 
 Clients distinguish three ways:
 

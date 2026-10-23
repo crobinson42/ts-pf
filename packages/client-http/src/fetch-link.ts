@@ -97,11 +97,17 @@ export class FetchLink implements Link {
     }
 
     // A response from another wire major may carry an envelope this codec
-    // cannot read; fail locally without touching the body (mirrors the
-    // message client on a `hello-ok` with the wrong `v`).
+    // cannot read: do not touch the body. It did come from a server, so this
+    // is not a local failure (not retried by default); it is shaped like the
+    // non-RPC decode failure below.
     const version = protocolVersion(response)
     if (version === 'mismatch') {
-      throw localFailure('Unsupported protocol version', response)
+      throw new PFError({
+        code: 'INTERNAL',
+        status: response.status,
+        message: `Unsupported protocol version (${PROTOCOL_HEADER}: ${response.headers.get(PROTOCOL_HEADER)})`,
+        cause: response,
+      })
     }
 
     let decoded: RpcResponse

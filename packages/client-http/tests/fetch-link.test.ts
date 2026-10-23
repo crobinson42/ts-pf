@@ -220,7 +220,7 @@ describe('createClient', () => {
     })
   })
 
-  it('fails locally on another protocol major without reading the body', async () => {
+  it('rejects another protocol major as INTERNAL without reading the body', async () => {
     const response = new Response('{"v2":true}', {
       status: 200,
       headers: {
@@ -237,14 +237,17 @@ describe('createClient', () => {
       }),
     )
     await expect(future.planet.list()).rejects.toSatisfy((error: unknown) => {
-      expect(isLocalFailure(error)).toBe(true)
-      if (!isLocalFailure(error)) {
+      expect(isPFError(error)).toBe(true)
+      if (!isPFError(error)) {
         return false
       }
       expect(error.code).toBe('INTERNAL')
-      expect(error.status).toBe(0)
-      expect(error.message).toBe('Unsupported protocol version')
+      expect(error.status).toBe(200)
+      expect(error.message).toBe(
+        'Unsupported protocol version (x-ts-pf-protocol: 2)',
+      )
       expect(error.cause).toBe(response)
+      expect(isLocalFailure(error)).toBe(false)
       return true
     })
     expect(text).not.toHaveBeenCalled()
