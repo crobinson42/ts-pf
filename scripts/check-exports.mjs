@@ -1,6 +1,7 @@
 // Published @ts-pf/* packages must export dist. npm does not rewrite
 // publishConfig.exports into the packed package.json — putting src there
-// ships a tarball that cannot be imported.
+// ships a tarball that cannot be imported. Every tarball must also carry
+// LICENSE (a copy of the root file; npm packs it regardless of `files`).
 import { execFileSync } from 'node:child_process'
 import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -139,6 +140,9 @@ if (errors.length === 0) {
         )
       ) {
         errors.push(`${dir}: packed tarball includes src/`)
+      }
+      if (!files.includes('package/LICENSE')) {
+        errors.push(`${dir}: packed tarball missing package/LICENSE`)
       }
       let packed
       try {
