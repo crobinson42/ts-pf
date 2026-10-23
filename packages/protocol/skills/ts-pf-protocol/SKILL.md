@@ -1,6 +1,6 @@
 ---
 name: ts-pf-protocol
-description: Use when throwing or handling ts-pf PFError, localFailure, PROTOCOL_VERSION, or the JSON RPC envelope, or writing a codec / adapter that needs toWireError or isAsyncIterable. Triggers: @ts-pf/protocol, PFError, isPFError, localFailure, ProtocolErrorCode, toWireError, isAsyncIterable.
+description: Use when throwing or handling ts-pf PFError, localFailure, PROTOCOL_MAJOR / PROTOCOL_VERSION, or the JSON RPC envelope, or writing a codec / adapter that needs toWireError or isAsyncIterable. Triggers: @ts-pf/protocol, PFError, isPFError, localFailure, ProtocolErrorCode, PROTOCOL_MAJOR, PROTOCOL_VERSION, toWireError, isAsyncIterable.
 ---
 
 # @ts-pf/protocol
