@@ -54,13 +54,85 @@ function invoke(
   host: DisposeSignalHost,
 ): unknown {
   const signal = resolveSignal(args, host)
-  if (args.length >= 2) {
-    return fn(args[0], { signal })
+  const result =
+    args.length < 2 && (args.length === 0 || isCallOptions(args[0]))
+      ? fn({ signal })
+      : fn(args[0], { signal })
+  if (!isPromiseLike(result)) {
+    return result
   }
-  if (args.length === 0 || isCallOptions(args[0])) {
-    return fn({ signal })
+  return result.then(wrapOutput, (error: unknown) => {
+    throw withStatus(error)
+  })
+}
+
+function wrapOutput(value: unknown): unknown {
+  return isAsyncIterable(value) ? wrapIterable(value) : value
+}
+
+async function* wrapIterable(
+  source: AsyncIterable<unknown>,
+): AsyncIterable<unknown> {
+  try {
+    for await (const item of source) {
+      yield item
+    }
+  } catch (error) {
+    throw withStatus(error)
   }
-  return fn(args[0], { signal })
+}
+
+// mvc-kit classifies a thrown value by `code` only when `status` is a finite
+// number. `PFError.status` is transport metadata: the HTTP response status on
+// FetchLink, undefined on message transports, after a stream has started, and
+// for declared errors without a status. Hand mvc-kit a copy carrying the HTTP
+// default so `errorCode` is the PFError code on every Link. HTTP failures and
+// localFailure (status 0) already qualify. The original is never mutated.
+const MVC_KIT_DEFAULT_STATUS = 400
+
+function withStatus(error: unknown): unknown {
+  if (!isPFErrorLike(error) || Number.isFinite(error.status)) {
+    return error
+  }
+  const copy: unknown = Object.create(
+    Object.getPrototypeOf(error),
+    Object.getOwnPropertyDescriptors(error),
+  )
+  Object.defineProperty(copy, 'status', {
+    value: MVC_KIT_DEFAULT_STATUS,
+    enumerable: true,
+    writable: false,
+    configurable: true,
+  })
+  return copy
+}
+
+function isPFErrorLike(
+  value: unknown,
+): value is Error & { code: string; status?: unknown } {
+  return (
+    value instanceof Error &&
+    value.name === 'PFError' &&
+    typeof (value as { code?: unknown }).code === 'string'
+  )
+}
+
+function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as { then?: unknown }).then === 'function'
+  )
+}
+
+function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as { [Symbol.asyncIterator]?: unknown })[
+      Symbol.asyncIterator
+    ] === 'function'
+  )
 }
 
 function resolveSignal(args: unknown[], host: DisposeSignalHost): AbortSignal {
