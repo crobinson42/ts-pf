@@ -13,6 +13,13 @@ updates:
     ignore:
       # Internal workspace dependencies are versioned by Changesets.
       - dependency-name: '@ts-pf/*'
+      # TypeScript 7 (native compiler) ships no JS compiler API, which
+      # scripts/check-snippets.mjs needs. Deferred until the ecosystem catches up.
+      - dependency-name: typescript
+        versions: ['>=7']
+      # Node types track the engines.node floor (>=22), not the newest Node.
+      - dependency-name: '@types/node'
+        versions: ['>=23']
   - package-ecosystem: github-actions
     directory: /
     schedule:

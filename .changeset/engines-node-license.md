@@ -20,4 +20,4 @@
 "@ts-pf/swr": patch
 ---
 
-Declare `engines.node >=20` and ship the MIT `LICENSE` file in the tarball.
+Declare `engines.node >=22` and ship the MIT `LICENSE` file in the tarball.
