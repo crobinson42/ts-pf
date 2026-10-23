@@ -256,7 +256,7 @@ import {
 } from '@ts-pf/server-http'
 import { app, type AppCtx } from './server.js'
 
-const handler = new FetchHandler<AppCtx>(app, {
+const handler = new FetchHandler(app, {
   plugins: [
     new CORSPlugin({ origin: ['https://app.example.com'] }),
     new RequestLimitPlugin({ maxBodySize: 1024 * 1024 }),
@@ -284,7 +284,7 @@ const interceptors = applyPlugins(
   [onStart(({ path }) => console.log(path.join('.')))],
 )
 
-new FetchHandler<AppCtx>(app, {
+new FetchHandler(app, {
   plugins: [new CORSPlugin({ origin: ['https://app.example.com'] })],
   interceptors,
 })

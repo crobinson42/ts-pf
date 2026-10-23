@@ -49,7 +49,7 @@ await local.planet.find({ id: 1 })
 
 `Db`, `User`, `db`, and `auth()` are your app's. `.use()` runs before input validation (`input: unknown`); `.useAfter()` runs after it. Input checks default on; output checks run only with `validation: { output: true }`. Name the implemented router `app`.
 
-Serve it over HTTP with `FetchHandler` from `@ts-pf/server-http` — `new FetchHandler<AppCtx>(app).handle(request, { prefix: '/rpc', context: (req) => ({ db, req }) })` — on Workers, Bun, Deno, Node, Hono, or Next.js: see [Serving FetchHandler](https://github.com/crobinson42/ts-pf#serving-fetchhandler). Message transports are `@ts-pf/message-server`.
+Serve it over HTTP with `FetchHandler` from `@ts-pf/server-http` — `new FetchHandler(app).handle(request, { prefix: '/rpc', context: (req) => ({ db, req }) })` — on Workers, Bun, Deno, Node, Hono, or Next.js: see [Serving FetchHandler](https://github.com/crobinson42/ts-pf#serving-fetchhandler). Message transports are `@ts-pf/message-server`.
 
 Server `DedupePlugin` keys every unary call by default, writes included; pass `key` to restrict it to reads.
 
