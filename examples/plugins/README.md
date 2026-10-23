@@ -13,7 +13,7 @@ import {
 import { FetchLink } from '@ts-pf/client-http'
 import { TimeoutPlugin } from './timeout-plugin'
 
-const client = createClient(new FetchLink({ url: '/rpc' }), {
+const client = createClient<typeof contract>(new FetchLink({ url: '/rpc' }), {
   plugins: [
     new TimeoutPlugin(5_000),
     new CachePlugin({ ttl: 5_000, key: readKey }),

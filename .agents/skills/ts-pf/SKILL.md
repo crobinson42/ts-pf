@@ -29,6 +29,7 @@ scripts/check-exports.mjs
 skills/README.md                         consumer skill index (not published)
 packages/*/skills/ts-pf-<pkg>/SKILL.md   consumer usage (hub catalog ts-pf-app on contract)
 packages/{contract,server,client}/tests/*.test-d.ts   type tests (expectTypeOf + @ts-expect-error); Vitest typecheck + tsc --noEmit
+packages/{server-http,message-server,astro}/tests/*.test-d.ts   context-inference type tests; tsc --noEmit only (no Vitest typecheck there)
 packages/contract/src/
   builder.ts          procedure singleton, router()
   procedure.ts        ContractProcedure brand
