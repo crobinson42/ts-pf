@@ -57,6 +57,9 @@ Name the implemented router `app`. Wire: `@ts-pf/protocol` `PROTOCOL.md`. Input 
 Feature slices own a contract and an implementation. A server nests them. Each client imports **that server's** contract only.
 
 ```ts
+import { router } from '@ts-pf/contract'
+import { createImplementer } from '@ts-pf/server'
+
 export const contract = router({
   planet: planetContract,
   star: starContract,
@@ -76,6 +79,12 @@ export const app = impl.router({
 Two servers (web vs mobile) are two composed contracts, not variants of one. Each server gets its own `createImplementer`. Pick procedures when the trees differ:
 
 ```ts
+import { procedure, router } from '@ts-pf/contract'
+import { createImplementer } from '@ts-pf/server'
+import { createClient } from '@ts-pf/client'
+import { FetchLink } from '@ts-pf/client-http'
+import { z } from 'zod'
+
 const users = router({
   list: procedure.output(z.array(UserRef)),
   listPopulated: procedure.output(z.array(UserPopulated)),
@@ -137,6 +146,8 @@ new FetchLink({ url: '/rpc', codec })
 ### Streams — `@ts-pf/stream` → `ts-pf-stream`
 
 ```ts
+import { procedure } from '@ts-pf/contract'
+import { z } from 'zod'
 import { stream, StreamCodec } from '@ts-pf/stream'
 import { FetchHandler } from '@ts-pf/server-http'
 import { FetchLink } from '@ts-pf/client-http'
@@ -151,6 +162,8 @@ procedure.output(stream(z.object({ token: z.string() })))
 ### SSE — `@ts-pf/sse` → `ts-pf-sse`
 
 ```ts
+import { procedure } from '@ts-pf/contract'
+import { z } from 'zod'
 import { stream } from '@ts-pf/stream'
 import { SseCodec } from '@ts-pf/sse'
 import { FetchHandler } from '@ts-pf/server-http'
@@ -182,6 +195,7 @@ Minimal Port example. Load `ts-pf-message-server` / `ts-pf-message-client` for W
 ### Catalog / OpenAPI / codegen — `@ts-pf/docs` / `openapi` / `codegen`
 
 ```ts
+import { procedure } from '@ts-pf/contract'
 import { docs, catalog } from '@ts-pf/docs'
 import { openapi } from '@ts-pf/openapi'
 import { emit, catalogHash } from '@ts-pf/codegen'
@@ -211,7 +225,7 @@ const { data, error } = useSWR(
 
 ### mvc-kit — `@ts-pf/mvc-kit` → `ts-pf-mvc-kit`
 
-```ts
+```ts no-check
 import { bindClient, issuesToFieldErrors } from '@ts-pf/mvc-kit'
 import { asResult } from '@ts-pf/client'
 import { Resource } from 'mvc-kit'
@@ -250,7 +264,7 @@ const caller = await createAstroLocalClient(app, Astro, contextFromAstro)
 const planet = await caller.planet.find({ id: 1 })
 ```
 
-```ts
+```ts bundler
 import { createAstroClient, withBase } from '@ts-pf/astro/client'
 import type { contract } from './contract'
 

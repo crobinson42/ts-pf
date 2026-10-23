@@ -5,6 +5,8 @@ Opt-in `StreamCodec` for root `AsyncIterable` input and output. JSON calls stay 
 Agent skill: [`skills/ts-pf-stream/`](skills/ts-pf-stream/). Sync with `npx skills experimental_sync -y`.
 
 ```ts
+import { procedure } from '@ts-pf/contract'
+import { z } from 'zod'
 import { stream, StreamCodec } from '@ts-pf/stream'
 
 import { FetchHandler } from '@ts-pf/server-http'

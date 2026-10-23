@@ -59,6 +59,13 @@ const client = createClient<typeof contract>(new FetchLink({ url: '/rpc' }), {
 
 Happy path with the matching server: [root README](https://github.com/crobinson42/ts-pf#readme). Message links (`PortLink` / `WsLink` / `StdioLink`) are `@ts-pf/message-client`.
 
+## API
+
+- `createClient`, `Link`, `intercept`
+- `asResult`, `CallResult`, `isLocalFailure`
+- `RetryPlugin`, `DedupePlugin`, `CachePlugin`, `applyPlugins`, `CallPlugin`, `CallInterceptor`
+- `onStart` / `onSuccess` / `onError` / `onFinish`
+
 ## Agent skills
 
 This package ships [`ts-pf-client`](https://github.com/crobinson42/ts-pf/blob/main/packages/client/skills/ts-pf-client/SKILL.md). Sync with `npx skills experimental_sync -y`.

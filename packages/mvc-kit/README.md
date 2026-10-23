@@ -8,7 +8,7 @@ This package does **not** wrap Resource, add React hooks, generate a Service, or
 
 ## Setup
 
-```ts
+```ts bundler
 import { createClient } from '@ts-pf/client'
 import { FetchLink } from '@ts-pf/client-http'
 import { bindClient, issuesToFieldErrors } from '@ts-pf/mvc-kit'
@@ -55,7 +55,7 @@ App tsconfigs should use `moduleResolution: "bundler"` (Vite’s default) or `"n
 
 Resource methods **throw**. mvc-kit classifies the thrown `PFError` as-is:
 
-```ts
+```ts no-check
 resource.async.loadById.errorCode === 'NOT_FOUND' // not 'not_found'
 resource.async.loadById.cause // the PFError; .data is on the instance
 ```
@@ -68,7 +68,7 @@ Do not throw `error.toJSON()` — the JSON object has no `status`, so 4.9 will c
 
 `asResult` is for ViewModel branching (forms). Async tracking keys off **throw**. If a Resource method `asResult`s and does not rethrow, `async.method.error` stays null.
 
-```ts
+```ts no-check
 import { asResult } from '@ts-pf/client'
 import { issuesToFieldErrors } from '@ts-pf/mvc-kit'
 
@@ -85,7 +85,7 @@ Pass nothing. `bindClient` injects `host.disposeSignal`. Dispose/unmount aborts 
 
 For Pending / offline-kit, pass the provided signal so it wins:
 
-```ts
+```ts no-check
 this.pending.enqueue(id, 'create', (signal) =>
   this.rpc.planet.create(input, { signal }).then((row) => {
     this.add(row)
@@ -99,7 +99,7 @@ Do not pass `this.disposeSignal` into Pending’s `execute`. Do not list Pending
 
 No helper in v1. Feed owns the cursor; Resource upserts rows:
 
-```ts
+```ts no-check
 const page = await this.rpc.planet.listPage({ cursor: this.feed.cursor })
 this.planets.upsert(...page.items)
 this.feed.setResult(page)
@@ -109,7 +109,7 @@ this.feed.setResult(page)
 
 Same contracts, opt-in codec on the link you already own:
 
-```ts
+```ts no-check
 import { StreamCodec } from '@ts-pf/stream'
 
 const client = createClient<typeof contract>(
@@ -130,11 +130,16 @@ Cancel is the injected signal. There is no Stream→Feed helper.
 
 One line; do not `bindClient` that path — the outbox owns the signal:
 
-```ts
+```ts no-check
 send: (entry, signal) => client.todo.create(entry.payload, { signal })
 ```
 
 Entity `id` is `string`. Procedure-shaped non-CRUD writes do not belong there.
+
+## API
+
+- `bindClient`, `DisposeSignalHost`
+- `issuesToFieldErrors`
 
 ## Not in this package
 

@@ -70,6 +70,14 @@ export const client: ContractClient<typeof contract> = createClient(
 
 Serving `app` over HTTP (`FetchHandler`) and the rest of the happy path: [root README](https://github.com/crobinson42/ts-pf#readme).
 
+## API
+
+- `procedure`, `router`, `registerSchemaAdapter`, `validateSchema`
+- `isContractProcedure`, `isContractRouter`
+- `ClientError`, `ContractClient`, `CallOptions`
+- `InferContractInputs`, `InferContractOutputs`, `InferContractErrors`, `InferErrorData`
+- `ContractProtocolErrorCode` (type) — the closed protocol codes `ClientError` falls back to
+
 ## Agent skills
 
 This package ships [`ts-pf-contract`](https://github.com/crobinson42/ts-pf/blob/main/packages/contract/skills/ts-pf-contract/SKILL.md) and the hub catalog [`ts-pf-app`](https://github.com/crobinson42/ts-pf/blob/main/packages/contract/skills/ts-pf-app/SKILL.md) (Fetch happy path plus opt-in capabilities). Sync with `npx skills experimental_sync -y`.

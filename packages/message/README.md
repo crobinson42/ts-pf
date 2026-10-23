@@ -12,3 +12,10 @@ import { createStdioDuplex } from '@ts-pf/message/stdio'
 ```
 
 Wire spec: [`packages/protocol/PROTOCOL.md`](../protocol/PROTOCOL.md) (Message transports).
+
+## API
+
+- `MessageSession`, `Duplex`, `encodeFrame`, `decodeFrame`
+- `createMemoryDuplex`, `createPortDuplex`, `createWsDuplex`, `WebSocketLike`
+- `errorFromEnvelope`, `localFailure`
+- `createStdioDuplex` from `./stdio` only

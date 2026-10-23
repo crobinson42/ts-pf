@@ -14,6 +14,7 @@ Link for agents: `npx skills experimental_sync -y`
 ## Do
 
 ```ts
+// `contract` is the router from the ts-pf-contract skill (planet.list / find / create)
 import { createImplementer, DedupePlugin } from '@ts-pf/server'
 import { PFError } from '@ts-pf/protocol'
 
@@ -27,18 +28,22 @@ const requireUser = impl.middleware(async ({ context, next }) => {
 
 export const app = impl.use(requireUser).router({
   planet: {
+    list: impl.planet.list.handler(async ({ context }) => context.db.planets.all()),
     find: impl.planet.find.handler(async ({ input, context, errors }) => {
       const row = await context.db.planets.get(input.id)
       if (!row) throw errors.NOT_FOUND({ id: input.id })
       return row
     }),
+    create: impl.planet.create.handler(async ({ input, context }) =>
+      context.db.planets.create(input),
+    ),
   },
 })
 ```
 
 `.use()` runs before input validation (`input: unknown`). `.useAfter()` runs after. Input checks default on, so `.useAfter()` then sees the parsed input. `validation: { input: false }` skips the input schema, including stream input items, and `.useAfter()` sees the raw value. Output checks, including stream output items, run only when `validation: { output: true }`. Unary output failure is `INTERNAL` with no issues. A bad stream output item is `VALIDATION` with issues. Parsed output (strip, defaults, transforms) is applied only when output checks run. Declared error `data` is always checked. `$context<C>()` is the context type source; middleware runtime-merges and does not infer added keys. Pass HTTP `Request` in `FetchHandler.handle(..., { context })`, not via `$context` alone. Name the implemented router `app`. Default `DedupePlugin` keys every unary call — pass `key` to restrict to reads.
 
-```ts
+```ts no-check
 createLocalClient(app, { context, validation: { output: true } })
 runProcedure(proc, input, context, { validation: { input: false } })
 ```

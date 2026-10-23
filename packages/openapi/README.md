@@ -9,6 +9,7 @@ The catalog is the portable spec. This package is the **polyglot** export. For a
 This package does **not** serve HTTP, embed Scalar/Swagger, invent REST paths, or change `FetchHandler`. Path params, GET/PUT, and flattened bodies are out.
 
 ```ts
+import { procedure } from '@ts-pf/contract'
 import { catalog, docs } from '@ts-pf/docs'
 import { openapi } from '@ts-pf/openapi'
 
@@ -24,7 +25,7 @@ Every path is `POST {prefix}/{router keys}` with body `{ "input": … }` and `{ 
 
 Serve the JSON in userland, **outside** the RPC prefix (`GET /rpc/...` is not a spec):
 
-```ts
+```ts no-check
 if (url.pathname === '/openapi.json') {
   return Response.json(spec)
 }
@@ -42,3 +43,8 @@ Stream procedures advertise `application/jsonl` (item schema from the catalog). 
 Message transports (WebSocket, stdio, MessagePort) are not HTTP and are not in this document.
 
 Typed split-repo clients: [`@ts-pf/codegen`](../codegen).
+
+## API
+
+- `openapi`
+- `OpenAPIOptions` (`sse: true` / `multipart: true` advertise those content types), `OpenAPIDocument`

@@ -25,6 +25,7 @@ new WsLink({ url: 'wss://example.com/rpc', WebSocket }) // or { socket }
 ```
 
 ```ts
+import { spawn } from 'node:child_process'
 import { StdioLink } from '@ts-pf/message-client/stdio'
 
 const child = spawn(cmd, { stdio: ['pipe', 'pipe', 'inherit'] })

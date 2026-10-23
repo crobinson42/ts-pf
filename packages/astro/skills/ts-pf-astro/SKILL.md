@@ -37,7 +37,7 @@ const planet = await caller.planet.find({ id: 1 })
 
 Browser or island module. Import the contract with `import type`. Do not import the implementer.
 
-```ts
+```ts bundler
 import { createAstroClient, withBase } from '@ts-pf/astro/client'
 import type { contract } from './contract'
 
