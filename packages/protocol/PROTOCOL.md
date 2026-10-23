@@ -424,6 +424,12 @@ A hostile peer cannot cancel an in-flight call by reusing its id or sending `{ "
 
 The connection keeps reading frames while a call runs. Two in-flight ids complete independently.
 
+#### Backpressure
+
+No frame acknowledges `item` or `in-item`, and no frame carries a window; flow control in wire major 1 is the transport's. A sender SHOULD NOT pull the next value from the producing iterator until the transport has drained the previous frame of that id (`bufferedAmount` under a high-water mark, `write()` accepted or `drain` fired). A receiver MAY stop reading the transport while a per-id queue is over a local high-water mark; pausing is connection-wide, so one slow consumer delays every id on that connection. On a transport the receiver cannot pause (`MessagePort`, a browser `WebSocket`) receiver memory is bounded only by the peer's behaviour; a receiver may `cancel` a stream it cannot keep up with.
+
+A sender MAY give up on a peer that does not drain within a timeout. That is a server-side condition, not a protocol code: the server sends `{ "type": "result", "id", "ok": false, "error": { "code": "INTERNAL", "message": "Peer did not drain within <n> ms" } }` as the terminal frame for that id (after the items already handed to the transport; no `done`), stops the procedure as if cancelled, and keeps the connection open. A client that gives up on a server that does not drain its `in-item` frames fails the call locally and sends `cancel`. A 1.x receiver already ignores an unknown frame type with an in-flight `id` (table above), so a future credit frame is harmless to it; one for an id that has already terminated would draw `BAD_REQUEST`, so a later major must never send credit after a terminal frame.
+
 ### Size limits
 
 Option omitted = **unlimited in both directions** (same as Fetch without a request-limit plugin).
@@ -573,7 +579,7 @@ Nested streams and `File` / `Blob` values inside items are `BAD_REQUEST`.
 { "type": "in-done", "id": "1" }
 ```
 
-The server must accept `in-item` for that id as soon as `call` is accepted (the next-turn item must not be lost). Backpressure is implicit (JS queue / pipe buffer). No credit-based flow control in v1. Cancel of the call aborts both sides.
+The server must accept `in-item` for that id as soon as `call` is accepted (the next-turn item must not be lost). Backpressure is the transport's; see "Backpressure" under Multiplex. No credit-based flow control in v1. Cancel of the call aborts both sides.
 
 ### Cancel and mid-stream errors
 

@@ -1,6 +1,8 @@
 import {
+  type Backpressure,
   type CallFrame,
   createPushQueue,
+  DrainWaiter,
   errorFromEnvelope,
   type InItemFrame,
   type MessageFrame,
@@ -15,6 +17,10 @@ export type ClientCallHost = {
   send(frame: MessageFrame): SendResult
   /** The id reached a terminal state: forget it. */
   settle(id: string): void
+  backpressure: Backpressure
+  /** A call's output queue crossed / drained below its mark: pause / resume reading the duplex (connection-wide). */
+  pauseReads(): void
+  resumeReads(): void
 }
 
 /** `PROTOCOL.md` "First frame (client)" and "streaming-out". */
@@ -51,6 +57,11 @@ function sendFailure(reason: 'oversize' | 'stringify' | 'closed'): PFError {
  * inbound frame, then (for an output stream) the iterator the promise
  * resolved to, plus the `in-item` pump of a streamed input and the abort
  * listener. Settles exactly once. Frame routing stays in `DuplexLink`.
+ *
+ * Backpressure: the output queue is bounded by `highWaterMark` and pauses the
+ * duplex through the host; the input pump awaits the duplex's drain between
+ * items and fails the call locally when the server does not drain in
+ * `drainTimeout`.
  */
 export class ClientCall {
   private mode: Mode = 'pending-first'
@@ -58,6 +69,7 @@ export class ClientCall {
   private output: PushQueue<unknown> | undefined
   private inputIterator: AsyncIterator<unknown> | undefined
   private unsubAbort: (() => void) | undefined
+  private drain: DrainWaiter | undefined
 
   constructor(
     readonly id: string,
@@ -98,17 +110,21 @@ export class ClientCall {
     if (streaming) {
       this.sendingInput = true
       this.inputIterator = input[Symbol.asyncIterator]()
-      void this.pumpInput()
+      this.drain = new DrainWaiter(this.host.backpressure, {
+        path,
+        id: this.id,
+      })
+      void this.pumpInput(this.drain)
     }
   }
 
-  /** An inbound frame carrying this id. */
-  onFrame(frame: MessageFrame): void {
+  /** An inbound frame carrying this id; `size` is its text length. */
+  onFrame(frame: MessageFrame, size: number): void {
     if (this.mode === 'done') {
       return
     }
     if (this.mode === 'streaming-out') {
-      this.onStreamFrame(frame)
+      this.onStreamFrame(frame, size)
       return
     }
     if (frame.type === 'result') {
@@ -123,14 +139,14 @@ export class ClientCall {
     }
     if (frame.type === 'item') {
       this.mode = 'streaming-out'
-      const queue = createPushQueue<unknown>()
+      const queue = this.createOutput()
       this.output = queue
-      queue.push(frame.output)
+      queue.push(frame.output, size)
       this.resolve(this.wrapOutput(queue))
       return
     }
     if (frame.type === 'done') {
-      const queue = createPushQueue<unknown>()
+      const queue = this.createOutput()
       this.output = queue
       queue.end()
       this.resolve(this.wrapOutput(queue))
@@ -159,9 +175,21 @@ export class ClientCall {
     })
   }
 
-  private onStreamFrame(frame: MessageFrame): void {
+  private createOutput(): PushQueue<unknown> {
+    return createPushQueue<unknown>({
+      highWaterMark: this.host.backpressure.highWaterMark,
+      onPause: () => {
+        this.host.pauseReads()
+      },
+      onResume: () => {
+        this.host.resumeReads()
+      },
+    })
+  }
+
+  private onStreamFrame(frame: MessageFrame, size: number): void {
     if (frame.type === 'item') {
-      this.output?.push(frame.output)
+      this.output?.push(frame.output, size)
       return
     }
     if (frame.type === 'done') {
@@ -185,6 +213,7 @@ export class ClientCall {
     this.sendingInput = false
     this.host.settle(this.id)
     this.unsubAbort?.()
+    this.drain?.cancel()
     void Promise.resolve(this.inputIterator?.return?.()).then(
       () => {},
       () => {},
@@ -222,7 +251,12 @@ export class ClientCall {
     }
   }
 
-  private async pumpInput(): Promise<void> {
+  /**
+   * Pull the input iterator one item at a time and send `in-item`, pausing at
+   * the duplex's drain promise. A server that does not drain within
+   * `drainTimeout` fails the call locally and gets a `cancel`.
+   */
+  private async pumpInput(drain: DrainWaiter): Promise<void> {
     const iterator = this.inputIterator
     if (iterator === undefined) {
       return
@@ -245,6 +279,22 @@ export class ClientCall {
         const sent = this.host.send(item)
         if (!sent.ok) {
           this.fail(sendFailure(sent.reason), sent.reason !== 'closed')
+          return
+        }
+        if (sent.drained === undefined) {
+          continue
+        }
+        const outcome = await drain.wait(sent.drained)
+        if (outcome === 'timeout') {
+          this.fail(
+            localFailure(
+              `Peer did not drain within ${this.host.backpressure.drainTimeout} ms`,
+            ),
+            true,
+          )
+          return
+        }
+        if (outcome === 'cancelled') {
           return
         }
       }

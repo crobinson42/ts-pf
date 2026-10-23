@@ -1,8 +1,10 @@
 import {
+  type BackpressureOptions,
   type CallFrame,
   type Duplex,
   type MessageFrame,
   MessageSession,
+  resolveBackpressure,
   type WireError,
 } from '@ts-pf/message'
 import type {
@@ -12,12 +14,20 @@ import type {
 } from '@ts-pf/server'
 import { dispatchCall, ServerCall, type ServerCallHost } from './call.js'
 
+export type { BackpressureOptions, StallInfo } from '@ts-pf/message'
+
 export type HandlerOptions = {
   maxFrameBytes?: number
   helloTimeoutMs?: number
   onError?: (error: unknown) => void | Promise<void>
   interceptors?: readonly CallInterceptor[]
   validation?: ProcedureValidation
+  /**
+   * Slow-peer protection, on by default (1 MiB `highWaterMark`, 30 s
+   * `drainTimeout`, one `console.warn` per stall). A bad value throws a
+   * `TypeError` from the constructor.
+   */
+  backpressure?: BackpressureOptions
 }
 
 export type AttachRouterOptions<TCtx = unknown> = HandlerOptions & {
@@ -50,12 +60,16 @@ export function contextWithInfo<TCtx, TInfo extends object>(
  * `inflight` map of ids to `ServerCall`s, and the `PROTOCOL.md` "Multiplex"
  * rules for routing each frame to one of them. Context is created once per
  * connection in `onHello`; `onFrame` returns without awaiting `runProcedure`.
+ * Reads pause (connection-wide) while any call's input queue is over its
+ * high-water mark and the duplex can pause.
  */
 export function attachRouter<TCtx = unknown>(
   options: AttachRouterOptions<TCtx>,
 ): { close(): void; ready: Promise<void> } {
   let context!: TCtx
   const inflight = new Map<string, ServerCall>()
+  const backpressure = resolveBackpressure(options.backpressure)
+  let pausedQueues = 0
 
   const session = new MessageSession({
     duplex: options.duplex,
@@ -86,8 +100,8 @@ export function attachRouter<TCtx = unknown>(
         throw error
       }
     },
-    onFrame: (frame) => {
-      handleFrame(frame)
+    onFrame: (frame, size) => {
+      handleFrame(frame, size)
     },
     onInvalidFrame: (info) => {
       handleInvalid(info)
@@ -107,6 +121,19 @@ export function attachRouter<TCtx = unknown>(
     },
     sendResultErr,
     onError: options.onError,
+    backpressure,
+    pauseReads: () => {
+      pausedQueues += 1
+      if (pausedQueues === 1) {
+        options.duplex.pause?.()
+      }
+    },
+    resumeReads: () => {
+      pausedQueues -= 1
+      if (pausedQueues === 0) {
+        options.duplex.resume?.()
+      }
+    },
   }
 
   function sendResultErr(id: string, error: WireError): void {
@@ -134,14 +161,14 @@ export function attachRouter<TCtx = unknown>(
     sendResultErr(info.id, { code: 'BAD_REQUEST', message: info.message })
   }
 
-  function handleFrame(frame: MessageFrame): void {
+  function handleFrame(frame: MessageFrame, size: number): void {
     switch (frame.type) {
       case 'call':
         startCall(frame)
         return
       case 'in-item':
       case 'in-done':
-        inflight.get(frame.id)?.pushInput(frame)
+        inflight.get(frame.id)?.pushInput(frame, size)
         return
       case 'cancel': {
         const call = inflight.get(frame.id)
@@ -174,7 +201,12 @@ export function attachRouter<TCtx = unknown>(
     if (inflight.has(frame.id)) {
       return
     }
-    const call = new ServerCall(frame.id, frame.stream === true, host)
+    const call = new ServerCall(
+      frame.id,
+      frame.path,
+      frame.stream === true,
+      host,
+    )
     inflight.set(frame.id, call)
     void call.run(() =>
       dispatchCall(

@@ -1,5 +1,9 @@
 import type { Link } from '@ts-pf/client'
-import { createWsDuplex, type WebSocketLike } from '@ts-pf/message'
+import {
+  createWsDuplex,
+  resolveBackpressure,
+  type WebSocketLike,
+} from '@ts-pf/message'
 import { localFailure } from '@ts-pf/protocol'
 import { DuplexLink } from './duplex.js'
 import { awaitWithAbort, type LinkOptions } from './shared.js'
@@ -24,10 +28,13 @@ type WsLinkOpts =
 
 /**
  * `DuplexLink` over `createWsDuplex`, started once the socket is open.
- * Calls made before that wait for the connect; `close()` also closes the socket.
+ * Calls made before that wait for the connect; `close()` also closes the
+ * socket. `backpressure.highWaterMark` is the `bufferedAmount` the socket may
+ * hold before an input stream's producer pauses.
  */
 export class WsLink implements Link {
   private readonly socket: WebSocketLike
+  private readonly highWaterMark: number
   private link: DuplexLink | undefined
   private readonly connected: Promise<DuplexLink>
   private closed = false
@@ -45,6 +52,8 @@ export class WsLink implements Link {
     if ((socketOpt !== undefined) === (urlOpt !== undefined)) {
       throw new TypeError('WsLink requires exactly one of socket or url')
     }
+    // validated here: the DuplexLink is only built once the socket is open
+    this.highWaterMark = resolveBackpressure(opts.backpressure).highWaterMark
 
     if (urlOpt !== undefined) {
       const Ctor = opts.WebSocket ?? globalThis.WebSocket
@@ -72,6 +81,9 @@ export class WsLink implements Link {
     }
     if (opts.helloTimeoutMs !== undefined) {
       linkOpts.helloTimeoutMs = opts.helloTimeoutMs
+    }
+    if (opts.backpressure !== undefined) {
+      linkOpts.backpressure = opts.backpressure
     }
     this.boot(linkOpts)
   }
@@ -141,7 +153,9 @@ export class WsLink implements Link {
       return
     }
     const link = new DuplexLink({
-      duplex: createWsDuplex(this.socket),
+      duplex: createWsDuplex(this.socket, {
+        highWaterMark: this.highWaterMark,
+      }),
       ...opts,
     })
     this.link = link
