@@ -25,7 +25,7 @@ new StdioHandler(app).bind(
 )
 ```
 
-Bring your own duplex. Any pipe that moves JSON text (Electron IPC, a Chrome runtime port, WebTransport, a Unix socket) is a `Duplex` from `@ts-pf/message` plus `DuplexHandler`; `PortHandler` / `WsHandler` / `StdioHandler` are exactly that over their built-in adapters. The handler owns the handshake, multiplexing, and cancel:
+Bring your own duplex. Any pipe that moves JSON text (Electron IPC, a Chrome runtime port, WebTransport, a Unix socket) is a `Duplex` from `@ts-pf/message` plus `DuplexHandler`; `PortHandler` / `WsHandler` / `StdioHandler` are exactly that over their built-in adapters. The handler owns the handshake, multiplexing, and cancel. Return a promise from `send` while your pipe is above its write mark (it must settle on close) and implement `pause` / `resume` if it can stop receiving; a duplex that does neither gets no slow-peer protection on that pipe:
 
 ```ts
 import type { Duplex } from '@ts-pf/message'
@@ -48,9 +48,27 @@ new DuplexHandler(app).bind(duplex, { context: { db } })
 
 User owns listen / upgrade / spawn / Worker bootstrap. This package never depends on `@ts-pf/client`.
 
-Wire spec: [`packages/protocol/PROTOCOL.md`](../protocol/PROTOCOL.md) (Message transports).
+## Backpressure
+
+On by default, so a slow client cannot make the server accumulate memory or hold a handler forever. An output stream's producer is pulled one item at a time and parked at its `yield` while the duplex is above its write high-water mark (WebSocket `bufferedAmount` over 1 MiB, stdio `write()` refused). If the client still has not drained after `drainTimeout` (30 s), that call is aborted: the handler's `signal` fires, the iterator's `return()` runs once, the remaining frames are dropped, and the client receives a terminal `result` error `INTERNAL` / `Peer did not drain within 30000 ms` if the socket still accepts it. The connection stays open and other calls on it continue. It is not a handler failure, so `onError` is not called; `onStall` is. On the input side, a `stream: true` call's `in-item` queue is bounded by the same mark (measured as frame text length) and the handler pauses reading the duplex (connection-wide) until the handler catches up, where the duplex can pause (stdio, npm `ws`). A `MessagePort` can neither report nor pause; a browser WebSocket reports `bufferedAmount` (so producers park) but cannot pause reads, so the receive-side bound there rests on the peer.
+
+```ts
+import { PortHandler } from '@ts-pf/message-server'
+
+new PortHandler(app, {
+  backpressure: {
+    highWaterMark: 1024 * 1024, // bytes; Infinity disables the receive-queue bound and the WebSocket mark (stdio's write mark is the Writable's own)
+    drainTimeout: 30_000, // ms; 0 pauses forever
+    onStall: ({ path, id, action, waitedMs }) => console.warn(path.join('.'), id, action, waitedMs), // default: one console.warn; false silences
+  },
+}).bind(port, { context: { db } })
+```
+
+A bad value is a `TypeError` naming the option, thrown by the constructor. `BackpressureOptions` / `StallInfo` are re-exported from `@ts-pf/message`.
+
+Wire spec: [`packages/protocol/PROTOCOL.md`](../protocol/PROTOCOL.md) (Message transports, "Backpressure").
 
 ## API
 
-- `DuplexHandler`, `PortHandler`, `WsHandler`, `HandlerOptions`, `WebSocketLike`
+- `DuplexHandler`, `PortHandler`, `WsHandler`, `HandlerOptions`, `BackpressureOptions`, `StallInfo`, `WebSocketLike`
 - `StdioHandler` from `./stdio` only

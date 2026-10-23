@@ -32,7 +32,7 @@ new StdioHandler(app).bind(
 )
 ```
 
-Bring your own duplex for any other pipe (Electron IPC, Chrome runtime port, WebTransport, Unix socket). Implement `Duplex` from `@ts-pf/message` — four functions that move JSON text — and bind it; `DuplexHandler` owns the handshake, multiplexing, and cancel, and `PortHandler` / `WsHandler` / `StdioHandler` are this over their built-in adapters:
+Bring your own duplex for any other pipe (Electron IPC, Chrome runtime port, WebTransport, Unix socket). Implement `Duplex` from `@ts-pf/message` — four functions that move JSON text — and bind it; `DuplexHandler` owns the handshake, multiplexing, and cancel, and `PortHandler` / `WsHandler` / `StdioHandler` are this over their built-in adapters. Return a promise from `send` while your pipe is above its write mark (it must settle on close) and implement `pause` / `resume` if it can stop receiving; a duplex that does neither gets no slow-peer protection on that pipe:
 
 ```ts
 import type { Duplex } from '@ts-pf/message'
@@ -56,9 +56,21 @@ bound.close() // closes the session and the duplex
 
 Call interceptors are `HandlerOptions.interceptors` from `@ts-pf/server`. `HandlerOptions.validation` is the same `ProcedureValidation` for every handler: input checks default on, output and stream output items run only with `{ validation: { output: true } }`. Set it on the constructor, not on `bind()`. Pass `context` (value or `(info) => ctx`) on `bind()`, not per frame; `DuplexHandler`'s factory sees `{ meta }` only, the others add their `port` / `socket` / streams. `new PortHandler(app)` / `WsHandler` / `StdioHandler` / `DuplexHandler` infer the context type from `app` (the `$context<C>()` behind `impl.router()`), so `bind(..., { context })` is checked against it; an explicit `new PortHandler<AppCtx>(app)` still works when `AppCtx` satisfies it. A tree not produced by `impl.router()` infers `unknown`; use `impl.router()` to keep the check.
 
+Slow clients are handled by default (`HandlerOptions.backpressure`, same shape on every handler): an output stream's generator is parked at its `yield` while the duplex is over its high-water mark (1 MiB of WebSocket `bufferedAmount`, a refused stdio `write()`), and after `drainTimeout` (30 s) that one call is aborted — `signal` fires, `return()` runs once, the client gets `result` `INTERNAL` / `Peer did not drain within 30000 ms` — while the connection and its other calls continue. `onStall` (default one `console.warn`) sees `{ path, id, action: 'paused' | 'aborted', waitedMs }`; `onError` does not fire for it. Input streams are bounded by the same mark and pause reads (connection-wide) where the pipe can pause. Tune or switch off per handler:
+
+```ts
+import { WsHandler } from '@ts-pf/message-server'
+
+new WsHandler(app, {
+  backpressure: { highWaterMark: 256 * 1024, drainTimeout: 10_000, onStall: false },
+})
+```
+
+`drainTimeout: 0` pauses forever; `highWaterMark: Infinity` disables the receive-queue bound (frame text length) and the WebSocket `bufferedAmount` mark — on stdio the write mark is the `Writable`'s own `highWaterMark`, so pair it with `drainTimeout: 0` to never abort. A `MessagePort` cannot report or pause, so `PortHandler` relies on the peer there; a browser WebSocket reports but cannot pause.
+
 ## API
 
-- `DuplexHandler`, `PortHandler`, `WsHandler`, `HandlerOptions`, `WebSocketLike`
+- `DuplexHandler`, `PortHandler`, `WsHandler`, `HandlerOptions`, `BackpressureOptions`, `StallInfo`, `WebSocketLike`
 - `StdioHandler` from `./stdio` only
 
 ## Pair with
@@ -72,3 +84,5 @@ Call interceptors are `HandlerOptions.interceptors` from `@ts-pf/server`. `Handl
 - `HandlerPlugin` here (HTTP-only on `FetchHandler`).
 - Reconstruct HTTP status from `error.code`.
 - Copy the multiplexer for a new pipe — write a `Duplex` and use `DuplexHandler`.
+- Treat the drain-timeout `INTERNAL` as a handler bug — it is the peer not reading; log it with `onStall`, not `onError`.
+- Set `highWaterMark: Infinity` on a public WebSocket server — one slow client then grows the process again.
