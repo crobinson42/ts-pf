@@ -5,6 +5,7 @@ import {
 } from '@ts-pf/client'
 import { FetchLink } from '@ts-pf/client-http'
 import type { ContractClient } from '@ts-pf/contract'
+import { defined } from '@ts-pf/protocol'
 
 type FetchLinkOptions = ConstructorParameters<typeof FetchLink>[0]
 
@@ -42,17 +43,10 @@ function fetchLinkOptions(opts: {
   fetch?: NonNullable<FetchLinkOptions['fetch']>
   codec?: NonNullable<FetchLinkOptions['codec']>
 }): FetchLinkOptions {
-  const linkOpts: FetchLinkOptions = { url: opts.prefix }
-  if (opts.headers !== undefined) {
-    linkOpts.headers = opts.headers
+  return {
+    url: opts.prefix,
+    ...defined({ headers: opts.headers, fetch: opts.fetch, codec: opts.codec }),
   }
-  if (opts.fetch !== undefined) {
-    linkOpts.fetch = opts.fetch
-  }
-  if (opts.codec !== undefined) {
-    linkOpts.codec = opts.codec
-  }
-  return linkOpts
 }
 
 function clientOptions(opts: {
@@ -64,23 +58,11 @@ function clientOptions(opts: {
       interceptors?: readonly CallInterceptor[]
     }
   | undefined {
-  const clientOpts: {
-    plugins?: readonly CallPlugin[]
-    interceptors?: readonly CallInterceptor[]
-  } = {}
-  if (opts.plugins !== undefined) {
-    clientOpts.plugins = opts.plugins
-  }
-  if (opts.interceptors !== undefined) {
-    clientOpts.interceptors = opts.interceptors
-  }
-  if (
-    clientOpts.plugins === undefined &&
-    clientOpts.interceptors === undefined
-  ) {
-    return undefined
-  }
-  return clientOpts
+  const clientOpts = defined({
+    plugins: opts.plugins,
+    interceptors: opts.interceptors,
+  })
+  return Object.keys(clientOpts).length === 0 ? undefined : clientOpts
 }
 
 export { withBase } from './with-base.js'
