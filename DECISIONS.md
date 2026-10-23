@@ -91,7 +91,11 @@ These come from the protocol 1.1 design spike (maintainer notes, see the top of 
 - **A8-B3, bounded `PushQueue` with `pause` / `resume` and a `highWaterMark` option** — deferred to a 1.x minor after A8-B1; it needs the drain-aware `send` first and has no wire change.
 - **A8-A, a `credit` frame with a handshake-negotiated window** — deferred to v2 because the handshake cannot carry the negotiation in 1.x; it is the only backpressure design that bounds the *sender* rather than the adapter.
 - **A9 (client side), a third `Link.call` parameter for per-call `meta`** — deferred to v2 because it is a `Link` API redesign; the server-side tolerant reader (accepting an object-typed `meta` on `call`) is a 1.x additive change and can land first.
-- **A10, codec negotiation (`RpcCodec.contentTypes`, `encodeSuccess(output, { accept })`, `FetchHandler({ codecs })`, `FetchLink` sending `Accept`)** — deferred until requested; additive and header-only, but it reintroduces the mismatch class that one-codec-per-handler avoids. The `Accept` advisory paragraph in `PROTOCOL.md` lands with the A2 version-header rule.
+- **A10, codec negotiation (`RpcCodec.contentTypes`, `encodeSuccess(output, { accept })`, `FetchHandler({ codecs })`, `FetchLink` sending `Accept`)** — deferred until requested; additive and header-only, but it reintroduces the mismatch class that one-codec-per-handler avoids. The `Accept` advisory paragraph in `PROTOCOL.md` landed with the A2 version-header rule (below).
+
+### Shipped from the same spike (revision 1.1)
+
+- **A2, version header read on HTTP; one version source** — `FetchHandler` reads the request `x-ts-pf-protocol` (absent → accept; present and not `1` → `400 BAD_REQUEST` `Unsupported protocol version`, the message handshake's string, after the method check and before the body) and `FetchLink` fails locally, body unread, on a response header that is present and not `1`. `PROTOCOL_MAJOR = 1 as const` in `@ts-pf/protocol` is the single source; `PROTOCOL_VERSION` is its string (still the value inside `catalog()` / `catalogHash()`), and `@ts-pf/message` uses the constant for `v`. Wire bytes are unchanged; `PROTOCOL.md` gained the "Revisions" and "Content negotiation" paragraphs and its title now carries the revision. The only stricter case is a non-ts-pf client sending a malformed value such as `1.0`, which no shipped client does.
 
 ## Process
 

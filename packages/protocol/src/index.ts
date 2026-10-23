@@ -1,6 +1,7 @@
 export { type Defined, defined } from './defined.js'
 export {
   type PFResultPromise,
+  PROTOCOL_MAJOR,
   PROTOCOL_VERSION,
   type RpcFailure,
   type RpcRequest,

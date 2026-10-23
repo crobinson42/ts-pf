@@ -33,7 +33,11 @@ const client = createClient<typeof contract>(
 
 Fetch interceptors see raw `Request` / `Response` / fetch throws, not mapped `PFError`. Retry, cache, and dedupe belong on `createClient`.
 
+## Errors
+
 On a unary failure the rejected `PFError.status` is the HTTP response status (declared `NOT_FOUND { status: 404 }` → `404`; declared code with no status → `400`). Failures after a stream has started (`StreamCodec` / `SseCodec`) have `status` `undefined`; network / abort failures are `localFailure` (`status: 0`, `local: true`). Switch on `code`.
+
+`FetchLink` sends `x-ts-pf-protocol: 1`. A response whose `x-ts-pf-protocol` is present and not `1` is never decoded: the call rejects with `localFailure('Unsupported protocol version')` (`INTERNAL`, `local: true`, `status: 0`, `cause` is the `Response`). A response without the header that fails to decode is `INTERNAL` with the HTTP status and `Non-RPC response (HTTP …)` (a proxy page, not a ts-pf server); `isLocalFailure` is false for that one.
 
 ## API
 

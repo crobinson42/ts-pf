@@ -246,6 +246,109 @@ describe('FetchHandler', () => {
   })
 })
 
+describe('FetchHandler protocol version header', () => {
+  const handler = new FetchHandler(app)
+
+  function find(headers: Record<string, string>, method = 'POST'): Request {
+    return new Request('http://localhost/rpc/planet/find', {
+      method,
+      headers: { 'content-type': 'application/json', ...headers },
+      body: method === 'POST' ? JSON.stringify({ input: { id: 1 } }) : null,
+    })
+  }
+
+  async function handle(request: Request) {
+    const result = await handler.handle(request, {
+      prefix: '/rpc',
+      context: {},
+    })
+    expect(result.matched).toBe(true)
+    if (!result.matched) {
+      throw new Error('expected match')
+    }
+    return result.response
+  }
+
+  it('accepts a request without the header', async () => {
+    const response = await handle(find({}))
+    expect(response.status).toBe(200)
+    expect(response.headers.get('x-ts-pf-protocol')).toBe('1')
+  })
+
+  it('accepts the supported major', async () => {
+    const response = await handle(find({ 'x-ts-pf-protocol': '1' }))
+    expect(response.status).toBe(200)
+  })
+
+  it('tolerates surrounding whitespace', async () => {
+    const response = await handle(find({ 'x-ts-pf-protocol': ' 1 ' }))
+    expect(response.status).toBe(200)
+  })
+
+  it('answers 400 BAD_REQUEST for another major without reading the body', async () => {
+    const request = find({ 'x-ts-pf-protocol': '2' })
+    const response = await handle(request)
+    expect(response.status).toBe(400)
+    expect(response.headers.get('x-ts-pf-protocol')).toBe('1')
+    expect(await response.json()).toEqual({
+      ok: false,
+      error: { code: 'BAD_REQUEST', message: 'Unsupported protocol version' },
+    })
+    expect(request.bodyUsed).toBe(false)
+  })
+
+  it.each(['1.0', '', '1, 1', 'one'])(
+    'answers 400 BAD_REQUEST for %j',
+    async (value) => {
+      const response = await handle(find({ 'x-ts-pf-protocol': value }))
+      expect(response.status).toBe(400)
+      expect(await response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'BAD_REQUEST', message: 'Unsupported protocol version' },
+      })
+    },
+  )
+
+  it('checks the method before the version', async () => {
+    const response = await handle(find({ 'x-ts-pf-protocol': '2' }, 'GET'))
+    expect(response.status).toBe(405)
+    expect(await response.json()).toMatchObject({
+      ok: false,
+      error: { code: 'METHOD_NOT_ALLOWED' },
+    })
+  })
+
+  it('checks the version before the lookup and reaches onError', async () => {
+    const seen: unknown[] = []
+    const reporting = new FetchHandler(app, {
+      onError(error) {
+        seen.push(error)
+      },
+    })
+    const result = await reporting.handle(
+      new Request('http://localhost/rpc/nope', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-ts-pf-protocol': '2',
+        },
+        body: 'not json',
+      }),
+      { prefix: '/rpc', context: {} },
+    )
+    expect(result.matched).toBe(true)
+    if (!result.matched) {
+      throw new Error('expected match')
+    }
+    expect(result.response.status).toBe(400)
+    expect(seen).toHaveLength(1)
+    expect(seen[0]).toMatchObject({
+      code: 'BAD_REQUEST',
+      message: 'Unsupported protocol version',
+    })
+  })
+})
+
 describe('FetchHandler lookup before decode', () => {
   const handler = new FetchHandler(app)
 

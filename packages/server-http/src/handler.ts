@@ -121,8 +121,10 @@ export class FetchHandler<TCtx = unknown> {
       if (shortCircuit !== undefined) {
         return await this.respond(state, shortCircuit)
       }
-      // 1. method, then procedure: a 405 or 404 answers before the body is read
+      // 1. method, then protocol version, then procedure: a 405, 400, or 404
+      //    answers before the body is read
       assertPost(state.request)
+      assertProtocolVersion(state.request)
       const procedure = this.lookup(path)
       // 2. decode the body
       const decoded = await this.codec.decodeRequest(bodySource(state.request))
@@ -156,7 +158,7 @@ export class FetchHandler<TCtx = unknown> {
   }
 
   /**
-   * Step 1, lookup half. Prefix matched but no procedure at `path`:
+   * Step 1, lookup third. Prefix matched but no procedure at `path`:
    * `NOT_FOUND` (no call interceptors). Runs before decode, so an unknown
    * path never buffers or parses the body.
    */
@@ -291,12 +293,28 @@ export class FetchHandler<TCtx = unknown> {
   }
 }
 
-/** Step 1, method half. Thrown inside the pipeline so plugins and `onError` see 405s too. */
+/** Step 1, method third. Thrown inside the pipeline so plugins and `onError` see 405s too. */
 function assertPost(request: Request): void {
   if (request.method !== 'POST') {
     throw new PFError({
       code: 'METHOD_NOT_ALLOWED',
       message: 'Method not allowed',
+    })
+  }
+}
+
+/**
+ * Step 1, version third. An absent `x-ts-pf-protocol` is accepted (curl,
+ * non-ts-pf clients). A present value other than the supported major (after
+ * trimming ASCII whitespace) is the same `BAD_REQUEST` the message handshake
+ * answers, so a future-major client gets a diagnostic instead of a v1 decode.
+ */
+function assertProtocolVersion(request: Request): void {
+  const version = request.headers.get(PROTOCOL_HEADER)
+  if (version !== null && version.trim() !== PROTOCOL_VERSION) {
+    throw new PFError({
+      code: 'BAD_REQUEST',
+      message: 'Unsupported protocol version',
     })
   }
 }

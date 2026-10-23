@@ -1,7 +1,11 @@
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { ProtocolErrorCode } from '@ts-pf/protocol'
+import {
+  PROTOCOL_MAJOR,
+  PROTOCOL_VERSION,
+  ProtocolErrorCode,
+} from '@ts-pf/protocol'
 import { describe, expect, it } from 'vitest'
 
 const specPath = join(
@@ -35,5 +39,25 @@ describe('PROTOCOL.md protocol errors table', () => {
     expect(rows.map(([code]) => code).sort()).toEqual(
       Object.values(ProtocolErrorCode).sort(),
     )
+  })
+})
+
+describe('PROTOCOL.md wire version', () => {
+  const markdown = readFileSync(specPath, 'utf8')
+
+  it('writes PROTOCOL_VERSION in every x-ts-pf-protocol header example', () => {
+    const values = [...markdown.matchAll(/x-ts-pf-protocol: "?(\d[\d.]*)/g)]
+      .map((match) => match[1])
+      .filter((value): value is string => value !== undefined)
+    expect(values.length).toBeGreaterThan(0)
+    expect(new Set(values)).toEqual(new Set([PROTOCOL_VERSION]))
+  })
+
+  it('writes PROTOCOL_MAJOR in every "v" frame example', () => {
+    const values = [...markdown.matchAll(/"v": (\d+(?:\.\d+)?)/g)]
+      .map((match) => match[1])
+      .filter((value): value is string => value !== undefined)
+    expect(values.length).toBeGreaterThan(0)
+    expect(new Set(values)).toEqual(new Set([String(PROTOCOL_MAJOR)]))
   })
 })

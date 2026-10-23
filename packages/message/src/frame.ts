@@ -1,7 +1,13 @@
+import { PROTOCOL_MAJOR } from '@ts-pf/protocol'
+
 export type WireError = { code: string; message: string; data?: unknown }
 
-export type HelloFrame = { type: 'hello'; v: 1; meta?: unknown }
-export type HelloOkFrame = { type: 'hello-ok'; v: 1 }
+export type HelloFrame = {
+  type: 'hello'
+  v: typeof PROTOCOL_MAJOR
+  meta?: unknown
+}
+export type HelloOkFrame = { type: 'hello-ok'; v: typeof PROTOCOL_MAJOR }
 export type HelloErrorFrame = { type: 'hello-error'; error: WireError }
 
 export type CallFrame = {
@@ -117,13 +123,13 @@ export function encodeFrame(frame: MessageFrame): string {
   const body: Record<string, unknown> = { type: frame.type }
   switch (frame.type) {
     case 'hello':
-      body.v = 1
+      body.v = PROTOCOL_MAJOR
       if (frame.meta !== undefined) {
         body.meta = frame.meta
       }
       break
     case 'hello-ok':
-      body.v = 1
+      body.v = PROTOCOL_MAJOR
       break
     case 'hello-error':
       body.error = wireError(frame.error)
@@ -206,20 +212,20 @@ function validateKnown(
 ): DecodeResult {
   switch (type) {
     case 'hello': {
-      if (obj.v !== 1) {
+      if (obj.v !== PROTOCOL_MAJOR) {
         return fail('Invalid v')
       }
-      const frame: HelloFrame = { type: 'hello', v: 1 }
+      const frame: HelloFrame = { type: 'hello', v: PROTOCOL_MAJOR }
       if ('meta' in obj) {
         frame.meta = obj.meta
       }
       return { ok: true, frame }
     }
     case 'hello-ok':
-      if (obj.v !== 1) {
+      if (obj.v !== PROTOCOL_MAJOR) {
         return fail('Invalid v')
       }
-      return { ok: true, frame: { type: 'hello-ok', v: 1 } }
+      return { ok: true, frame: { type: 'hello-ok', v: PROTOCOL_MAJOR } }
     case 'hello-error': {
       const error = decodeWireError(obj.error)
       if (error === undefined) {
