@@ -4,9 +4,10 @@ import { attachRouter, type HandlerOptions } from './shared.js'
 
 export type { WebSocketLike }
 
+/** `TCtx` is inferred from the router's context brand; see `FetchHandler`. */
 export class WsHandler<TCtx = unknown> {
   constructor(
-    private readonly router: ImplementedRouter,
+    private readonly router: ImplementedRouter<unknown, TCtx>,
     private readonly options?: HandlerOptions,
   ) {}
 

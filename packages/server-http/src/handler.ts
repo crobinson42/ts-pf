@@ -28,6 +28,13 @@ export type FetchHandlerOnError = (
   info: { request: Request; path: readonly string[]; context: unknown },
 ) => void | Promise<void>
 
+/**
+ * `TCtx` is inferred from the router's context brand (the `$context<C>()`
+ * type behind `impl.router()`), so `handle(request, { context })` is checked
+ * against it. A hand-built tree has no brand and `TCtx` is `unknown`. An
+ * explicit `new FetchHandler<AppCtx>(app)` is still accepted when `AppCtx`
+ * satisfies the router's context.
+ */
 export class FetchHandler<TCtx = unknown> {
   private readonly codec: RpcCodec
   private readonly plugins: HandlerPlugin[]
@@ -36,7 +43,7 @@ export class FetchHandler<TCtx = unknown> {
   private readonly onError: FetchHandlerOnError | undefined
 
   constructor(
-    private readonly router: ImplementedRouter,
+    private readonly router: ImplementedRouter<unknown, TCtx>,
     options?: {
       codec?: RpcCodec
       plugins?: HandlerPlugin[]

@@ -9,9 +9,10 @@ import { attachRouter, type HandlerOptions } from './shared.js'
 // const child = spawn(cmd, { stdio: ['pipe', 'pipe', 'inherit'] })
 // new StdioLink({ input: child.stdout, output: child.stdin })
 
+/** `TCtx` is inferred from the router's context brand; see `FetchHandler`. */
 export class StdioHandler<TCtx = unknown> {
   constructor(
-    private readonly router: ImplementedRouter,
+    private readonly router: ImplementedRouter<unknown, TCtx>,
     private readonly options?: HandlerOptions,
   ) {}
 

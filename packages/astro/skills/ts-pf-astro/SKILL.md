@@ -48,6 +48,8 @@ export const client = createAstroClient<typeof contract>({
 
 `@ts-pf/astro` (root) exports the same client helpers. `@ts-pf/swr` works on that client for React islands.
 
+`createAstroHandler(handler, { context })` checks `context` against the context type `FetchHandler` inferred from `app`; `createAstroLocalClient(app, Astro, context)` checks it against `app`'s `$context<C>()`. `createAstroClient` needs the contract type: `createAstroClient<typeof contract>({ prefix })`, or a `ContractClient<typeof contract>` annotation on the variable or return type. Without either the result is `{ readonly '~error': 'Pass createAstroClient<typeof contract>({ prefix })' }`, not an empty client.
+
 ## API
 
 - `createAstroHandler`
