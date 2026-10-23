@@ -22,7 +22,7 @@ httpStatus(error) // Response.status from PFError
 // header name: PROTOCOL_HEADER ('x-ts-pf-protocol')
 ```
 
-`JSONCodec` is the default body. Encode returns `{ contentType, body }`. Decode takes `{ contentType, text(), formData(), body() }`.
+`JSONCodec` is the default body. Encode returns `{ contentType, body }`. Decode takes `{ contentType, text(), formData(), body() }`. `decodeRequest` throws `BAD_REQUEST` for invalid JSON, a non-object body, or an envelope object with keys but no `input` key (`{"id":1}` instead of `{"input":{"id":1}}`); `{}` and `{"input":null}` decode to `input: undefined`. Wrapping codecs (`MultipartCodec`, `StreamCodec`, `SseCodec`) inherit these checks.
 
 ## API
 

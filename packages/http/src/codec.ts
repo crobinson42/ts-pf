@@ -39,6 +39,15 @@ export class JSONCodec implements RpcCodec {
         message: 'Request body must be a JSON object',
       })
     }
+    if (!('input' in parsed) && Object.keys(parsed).length > 0) {
+      // `{"name":"x"}` instead of `{"input":{"name":"x"}}` is an invalid
+      // envelope, not an undefined input. `{}` and `{"input":null}` are fine.
+      throw new PFError({
+        code: 'BAD_REQUEST',
+        status: 400,
+        message: 'Request body must be {"input": ...}',
+      })
+    }
     const input = (parsed as { input?: unknown }).input
     if (input === undefined || input === null) {
       return { input: undefined }

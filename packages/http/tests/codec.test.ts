@@ -69,6 +69,20 @@ describe('JSONCodec', () => {
     expect(await codec.decodeRequest(source(''))).toEqual({ input: undefined })
   })
 
+  it('decodeRequest rejects an envelope object with keys but no input', async () => {
+    await expect(
+      codec.decodeRequest(source('{"name":"x"}')),
+    ).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+      status: 400,
+      message: 'Request body must be {"input": ...}',
+    })
+    // Extra keys next to `input` are tolerated; only a missing `input` is an error.
+    expect(
+      await codec.decodeRequest(source('{"input":{"id":1},"extra":true}')),
+    ).toEqual({ input: { id: 1 } })
+  })
+
   it('decodeRequest throws PFError BAD_REQUEST on invalid JSON', async () => {
     await expect(codec.decodeRequest(source('{'))).rejects.toThrow(PFError)
     await expect(codec.decodeRequest(source('{'))).rejects.toMatchObject({

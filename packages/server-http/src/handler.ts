@@ -22,11 +22,18 @@ export type HandleResult =
   | { matched: false; response?: undefined }
   | { matched: true; response: Response }
 
+/** `FetchHandler` `onError` option. `context` is `unknown` like `HandlerPlugin`. */
+export type FetchHandlerOnError = (
+  error: unknown,
+  info: { request: Request; path: readonly string[]; context: unknown },
+) => void | Promise<void>
+
 export class FetchHandler<TCtx = unknown> {
   private readonly codec: RpcCodec
   private readonly plugins: HandlerPlugin[]
   private readonly interceptors: readonly CallInterceptor[]
   private readonly validation: ProcedureValidation | undefined
+  private readonly onError: FetchHandlerOnError | undefined
 
   constructor(
     private readonly router: ImplementedRouter,
@@ -35,12 +42,33 @@ export class FetchHandler<TCtx = unknown> {
       plugins?: HandlerPlugin[]
       interceptors?: readonly CallInterceptor[]
       validation?: ProcedureValidation
+      /**
+       * Side-effect hook for every error that becomes an error response.
+       * Receives the original thrown value (before an unknown throw is
+       * mapped to `INTERNAL`), including `METHOD_NOT_ALLOWED`, `NOT_FOUND`,
+       * codec `BAD_REQUEST`, and `VALIDATION`. Runs after every
+       * `HandlerPlugin.onError` (array order) and before the failure is
+       * encoded. It cannot replace the response. A `Response` returned from
+       * `HandlerPlugin.onRequest` is not an error to this hook, and a throw
+       * from `onError` itself rejects `handle()`. Errors thrown after a
+       * streamed response has started are written in-band by the codec
+       * (unknown throws as `INTERNAL`) and do not reach this hook or the
+       * default log.
+       *
+       * When omitted, `FetchHandler` logs with `console.error`: unknown
+       * (non-`PFError`) throws, and `INTERNAL` `PFError`s (an output schema
+       * failure under `validation.output`, invalid declared error `data`, or
+       * an explicit `INTERNAL` throw). Declared and other protocol errors are
+       * not logged. Passing `onError` replaces that default logging entirely.
+       */
+      onError?: FetchHandlerOnError
     },
   ) {
     this.codec = options?.codec ?? new JSONCodec()
     this.plugins = options?.plugins ?? []
     this.interceptors = options?.interceptors ?? []
     this.validation = options?.validation
+    this.onError = options?.onError
   }
 
   async handle(
@@ -74,19 +102,10 @@ export class FetchHandler<TCtx = unknown> {
       }
 
       if (inbound.method !== 'POST') {
-        return {
-          matched: true,
-          response: await this.applyOnResponse(
-            inbound,
-            await this.errorResponse(
-              new PFError({
-                code: 'METHOD_NOT_ALLOWED',
-                message: 'Method not allowed',
-              }),
-            ),
-            context,
-          ),
-        }
+        throw new PFError({
+          code: 'METHOD_NOT_ALLOWED',
+          message: 'Method not allowed',
+        })
       }
 
       const decoded = await this.codec.decodeRequest(bodySource(inbound))
@@ -141,6 +160,11 @@ export class FetchHandler<TCtx = unknown> {
             : { request: inbound, error, context },
         )
       }
+      if (this.onError) {
+        await this.onError(error, { request: inbound, path, context })
+      } else {
+        this.logError(error, path)
+      }
       const failure = isPFError(error)
         ? error
         : new PFError({
@@ -175,6 +199,25 @@ export class FetchHandler<TCtx = unknown> {
       }
     }
     return current
+  }
+
+  private logError(error: unknown, path: readonly string[]): void {
+    const where = `"${path.join('/')}"`
+    if (!isPFError(error)) {
+      console.error(`[ts-pf/server-http] Unhandled error in ${where}:`, error)
+      return
+    }
+    if (error.code !== 'INTERNAL') {
+      return
+    }
+    const causes =
+      this.validation?.output === true
+        ? 'output schema failure, invalid declared error data, or an INTERNAL throw'
+        : 'invalid declared error data or an INTERNAL throw'
+    console.error(
+      `[ts-pf/server-http] INTERNAL error in ${where} (${causes}):`,
+      error,
+    )
   }
 
   private async successResponse(output: unknown): Promise<Response> {

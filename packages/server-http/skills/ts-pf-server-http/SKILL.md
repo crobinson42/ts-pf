@@ -33,9 +33,27 @@ return result.response
 
 `plugins` is HTTP-only (`HandlerPlugin`). RPC call interceptors go on `{ interceptors }` from `@ts-pf/server`. `validation` is the same `ProcedureValidation` as `runProcedure`: input checks default on, output and stream output items run only with `{ validation: { output: true } }`. Set it on the constructor, not on `handle()`. `CORSPlugin` answers `OPTIONS` preflight.
 
+## Errors
+
+Unknown throws become `500 INTERNAL` with no stack on the wire. By default `FetchHandler` logs them with `console.error` (the original thrown value, tagged `[ts-pf/server-http]` with the procedure path). It also logs `INTERNAL` `PFError`s — an output schema failure under `validation.output`, invalid declared error `data`, or an explicit `INTERNAL` throw — naming those causes. Declared errors and every other protocol code (`VALIDATION`, `NOT_FOUND`, `BAD_REQUEST`, `METHOD_NOT_ALLOWED`, `PAYLOAD_TOO_LARGE`) are expected and are not logged.
+
+Pass `onError` to route errors to your own logger. It receives the original error (before `INTERNAL` mapping) for every error response, runs after each `HandlerPlugin.onError`, cannot replace the response (a throw from it rejects `handle()`), and turns the default logging off:
+
+```ts
+new FetchHandler(app, {
+  onError(error, { request, path, context }) {
+    logger.error({ err: error, path: path.join('/'), url: request.url })
+  },
+})
+```
+
+Errors thrown after a streamed response has started (`StreamCodec` / `SseCodec` output) are written in-band by the codec as `INTERNAL` items; they do not reach `onError` or the default log.
+
+A JSON envelope object with keys but no `input` key (`{"id":1}` instead of `{"input":{"id":1}}`) is `400 BAD_REQUEST` `Request body must be {"input": ...}`, whichever codec carries it (plain JSON, the multipart `rpc` part, or a JSONL input line). `{}` and `{"input":null}` still mean no input.
+
 ## API
 
-- `FetchHandler`, `HandleResult`, `HandlerPlugin`
+- `FetchHandler`, `FetchHandlerOnError`, `HandleResult`, `HandlerPlugin`
 - `CORSPlugin`, `RequestLimitPlugin`, `RequestHeadersPlugin`, `ResponseHeadersPlugin`
 
 ## Pair with
