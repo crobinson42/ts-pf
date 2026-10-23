@@ -6,7 +6,7 @@ Call interceptors and `CallPlugin`s on `createClient` / `FetchHandler`, plus a c
 
 Client (`src/client.ts`, `src/timeout-plugin.ts`):
 
-```ts
+```ts no-check
 const client = createClient(new FetchLink({ url: '/rpc' }), {
   plugins: [
     new TimeoutPlugin(5_000),
@@ -20,7 +20,7 @@ const client = createClient(new FetchLink({ url: '/rpc' }), {
 
 Server (`src/server.ts`, `src/audit-plugin.ts`):
 
-```ts
+```ts no-check
 new FetchHandler(app, {
   plugins: [new CORSPlugin({ origin: '*' })],
   interceptors: applyPlugins([new DedupePlugin({ key: readKey }), audit]),

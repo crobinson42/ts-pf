@@ -37,6 +37,12 @@ A custom body encoding implements `RpcCodec` (`encode` returns `{ contentType, b
 
 Wire spec: [`PROTOCOL.md`](https://github.com/crobinson42/ts-pf/blob/main/packages/protocol/PROTOCOL.md). Happy path: [root README](https://github.com/crobinson42/ts-pf#readme).
 
+## API
+
+- `JSONCodec`, `RpcCodec`, `RpcEncodedBody`, `RpcBodySource`
+- `PROTOCOL_HEADER`, `joinProcedurePath`, `parseProcedurePath`
+- `httpStatus`, `PROTOCOL_HTTP_STATUS`
+
 ## Agent skills
 
 This package ships [`ts-pf-http`](https://github.com/crobinson42/ts-pf/blob/main/packages/http/skills/ts-pf-http/SKILL.md). Sync with `npx skills experimental_sync -y`.

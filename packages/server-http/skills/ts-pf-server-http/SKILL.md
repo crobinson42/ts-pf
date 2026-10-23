@@ -27,6 +27,11 @@ const handler = new FetchHandler(app, {
 })
 
 const result = await handler.handle(request, { prefix: '/rpc', context: { db } })
+```
+
+Inside your request handler, fall through on a prefix miss:
+
+```ts no-check
 if (!result.matched) return new Response('Not Found', { status: 404 })
 return result.response
 ```
@@ -40,6 +45,8 @@ Unknown throws become `500 INTERNAL` with no stack on the wire. By default `Fetc
 Pass `onError` to route errors to your own logger. It receives the original error (before `INTERNAL` mapping) for every error response, runs after each `HandlerPlugin.onError`, cannot replace the response (a throw from it rejects `handle()`), and turns the default logging off:
 
 ```ts
+import { FetchHandler } from '@ts-pf/server-http'
+
 new FetchHandler(app, {
   onError(error, { request, path, context }) {
     logger.error({ err: error, path: path.join('/'), url: request.url })

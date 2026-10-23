@@ -8,7 +8,7 @@ This package does **not** wrap `useSWR`, add a React provider, switch RPC to GET
 
 ## Setup
 
-```ts
+```ts bundler
 import { createClient } from '@ts-pf/client'
 import { FetchLink } from '@ts-pf/client-http'
 import { createSwr } from '@ts-pf/swr'
@@ -37,7 +37,7 @@ Skip a request with a null key: `id ? swr.planet.find.key({ input: { id } }) : n
 
 ## Infinite queries
 
-```ts
+```ts no-check
 import useSWRInfinite from 'swr/infinite'
 
 const { data, size, setSize } = useSWRInfinite(
@@ -88,7 +88,7 @@ Default matcher strategy is `'partial'` (path prefix + nested input subset).
 
 For procedures whose output is `AsyncIterable` (typically `stream()`):
 
-```ts
+```ts no-check
 import useSWRSubscription from 'swr/subscription'
 
 const { data, error } = useSWRSubscription(

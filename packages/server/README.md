@@ -53,6 +53,12 @@ Serve it over HTTP with `FetchHandler` from `@ts-pf/server-http` — `new FetchH
 
 Server `DedupePlugin` keys every unary call by default, writes included; pass `key` to restrict it to reads.
 
+## API
+
+- `createImplementer`, `createLocalClient`, `runProcedure`, `lookupProcedure`, `ProcedureValidation`
+- `applyPlugins`, `CallPlugin`, `CallInterceptor`, `DedupePlugin`
+- `onStart` / `onSuccess` / `onError` / `onFinish`
+
 ## Agent skills
 
 This package ships [`ts-pf-server`](https://github.com/crobinson42/ts-pf/blob/main/packages/server/skills/ts-pf-server/SKILL.md). Sync with `npx skills experimental_sync -y`.

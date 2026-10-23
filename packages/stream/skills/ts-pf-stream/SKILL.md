@@ -14,6 +14,8 @@ Link for agents: `npx skills experimental_sync -y`
 ## Do
 
 ```ts
+import { procedure } from '@ts-pf/contract'
+import { z } from 'zod'
 import { stream, StreamCodec } from '@ts-pf/stream'
 import { FetchHandler } from '@ts-pf/server-http'
 import { FetchLink } from '@ts-pf/client-http'
@@ -27,7 +29,7 @@ procedure.output(stream(z.object({ token: z.string() })))
 
 Root only. Same codec on handler and link. Item checks follow the server validation flags. Stream input items are checked unless `validation.input` is `false`. Stream output items are checked only when `validation.output` is `true`:
 
-```ts
+```ts no-check
 new FetchHandler(app, { codec, validation: { output: true } })
 ```
 

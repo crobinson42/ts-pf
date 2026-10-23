@@ -14,6 +14,8 @@ Link for agents: `npx skills experimental_sync -y`
 ## Do
 
 ```ts
+import { procedure } from '@ts-pf/contract'
+import { z } from 'zod'
 import { stream } from '@ts-pf/stream'
 import { SseCodec } from '@ts-pf/sse'
 import { FetchHandler } from '@ts-pf/server-http'

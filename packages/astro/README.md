@@ -36,7 +36,7 @@ const planet = await caller.planet.find({ id: 1 })
 
 Import the contract with `import type`. Do not import `@ts-pf/astro/server` or the implementer from a client island or `<script>`. `@ts-pf/swr` works on this client for React islands.
 
-```ts
+```ts bundler
 import { createAstroClient, withBase } from '@ts-pf/astro/client'
 import type { contract } from './contract'
 
@@ -44,3 +44,14 @@ export const client = createAstroClient<typeof contract>({
   prefix: withBase(import.meta.env.BASE_URL, '/rpc'),
 })
 ```
+
+## API
+
+- `createAstroHandler`
+- `createAstroLocalClient`
+- `createAstroClient`
+- `withBase`
+- `AstroHandlerOptions`
+- `AstroLocalClientOptions`
+
+`createAstroHandler`, `createAstroLocalClient`, `AstroHandlerOptions`, and `AstroLocalClientOptions` are `@ts-pf/astro/server`. `createAstroClient` and `withBase` are `@ts-pf/astro` and `@ts-pf/astro/client`.

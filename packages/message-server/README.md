@@ -28,3 +28,8 @@ new StdioHandler(app).bind(
 User owns listen / upgrade / spawn / Worker bootstrap. This package never depends on `@ts-pf/client`.
 
 Wire spec: [`packages/protocol/PROTOCOL.md`](../protocol/PROTOCOL.md) (Message transports).
+
+## API
+
+- `PortHandler`, `WsHandler`, `HandlerOptions`, `WebSocketLike`
+- `StdioHandler` from `./stdio` only

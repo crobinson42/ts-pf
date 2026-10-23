@@ -13,7 +13,7 @@ Link for agents: `npx skills experimental_sync -y`
 
 ## Do
 
-```ts
+```ts no-check
 import { bindClient, issuesToFieldErrors } from '@ts-pf/mvc-kit'
 import { asResult } from '@ts-pf/client'
 import { Resource } from 'mvc-kit'

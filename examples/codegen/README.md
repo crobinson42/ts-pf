@@ -11,7 +11,7 @@ client/     generated Contract + createClient<Contract>(FetchLink)
 
 The server team maintains the contract (`procedure` / `router`), one `catalog(contract, { prefix: '/rpc' })` call, and a way to hand that JSON to the client team. Nobody edits a catalog file: the running server prints the current contract. Here the JSON is served in userland, before `FetchHandler`:
 
-```ts
+```ts no-check
 if (url.pathname === '/catalog.json') return Response.json(spec)
 const result = await handler.handle(req, { prefix: '/rpc', context })
 ```

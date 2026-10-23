@@ -33,15 +33,17 @@ if (!result.ok && result.error.code === 'NOT_FOUND') {
 ## `emit` / `catalogHash`
 
 ```ts
+import { catalog } from '@ts-pf/docs'
 import { emit, catalogHash, type EmitOptions } from '@ts-pf/codegen'
 
-emit(catalog, {
+const spec = catalog(contract, { prefix: '/rpc' })
+emit(spec, {
   name: 'Contract', // default
   failOnUnavailable: false, // default; true throws on kind: 'unavailable'
   banner: true, // catalogVersion + sha256 hash
 })
 
-catalogHash(catalog) // 'sha256:<hex>' of canonical JSON
+catalogHash(spec) // 'sha256:<hex>' of canonical JSON
 ```
 
 Generated procedures are `ContractProcedure<I, O, E>` with Phantom Standard Schema leaves so `InferErrorData` / `asResult` still narrow `error.code === 'NOT_FOUND'`. Protocol errors stay out of the generated error map (`ClientError` already unions them). No-input is `void`. Streams are `AsyncIterable<Item>`.
@@ -79,7 +81,7 @@ Mismatch on pull exits non-zero. No registry in v1.
 
 Do **not** put this on `FetchHandler`. A GET under `/rpc/...` is a procedure miss / `METHOD_NOT_ALLOWED`, not a spec.
 
-```ts
+```ts no-check
 // Userland — not FetchHandler, not @ts-pf/codegen:
 if (url.pathname === '/catalog.json') {
   return Response.json(catalog(contract, { prefix: '/rpc' }))

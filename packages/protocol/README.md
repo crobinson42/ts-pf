@@ -43,6 +43,11 @@ The discriminator is JSON `error.code`. `status`, `cause`, and `local` never app
 
 Wire spec: [`PROTOCOL.md`](https://github.com/crobinson42/ts-pf/blob/main/packages/protocol/PROTOCOL.md) (also shipped in this package). Happy path: [root README](https://github.com/crobinson42/ts-pf#readme).
 
+## API
+
+- `PFError`, `PFErrorInit`, `isPFError`, `localFailure`, `ProtocolErrorCode`
+- `PROTOCOL_VERSION`, `RpcRequest`, `RpcResponse`, `RpcSuccess`, `RpcFailure`, `PFResultPromise`
+
 ## Agent skills
 
 This package ships [`ts-pf-protocol`](https://github.com/crobinson42/ts-pf/blob/main/packages/protocol/skills/ts-pf-protocol/SKILL.md). Sync with `npx skills experimental_sync -y`.
