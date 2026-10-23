@@ -22,7 +22,8 @@ const handler = new FetchHandler(app, {
     new CORSPlugin({ origin: ['https://app.example.com'] }),
     new RequestLimitPlugin({ maxBodySize: 1024 * 1024 }),
   ],
-  interceptors: applyPlugins([new DedupePlugin()]),
+  // Default key dedupes every unary call, writes included. Pass key to restrict to reads.
+  interceptors: applyPlugins([new DedupePlugin({ key: readKey })]),
 })
 
 const result = await handler.handle(request, { prefix: '/rpc', context: { db } })

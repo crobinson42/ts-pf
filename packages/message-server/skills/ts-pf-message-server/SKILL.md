@@ -18,7 +18,8 @@ import { applyPlugins, DedupePlugin } from '@ts-pf/server'
 import { PortHandler } from '@ts-pf/message-server'
 
 new PortHandler(app, {
-  interceptors: applyPlugins([new DedupePlugin()]),
+  // Default key dedupes every unary call, writes included. Pass key to restrict to reads.
+  interceptors: applyPlugins([new DedupePlugin({ key: readKey })]),
 }).bind(port, { context: { db } })
 ```
 

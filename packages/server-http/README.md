@@ -12,7 +12,8 @@ import { CORSPlugin, FetchHandler } from '@ts-pf/server-http'
 
 const handler = new FetchHandler(app, {
   plugins: [new CORSPlugin()],
-  interceptors: applyPlugins([new DedupePlugin()]),
+  // Default key dedupes every unary call, writes included. Pass key to restrict to reads.
+  interceptors: applyPlugins([new DedupePlugin({ key: readKey })]),
 })
 const result = await handler.handle(request, { prefix: '/rpc', context: { db } })
 ```

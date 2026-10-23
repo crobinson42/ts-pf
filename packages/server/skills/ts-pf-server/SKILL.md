@@ -17,7 +17,7 @@ Link for agents: `npx skills experimental_sync -y`
 import { createImplementer, DedupePlugin } from '@ts-pf/server'
 import { PFError } from '@ts-pf/protocol'
 
-const impl = createImplementer(contract).$context<{ db: Db }>()
+const impl = createImplementer(contract).$context<{ db: Db; user?: User }>()
 
 const requireUser = impl.middleware(async ({ context, next }) => {
   const user = await auth(context)
