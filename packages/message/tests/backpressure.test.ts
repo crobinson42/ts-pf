@@ -38,11 +38,11 @@ describe('resolveBackpressure', () => {
           action: 'aborted',
         })
       }
-      expect(warn).toHaveBeenCalledTimes(2)
+      // a pause is normal flow control: only the abort is logged by default
+      expect(warn).toHaveBeenCalledTimes(1)
       expect(String(warn.mock.calls[0]?.[0])).toContain('planet.chat')
-      expect(String(warn.mock.calls[0]?.[0])).toContain('paused')
-      expect(String(warn.mock.calls[1]?.[0])).toContain('30001 ms')
-      expect(String(warn.mock.calls[1]?.[0])).toContain('aborted')
+      expect(String(warn.mock.calls[0]?.[0])).toContain('30001 ms')
+      expect(String(warn.mock.calls[0]?.[0])).toContain('aborted')
     } finally {
       warn.mockRestore()
     }
@@ -176,5 +176,61 @@ describe('DrainWaiter', () => {
       call,
     )
     expect(await waiter.wait(Promise.reject(new Error('pipe')))).toBe('drained')
+  })
+
+  it("a throwing onStall on 'paused' neither throws out of wait() nor changes the outcome", async () => {
+    const waiter = new DrainWaiter(
+      resolveBackpressure({
+        drainTimeout: 1000,
+        onStall: () => {
+          throw new Error('paused logger exploded')
+        },
+      }),
+      call,
+    )
+    expect(await waiter.wait(Promise.resolve())).toBe('drained')
+  })
+
+  it("a throwing onStall on 'aborted' still settles the wait as 'timeout' and raises nothing", async () => {
+    const uncaught: unknown[] = []
+    const onUncaught = (error: unknown): void => {
+      uncaught.push(error)
+    }
+    process.on('uncaughtException', onUncaught)
+    try {
+      const waiter = new DrainWaiter(
+        resolveBackpressure({
+          drainTimeout: 20,
+          onStall: (info) => {
+            if (info.action === 'aborted') {
+              throw new Error('aborted logger exploded')
+            }
+          },
+        }),
+        call,
+      )
+      expect(await waiter.wait(new Promise<void>(() => {}))).toBe('timeout')
+      await sleep(5)
+      expect(uncaught).toEqual([])
+    } finally {
+      process.off('uncaughtException', onUncaught)
+    }
+  })
+
+  it('a second concurrent wait is an invariant violation and throws', async () => {
+    const waiter = new DrainWaiter(
+      resolveBackpressure({ drainTimeout: 0, onStall: false }),
+      call,
+    )
+    let release!: () => void
+    const first = waiter.wait(
+      new Promise<void>((resolve) => {
+        release = resolve
+      }),
+    )
+    expect(() => waiter.wait(Promise.resolve())).toThrow(/already pending/)
+    release()
+    expect(await first).toBe('drained')
+    expect(await waiter.wait(Promise.resolve())).toBe('drained')
   })
 })

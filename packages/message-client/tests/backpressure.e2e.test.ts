@@ -248,6 +248,60 @@ describe('input stream to a stalled server handler', () => {
   })
 })
 
+describe('a throwing client onStall is observability only', () => {
+  it('the input call still fails locally after drainTimeout', async () => {
+    const app = impl.router({
+      planet: {
+        find: impl.planet.find.handler(async ({ input }) => ({
+          id: input.id,
+          name: 'Earth',
+        })),
+        chat: impl.planet.chat.handler(async function* () {}),
+        ingest: impl.planet.ingest.handler(async ({ input }) => {
+          let count = 0
+          for await (const _item of input) {
+            count += 1
+            await new Promise<void>(() => {}) // never reads a second item
+          }
+          return { count }
+        }),
+      },
+    })
+    const { a, b } = createMemoryDuplex({ highWaterMark: HIGH_WATER_MARK })
+    const bind = new DuplexHandler(app, {
+      backpressure: { highWaterMark: HIGH_WATER_MARK, onStall: false },
+    }).bind(a, { context: {} })
+    const link = new DuplexLink({
+      duplex: b,
+      backpressure: {
+        highWaterMark: HIGH_WATER_MARK,
+        drainTimeout: 40,
+        onStall: () => {
+          throw new Error('client logger exploded')
+        },
+      },
+    })
+    const client = createClient<typeof contract>(link)
+    async function* chunks() {
+      for (let i = 0; i < 1000; i++) {
+        yield { chunk: PAD }
+      }
+    }
+    const error = await client.planet.ingest(chunks()).then(
+      () => {
+        throw new Error('should reject')
+      },
+      (reason: unknown) => reason,
+    )
+    expect(isLocalFailure(error as never)).toBe(true)
+    expect(error).toMatchObject({
+      message: 'Peer did not drain within 40 ms',
+    })
+    link.close()
+    bind.close()
+  })
+})
+
 describe('LinkOptions.backpressure validation', () => {
   it('throws a TypeError naming the option at construction', () => {
     const { b } = createMemoryDuplex()

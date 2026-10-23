@@ -427,6 +427,80 @@ describe('server input stream backpressure', () => {
   })
 })
 
+describe('a throwing onStall is observability only', () => {
+  it("a throw on 'aborted' still aborts the call with INTERNAL and never reaches onError", async () => {
+    const errors: unknown[] = []
+    const uncaught: unknown[] = []
+    const onUncaught = (error: unknown): void => {
+      uncaught.push(error)
+    }
+    process.on('uncaughtException', onUncaught)
+    try {
+      const { probe, scripted, server } = openApp({
+        drainTimeout: 40,
+        onStall: () => {
+          throw new Error('logger exploded')
+        },
+        onError: (error) => {
+          errors.push(error)
+        },
+      })
+      await handshake(scripted, server.ready)
+      scripted.deliver({ type: 'call', id: '1', path: ['planet', 'chat'] })
+      await waitUntil(() => resultsFor(scripted.frames, '1').length === 1)
+      expect(resultsFor(scripted.frames, '1')).toEqual([
+        {
+          type: 'result',
+          id: '1',
+          ok: false,
+          error: {
+            code: 'INTERNAL',
+            message: 'Peer did not drain within 40 ms',
+          },
+        },
+      ])
+      await waitUntil(() => probe.finallyRuns === 1)
+      expect(probe.produced).toBe(1)
+      expect(errors).toEqual([])
+      await sleep(5)
+      expect(uncaught).toEqual([])
+      server.close()
+    } finally {
+      process.off('uncaughtException', onUncaught)
+    }
+  })
+
+  it("a throw on 'paused' does not fail the stream or reach onError", async () => {
+    const errors: unknown[] = []
+    const { probe, scripted, server } = openApp({
+      drainTimeout: 0,
+      onStall: () => {
+        throw new Error('paused logger exploded')
+      },
+      onError: (error) => {
+        errors.push(error)
+      },
+    })
+    await handshake(scripted, server.ready)
+    scripted.deliver({ type: 'call', id: '1', path: ['planet', 'chat'] })
+    await waitUntil(() => scripted.drains.length === 1)
+    expect(resultsFor(scripted.frames, '1')).toEqual([])
+
+    scripted.slow.items = false
+    for (const resolve of scripted.drains.splice(0)) {
+      resolve()
+    }
+    await waitUntil(() =>
+      scripted.frames.some((frame) => frame.type === 'done'),
+    )
+    expect(probe.produced).toBe(1000)
+    expect(probe.finallyRuns).toBe(1)
+    expect(resultsFor(scripted.frames, '1')).toEqual([])
+    expect(errors).toEqual([])
+    server.close()
+  })
+})
+
 describe('HandlerOptions.backpressure validation', () => {
   const app = impl.router({
     planet: {

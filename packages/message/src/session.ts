@@ -51,9 +51,8 @@ export class MessageSession {
   private timeoutId: ReturnType<typeof setTimeout> | undefined
   private resolveReady!: () => void
   private rejectReady!: (reason: unknown) => void
-  /** Settles in `enterClosed`; races every drain promise so none outlives the session. */
-  private readonly closed: Promise<void>
-  private resolveClosed!: () => void
+  /** Resolvers of drain promises still pending; `enterClosed` flushes them so none outlives the session. */
+  private readonly pendingDrains = new Set<() => void>()
 
   private readonly duplex: Duplex
   private readonly role: 'client' | 'server'
@@ -90,9 +89,6 @@ export class MessageSession {
     this.ready = new Promise<void>((resolve, reject) => {
       this.resolveReady = resolve
       this.rejectReady = reject
-    })
-    this.closed = new Promise<void>((resolve) => {
-      this.resolveClosed = resolve
     })
 
     this.unsubMessage = opts.duplex.onMessage((text) => {
@@ -149,20 +145,28 @@ export class MessageSession {
     }
   }
 
-  /** The duplex's drain promise, resolved early on close; a rejection is a transport failure and closes. */
+  /**
+   * The duplex's drain promise, resolved early on close; a rejection is a
+   * transport failure and closes. The resolver lives in `pendingDrains` only
+   * until it settles, so a long stream of drained sends retains nothing.
+   */
   private untilDrainedOrClosed(drain: PromiseLike<void>): Promise<void> {
     return new Promise<void>((resolve) => {
-      drain.then(
-        () => {
-          resolve()
-        },
-        (error: unknown) => {
-          this.close(error)
-          resolve()
-        },
-      )
-      void this.closed.then(resolve)
+      const settle = (): void => {
+        this.pendingDrains.delete(settle)
+        resolve()
+      }
+      this.pendingDrains.add(settle)
+      drain.then(settle, (error: unknown) => {
+        this.close(error)
+        settle()
+      })
     })
+  }
+
+  /** Drain promises not yet settled (test hook). @internal */
+  get pendingDrainCount(): number {
+    return this.pendingDrains.size
   }
 
   close(reason?: unknown): void {
@@ -396,7 +400,9 @@ export class MessageSession {
     this.clearHelloTimeout()
     this.unsubMessage()
     this.unsubClose()
-    this.resolveClosed()
+    for (const settle of [...this.pendingDrains]) {
+      settle()
+    }
   }
 
   private succeedReady(): void {

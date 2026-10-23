@@ -17,9 +17,11 @@ export type StallInfo = {
 
 export type BackpressureOptions = {
   /**
-   * Bytes the duplex may buffer before a sender pauses its producer, and the
-   * per-call receive-queue bound (frame text length) above which the receiver
-   * pauses reading the duplex. Default 1 MiB. `Infinity` disables both.
+   * The high-water mark: on the send side, bytes the duplex may buffer
+   * (WebSocket `bufferedAmount`, a refused stdio `write()`) before a
+   * producer pauses; on the receive side, the per-call queue bound measured
+   * in frame text length above which the receiver pauses reading the duplex.
+   * Default 1 MiB. `Infinity` disables both.
    */
   highWaterMark?: number
   /**
@@ -28,35 +30,44 @@ export type BackpressureOptions = {
    */
   drainTimeout?: number
   /**
-   * Called on the first pause of a call and when its drain timeout fires.
-   * Default: one `console.warn` line naming the path and the wait. Pass your
-   * own to replace it, or `false` to silence.
+   * Called on the first pause of a call (`action: 'paused'`) and when its
+   * drain timeout fires (`action: 'aborted'`). Default: one `console.warn`
+   * line for `aborted` only (a pause is normal flow control on a busy link).
+   * Pass your own to replace it, or `false` to silence. A throw from it is
+   * swallowed: a logging hook never changes the call's outcome.
    */
   onStall?: ((info: StallInfo) => void) | false
 }
 
-/** `BackpressureOptions` with defaults applied; `resolveBackpressure` on it is the identity. */
+/**
+ * `BackpressureOptions` with defaults applied; `resolveBackpressure` on it is the identity.
+ * @internal Shared by `@ts-pf/message-server` / `message-client`; not a consumer API.
+ */
 export type Backpressure = {
   highWaterMark: number
   drainTimeout: number
   onStall: ((info: StallInfo) => void) | false
 }
 
+/** @internal */
 export type DrainOutcome = 'drained' | 'timeout' | 'cancelled'
 
 export const DEFAULT_HIGH_WATER_MARK = 1024 * 1024
 export const DEFAULT_DRAIN_TIMEOUT = 30_000
 
 function warnStall(info: StallInfo): void {
-  const call = `${info.path.join('.')} (id ${info.id})`
+  if (info.action !== 'aborted') {
+    return
+  }
   console.warn(
-    info.action === 'paused'
-      ? `[ts-pf] ${call}: peer is not draining, producer paused`
-      : `[ts-pf] ${call}: peer did not drain within ${info.waitedMs} ms, call aborted`,
+    `[ts-pf] ${info.path.join('.')} (id ${info.id}): peer did not drain within ${info.waitedMs} ms, call aborted`,
   )
 }
 
-/** Apply defaults and validate; a bad value is a `TypeError` naming the option. */
+/**
+ * Apply defaults and validate; a bad value is a `TypeError` naming the option.
+ * @internal Shared by `@ts-pf/message-server` / `message-client`; not a consumer API.
+ */
 export function resolveBackpressure(
   options: BackpressureOptions = {},
 ): Backpressure {
@@ -88,7 +99,11 @@ export function resolveBackpressure(
  * drains. `wait(drained)` resolves `'drained'` when the duplex's promise
  * settles, `'timeout'` when `drainTimeout` elapses first (after
  * `onStall('aborted')`), or `'cancelled'` after `cancel()`. The first wait of
- * a call fires `onStall('paused')` once. One wait at a time.
+ * a call fires `onStall('paused')` once. One wait at a time: a second
+ * concurrent `wait` is an invariant violation and throws. `onStall` is
+ * invoked after the outcome is decided and its throws are swallowed, so a
+ * logging hook can neither hang nor change the call.
+ * @internal Shared by `@ts-pf/message-server` / `message-client`; not a consumer API.
  */
 export class DrainWaiter {
   private stalled = false
@@ -100,14 +115,13 @@ export class DrainWaiter {
   ) {}
 
   wait(drained: Promise<void>): Promise<DrainOutcome> {
-    if (!this.stalled) {
-      this.stalled = true
-      this.notify('paused', 0)
+    if (this.pending !== undefined) {
+      throw new Error('DrainWaiter: a wait is already pending for this call')
     }
     const started = Date.now()
-    return new Promise<DrainOutcome>((resolve) => {
+    const outcome = new Promise<DrainOutcome>((resolve) => {
       let timer: ReturnType<typeof setTimeout> | undefined
-      const settle = (outcome: DrainOutcome): void => {
+      const settle = (result: DrainOutcome): void => {
         if (this.pending !== settle) {
           return
         }
@@ -115,10 +129,10 @@ export class DrainWaiter {
         if (timer !== undefined) {
           clearTimeout(timer)
         }
-        if (outcome === 'timeout') {
+        resolve(result)
+        if (result === 'timeout') {
           this.notify('aborted', Date.now() - started)
         }
-        resolve(outcome)
       }
       this.pending = settle
       if (this.backpressure.drainTimeout > 0) {
@@ -135,6 +149,11 @@ export class DrainWaiter {
         },
       )
     })
+    if (!this.stalled) {
+      this.stalled = true
+      this.notify('paused', 0)
+    }
+    return outcome
   }
 
   /** Settle a pending wait as `'cancelled'` (cancel frame, abort, close). */
@@ -142,15 +161,20 @@ export class DrainWaiter {
     this.pending?.('cancelled')
   }
 
+  /** A logging hook; a throw from it is swallowed so it cannot alter the call. */
   private notify(action: StallInfo['action'], waitedMs: number): void {
     if (this.backpressure.onStall === false) {
       return
     }
-    this.backpressure.onStall({
-      path: this.call.path,
-      id: this.call.id,
-      waitedMs,
-      action,
-    })
+    try {
+      this.backpressure.onStall({
+        path: this.call.path,
+        id: this.call.id,
+        waitedMs,
+        action,
+      })
+    } catch {
+      // onStall is observability only; the call's outcome is already decided
+    }
   }
 }

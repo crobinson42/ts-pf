@@ -151,6 +151,28 @@ describe('MessageSession send drain', () => {
     })
   })
 
+  it('retains nothing per drained send on an open session (pendingDrainCount returns to 0)', async () => {
+    const { duplex, script } = scriptedDuplex()
+    const session = serverSession(duplex)
+    script.nextSend = Promise.resolve()
+    for (let i = 0; i < 10_000; i++) {
+      const sent = session.send({ type: 'item', id: '1', output: i })
+      if (!sent.ok || sent.drained === undefined) {
+        throw new Error('expected a drained send')
+      }
+      await sent.drained
+    }
+    expect(session.pendingDrainCount).toBe(0)
+
+    script.nextSend = new Promise<void>(() => {})
+    const pending = session.send({ type: 'item', id: '1', output: 'x' })
+    expect(pending.ok && pending.drained !== undefined).toBe(true)
+    expect(session.pendingDrainCount).toBe(1)
+    session.close()
+    await turns(2)
+    expect(session.pendingDrainCount).toBe(0)
+  })
+
   it('onFrame receives the frame text length as size', async () => {
     const { a, b } = createMemoryDuplex()
     const seen: { frame: MessageFrame; size: number }[] = []
