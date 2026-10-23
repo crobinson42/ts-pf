@@ -121,10 +121,11 @@ export class FetchHandler<TCtx = unknown> {
       if (shortCircuit !== undefined) {
         return await this.respond(state, shortCircuit)
       }
-      // 1–2. method, body, procedure
+      // 1. method, then procedure: a 405 or 404 answers before the body is read
       assertPost(state.request)
-      const decoded = await this.codec.decodeRequest(bodySource(state.request))
       const procedure = this.lookup(path)
+      // 2. decode the body
+      const decoded = await this.codec.decodeRequest(bodySource(state.request))
       // 3. context factory, then HandlerPlugin.onContext
       state.context = await resolveContext(state.request, opts.context)
       await this.applyOnContext(state)
@@ -154,7 +155,11 @@ export class FetchHandler<TCtx = unknown> {
     return undefined
   }
 
-  /** Step 2. Prefix matched but no procedure at `path`: `NOT_FOUND` (no call interceptors). */
+  /**
+   * Step 1, lookup half. Prefix matched but no procedure at `path`:
+   * `NOT_FOUND` (no call interceptors). Runs before decode, so an unknown
+   * path never buffers or parses the body.
+   */
   private lookup(path: string[]) {
     const procedure = lookupProcedure(this.router, path)
     if (!procedure) {
@@ -286,7 +291,7 @@ export class FetchHandler<TCtx = unknown> {
   }
 }
 
-/** Step 1. Thrown inside the pipeline so plugins and `onError` see 405s too. */
+/** Step 1, method half. Thrown inside the pipeline so plugins and `onError` see 405s too. */
 function assertPost(request: Request): void {
   if (request.method !== 'POST') {
     throw new PFError({

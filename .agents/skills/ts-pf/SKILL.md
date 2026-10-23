@@ -238,8 +238,8 @@ Compose is nested objects. `router({ planet: planetContract })` nests slice cont
 ## Call pipeline
 
 0. `HandlerPlugin.onRequest` — optional `Request` wrap or `Response` short-circuit (CORS preflight). Prefix miss skips plugins.
-1. Decode body (`RpcCodec`; JSONCodec is JSON, MultipartCodec may be multipart, StreamCodec may be JSONL, SseCodec may be JSONL input / SSE output)
-2. Lookup procedure. Miss → `NOT_FOUND` (no call interceptors). Non-POST → `METHOD_NOT_ALLOWED` (Fetch; no call interceptors).
+1. Method check, then lookup procedure. Non-POST → `METHOD_NOT_ALLOWED` (Fetch; no call interceptors). Miss → `NOT_FOUND` (no call interceptors). Both answer before the body is read.
+2. Decode body (`RpcCodec`; JSONCodec is JSON, MultipartCodec may be multipart, StreamCodec may be JSONL, SseCodec may be JSONL input / SSE output). Runs only for a known procedure.
 3. Context factory, then `HandlerPlugin.onContext` — replace context (header bags)
 4. CallInterceptor onion around `runProcedure` (`FetchHandler({ interceptors, validation })`, `HandlerOptions.interceptors` / `HandlerOptions.validation`, `createLocalClient` `{ interceptors, plugins, validation }`). `[0]` outermost. Inside `next()`:
    - `.use()` middleware — `input` is unvalidated
@@ -256,7 +256,7 @@ Compose is nested objects. `router({ planet: planetContract })` nests slice cont
 
 `createLocalClient(app, { context, interceptors?, plugins?, validation? })` runs call interceptors around `runProcedure` (middleware → input check unless `validation.input` is false → handler → output check only when `validation.output` is true) in-process. Interceptors and `validation` attach per caller, not on `createImplementer`. `[0]` is outermost. `next({ context })` replaces context (does not merge). Client `intercept()` with empty lists returns the same `Link`. Server adapters omit empty `interceptors`; `runProcedure` no-ops on a missing/empty array. Interceptors see finalized throws from `finalizeDeclaredError`. Do not consume AsyncIterable output; return the wrapped iterator. No `HandlerPlugin`, no `RpcCodec` / HTTP. `runProcedure` validates declared error `data` (invalid → `INTERNAL`) and wraps async iterables so mid-stream throws get the same check. Duplicate `CallInterceptor` types — do not import from `@ts-pf/client`.
 
-Steps 0–3 and 5–7 are Fetch (`HandlerPlugin` + `RpcCodec` + `Request`/`Response`) in `@ts-pf/server-http`. Message adapters replace those with JSON text frames and still run `lookupProcedure` + `runProcedure` for steps 2–4. Do not await `runProcedure` inside `MessageSession.onFrame`.
+Steps 0–3 and 5–7 are Fetch (`HandlerPlugin` + `RpcCodec` + `Request`/`Response`) in `@ts-pf/server-http`. Message adapters replace those with JSON text frames and still run `lookupProcedure` + `runProcedure` for the lookup half of step 1 and step 4. Do not await `runProcedure` inside `MessageSession.onFrame`.
 
 Client: `createClient` / `intercept()` call interceptors (path + input + signal) → `Link.call` → (Fetch only) encode → Fetch `Interceptor` onion → fetch → decode → mapped `PFError`. Fetch interceptors see raw throws / `Response`s, not `PFError`.
 
