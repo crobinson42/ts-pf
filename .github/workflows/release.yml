@@ -2,8 +2,9 @@ name: release
 
 # This workflow does not `needs:` the ci workflow (both fire on push to main,
 # and workflow_dispatch has no ci run to wait on), so it is self-verifying: it
-# runs the repo's "done" chain (lint, check:skills, type-check, test, build,
-# check:exports) before changesets/action may version or publish anything.
+# runs the repo's "done" chain (lint, lint:root, check:skills, check:deps,
+# type-check, test, build, check:exports, check:snippets) before
+# changesets/action may version or publish anything.
 #
 # Node: ci tests 22/24 and .nvmrc pins 22 for local work. Release stays on
 # Node 24 with a global npm@11.12.1 because that is the runtime the npm OIDC
@@ -68,12 +69,12 @@ jobs:
       - run: |
           unset NODE_AUTH_TOKEN NPM_TOKEN
           node scripts/probe-npm-oidc.mjs
-      - uses: changesets/action@v1
+      - uses: changesets/action@v2
         with:
-          title: Version packages
-          commit: 'chore: version packages'
-          version: npm run changeset:version
-          publish: npm run changeset:publish
+          pr-title: Version packages
+          commit-message: 'chore: version packages'
+          version-script: npm run changeset:version
+          publish-script: npm run changeset:publish
         env:
           # @changesets/changelog-github (.changeset/config.json) reads
           # GITHUB_TOKEN during `changeset version` to link PRs and authors.
