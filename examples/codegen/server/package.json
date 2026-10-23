@@ -2,6 +2,9 @@
   "name": "@ts-pf/example-codegen-server",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "exports": {
     ".": "./src/server.ts",
     "./catalog": "./src/catalog.ts"

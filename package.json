@@ -3,6 +3,9 @@
   "private": true,
   "type": "module",
   "packageManager": "npm@11.12.1",
+  "engines": {
+    "node": ">=20"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/crobinson42/ts-pf.git"
