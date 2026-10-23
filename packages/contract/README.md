@@ -76,6 +76,7 @@ Serving `app` over HTTP (`FetchHandler`) and the rest of the happy path: [root R
 - `isContractProcedure`, `isContractRouter`
 - `ClientError`, `ContractClient`, `CallOptions`
 - `InferContractInputs`, `InferContractOutputs`, `InferContractErrors`, `InferErrorData`
+- `InferContractProcedure<T>` (type) — `{ input, output, errors, meta }` of one procedure type, or `never`; `IsContractProcedure<T>` (type) — `true` / `false`. For tooling that walks a contract type (a builder or a codegen `ContractProcedure`) without re-deriving the match.
 - `ContractProtocolErrorCode` (type) — the closed protocol codes `ClientError` falls back to
 
 ## Agent skills

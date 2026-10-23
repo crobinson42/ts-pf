@@ -10,6 +10,8 @@ export type {
   InferContractErrors,
   InferContractInputs,
   InferContractOutputs,
+  InferContractProcedure,
+  IsContractProcedure,
   ProcedureClient,
 } from './infer.js'
 export {
