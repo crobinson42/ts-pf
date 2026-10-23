@@ -1,6 +1,8 @@
 import {
+  type Backpressure,
   type CallFrame,
   createPushQueue,
+  DrainWaiter,
   type InDoneFrame,
   type InItemFrame,
   type ItemFrame,
@@ -35,7 +37,14 @@ export type ServerCallHost = {
    */
   sendResultErr(id: string, error: WireError): void
   onError: ((error: unknown) => void | Promise<void>) | undefined
+  backpressure: Backpressure
+  /** A call's input queue crossed / drained below its mark: pause / resume reading the duplex (connection-wide). */
+  pauseReads(): void
+  resumeReads(): void
 }
+
+/** A frame of ours went out; `drained` is set when the duplex is above its mark. */
+type Sent = { drained?: Promise<void> }
 
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === 'AbortError'
@@ -104,19 +113,36 @@ export async function dispatchCall(
  * the `in-item` queue of a `stream: true` call, and the output iterator while
  * `item` frames go out. Emits exactly one terminal frame (`result` or `done`)
  * unless cancelled first. Frame routing stays in `attachRouter`.
+ *
+ * Backpressure: the input queue is bounded by `highWaterMark` and pauses the
+ * duplex through the host; `emitStream` awaits the duplex's drain between
+ * items and aborts the call when the peer does not drain in `drainTimeout`.
  */
 export class ServerCall {
   readonly inputQueue: PushQueue<unknown> | undefined
   private readonly ac = new AbortController()
+  private readonly drain: DrainWaiter
   private cancelled = false
   private iterator: AsyncIterator<unknown> | undefined
 
   constructor(
     readonly id: string,
+    readonly path: string[],
     stream: boolean,
     private readonly host: ServerCallHost,
   ) {
-    this.inputQueue = stream ? createPushQueue() : undefined
+    this.drain = new DrainWaiter(host.backpressure, this)
+    this.inputQueue = stream
+      ? createPushQueue({
+          highWaterMark: host.backpressure.highWaterMark,
+          onPause: () => {
+            host.pauseReads()
+          },
+          onResume: () => {
+            host.resumeReads()
+          },
+        })
+      : undefined
   }
 
   get signal(): AbortSignal {
@@ -124,7 +150,7 @@ export class ServerCall {
   }
 
   /** `in-item` / `in-done` for a `stream: true` call; a unary call ignores them. */
-  pushInput(frame: InItemFrame | InDoneFrame): void {
+  pushInput(frame: InItemFrame | InDoneFrame, size: number): void {
     if (this.inputQueue === undefined) {
       return
     }
@@ -132,7 +158,7 @@ export class ServerCall {
       this.inputQueue.end()
       return
     }
-    this.inputQueue.push(frame.input)
+    this.inputQueue.push(frame.input, size)
   }
 
   /** `cancel` frame or connection close: the handler stops, no further frames for this id. */
@@ -140,6 +166,7 @@ export class ServerCall {
     this.cancelled = true
     this.ac.abort()
     this.inputQueue?.end()
+    this.drain.cancel()
     this.closeIterator()
   }
 
@@ -183,8 +210,15 @@ export class ServerCall {
         if (next.value !== undefined) {
           item.output = next.value
         }
-        if (!this.sendOutbound(item)) {
+        const sent = this.sendOutbound(item)
+        if (sent === false) {
           this.closeIterator()
+          return
+        }
+        if (
+          sent.drained !== undefined &&
+          !(await this.awaitDrain(sent.drained))
+        ) {
           return
         }
       }
@@ -192,6 +226,39 @@ export class ServerCall {
       this.closeIterator()
       await this.fail(error)
     }
+  }
+
+  /** Hold the producer at its `yield` until the duplex drains; false means stop (timeout or cancel). */
+  private async awaitDrain(drained: Promise<void>): Promise<boolean> {
+    const outcome = await this.drain.wait(drained)
+    if (outcome === 'drained') {
+      return !this.cancelled
+    }
+    if (outcome === 'timeout') {
+      this.abortStalled()
+    }
+    return false
+  }
+
+  /**
+   * The peer did not drain within `drainTimeout` (`PROTOCOL.md`
+   * "Backpressure"): abort the handler's signal, return the iterator once,
+   * drop the remaining frames, and tell the peer with a terminal `INTERNAL`
+   * `result` if the duplex still accepts one. The connection stays open for
+   * other ids. Not a handler failure, so `onError` is not called.
+   */
+  private abortStalled(): void {
+    if (this.cancelled) {
+      return
+    }
+    this.cancelled = true
+    this.ac.abort()
+    this.inputQueue?.end()
+    this.closeIterator()
+    this.host.sendResultErr(this.id, {
+      code: 'INTERNAL',
+      message: `Peer did not drain within ${this.host.backpressure.drainTimeout} ms`,
+    })
   }
 
   /** Report a non-protocol throw to `onError`, then `result ok:false` via `toWireError`. */
@@ -225,9 +292,10 @@ export class ServerCall {
   /**
    * The one send site for this id. A terminal frame settles the id; an
    * oversize / unserializable frame is replaced by the `PROTOCOL.md`
-   * substitute `result` and ends the stream. Returns whether to keep going.
+   * substitute `result` and ends the stream. Returns false to stop, else the
+   * send (with `drained` when the duplex is above its mark).
    */
-  private sendOutbound(frame: MessageFrame): boolean {
+  private sendOutbound(frame: MessageFrame): Sent | false {
     if (this.cancelled) {
       return false
     }
@@ -236,7 +304,7 @@ export class ServerCall {
       if (frame.type === 'result' || frame.type === 'done') {
         this.host.settle(this.id)
       }
-      return true
+      return sent
     }
     if (sent.reason === 'closed') {
       return false
