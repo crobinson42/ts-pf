@@ -7,3 +7,7 @@ dist
 coverage
 .env
 .env.*
+.vscode/
+*.tgz
+*.log
+.claude/worktrees/

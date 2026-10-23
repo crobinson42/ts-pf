@@ -7,6 +7,8 @@ Agent skill: [`skills/ts-pf-sse/`](skills/ts-pf-sse/). Sync with `npx skills exp
 Public exports: `SseCodec`, `SSE_CONTENT_TYPE`.
 
 ```ts
+import { procedure } from '@ts-pf/contract'
+import { z } from 'zod'
 import { stream } from '@ts-pf/stream'
 import { SseCodec } from '@ts-pf/sse'
 

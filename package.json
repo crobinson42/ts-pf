@@ -3,6 +3,9 @@
   "private": true,
   "type": "module",
   "packageManager": "npm@11.12.1",
+  "engines": {
+    "node": ">=20"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/crobinson42/ts-pf.git"
@@ -19,16 +22,22 @@
   "scripts": {
     "build": "turbo run build",
     "test": "turbo run test",
+    "test:root": "vitest run",
     "type-check": "turbo run type-check",
-    "lint": "turbo run lint",
+    "lint": "turbo run lint -- --error-on-warnings",
+    "lint:root": "biome check --error-on-warnings scripts turbo.json biome.json tsconfig.base.json tsconfig.dom.json vitest.config.ts vitest.shared.ts",
+    "format": "biome format --write .",
     "check:skills": "node scripts/check-skills.mjs",
+    "check:deps": "node scripts/check-deps.mjs",
     "check:exports": "node scripts/check-exports.mjs",
+    "check:snippets": "node scripts/check-snippets.mjs",
     "changeset": "changeset",
     "changeset:version": "changeset version && npm install --package-lock-only",
     "changeset:publish": "changeset publish"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.2.0",
+    "@biomejs/biome": "2.6.2",
+    "@changesets/changelog-github": "^1.0.1",
     "@changesets/cli": "^2.29.0",
     "@types/node": "^22.15.0",
     "turbo": "^2.5.0",

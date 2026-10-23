@@ -1,3 +1,4 @@
+import { PROTOCOL_MAJOR } from '@ts-pf/protocol'
 import type { Duplex } from './duplex.js'
 import { errorFromEnvelope, localFailure } from './error.js'
 import {
@@ -7,8 +8,13 @@ import {
   type MessageFrame,
 } from './frame.js'
 
+/**
+ * `drained` is present only when the duplex is above its write high-water
+ * mark: a sender with more frames for the same id awaits it before the next
+ * one. It always resolves (on drain or on session close), never rejects.
+ */
 export type SendResult =
-  | { ok: true }
+  | { ok: true; drained?: Promise<void> }
   | { ok: false; reason: 'oversize' | 'stringify' | 'closed' }
 
 type SessionState = 'waiting-hello' | 'ready' | 'closed'
@@ -17,6 +23,14 @@ const encoder = new TextEncoder()
 
 function isJsonObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function isThenable(value: unknown): value is PromiseLike<void> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as { then?: unknown }).then === 'function'
+  )
 }
 
 function noopHello(): void {}
@@ -38,12 +52,14 @@ export class MessageSession {
   private timeoutId: ReturnType<typeof setTimeout> | undefined
   private resolveReady!: () => void
   private rejectReady!: (reason: unknown) => void
+  /** Resolvers of drain promises still pending; `enterClosed` flushes them so none outlives the session. */
+  private readonly pendingDrains = new Set<() => void>()
 
   private readonly duplex: Duplex
   private readonly role: 'client' | 'server'
   private readonly maxFrameBytes: number | undefined
   private readonly onHello: (meta?: unknown) => void | Promise<void>
-  private readonly onFrame: (frame: MessageFrame) => void
+  private readonly onFrame: (frame: MessageFrame, size: number) => void
   private readonly onInvalidFrame:
     | ((info: { id: string; message: string }) => void)
     | undefined
@@ -58,7 +74,8 @@ export class MessageSession {
     helloTimeoutMs?: number
     helloMeta?: unknown
     onHello?: (meta?: unknown) => void | Promise<void>
-    onFrame: (frame: MessageFrame) => void
+    /** `size` is the frame's text length — the receive-side `highWaterMark` unit. */
+    onFrame: (frame: MessageFrame, size: number) => void
     onInvalidFrame?: (info: { id: string; message: string }) => void
     onClose?: (reason?: unknown) => void
   }) {
@@ -118,12 +135,39 @@ export class MessageSession {
       return { ok: false, reason: 'oversize' }
     }
     try {
-      this.duplex.send(text)
+      const drain = this.duplex.send(text)
+      if (isThenable(drain)) {
+        return { ok: true, drained: this.untilDrainedOrClosed(drain) }
+      }
       return { ok: true }
     } catch (error) {
       this.close(error)
       return { ok: false, reason: 'closed' }
     }
+  }
+
+  /**
+   * The duplex's drain promise, resolved early on close; a rejection is a
+   * transport failure and closes. The resolver lives in `pendingDrains` only
+   * until it settles, so a long stream of drained sends retains nothing.
+   */
+  private untilDrainedOrClosed(drain: PromiseLike<void>): Promise<void> {
+    return new Promise<void>((resolve) => {
+      const settle = (): void => {
+        this.pendingDrains.delete(settle)
+        resolve()
+      }
+      this.pendingDrains.add(settle)
+      drain.then(settle, (error: unknown) => {
+        this.close(error)
+        settle()
+      })
+    })
+  }
+
+  /** Drain promises not yet settled (test hook). @internal */
+  get pendingDrainCount(): number {
+    return this.pendingDrains.size
   }
 
   close(reason?: unknown): void {
@@ -151,7 +195,7 @@ export class MessageSession {
   }
 
   private sendClientHello(helloMeta: unknown): void {
-    const hello: HelloFrame = { type: 'hello', v: 1 }
+    const hello: HelloFrame = { type: 'hello', v: PROTOCOL_MAJOR }
     if (helloMeta !== undefined) {
       hello.meta = helloMeta
     }
@@ -226,7 +270,7 @@ export class MessageSession {
     if (
       decoded.ok &&
       decoded.frame.type === 'hello-ok' &&
-      decoded.frame.v === 1
+      decoded.frame.v === PROTOCOL_MAJOR
     ) {
       this.clearHelloTimeout()
       this.state = 'ready'
@@ -250,7 +294,7 @@ export class MessageSession {
     if (
       decoded.ok &&
       decoded.frame.type === 'hello' &&
-      decoded.frame.v === 1 &&
+      decoded.frame.v === PROTOCOL_MAJOR &&
       !this.helloInFlight
     ) {
       await this.acceptHello(decoded.frame)
@@ -259,7 +303,7 @@ export class MessageSession {
     if (
       parsed.type === 'hello' &&
       typeof parsed.v === 'number' &&
-      parsed.v !== 1
+      parsed.v !== PROTOCOL_MAJOR
     ) {
       this.failHandshake('BAD_REQUEST', 'Unsupported protocol version')
       return
@@ -287,7 +331,7 @@ export class MessageSession {
     if (this.state === 'closed' || generation !== this.helloGeneration) {
       return
     }
-    const sent = this.send({ type: 'hello-ok', v: 1 })
+    const sent = this.send({ type: 'hello-ok', v: PROTOCOL_MAJOR })
     if (!sent.ok) {
       this.failReady(localFailure('Network error'))
       this.close()
@@ -320,7 +364,7 @@ export class MessageSession {
       this.onInvalidFrame?.({ id: decoded.id, message: decoded.message })
       return
     }
-    this.onFrame(decoded.frame)
+    this.onFrame(decoded.frame, text.length)
   }
 
   private failHandshake(code: string, message: string): void {
@@ -357,6 +401,9 @@ export class MessageSession {
     this.clearHelloTimeout()
     this.unsubMessage()
     this.unsubClose()
+    for (const settle of [...this.pendingDrains]) {
+      settle()
+    }
   }
 
   private succeedReady(): void {

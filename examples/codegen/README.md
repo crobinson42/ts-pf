@@ -1,58 +1,22 @@
 # codegen
 
-Split-repo `createClient<Contract>`. The client package cannot import the live server contract — `catalog()` is the handoff, `@ts-pf/codegen` prints the `.d.ts`.
+Split-repo `createClient<Contract>`. The client package cannot import the live contract, so `catalog()` is the handoff and `@ts-pf/codegen` prints the `.d.ts`.
 
-## Overview
-
-```markdown
-The backend team does not need to hand-maintain a catalog.json file. The live TypeScript contract is the source of truth. catalog(contract) derives the JSON spec from that.
-
-What the backend actually maintains
-
-1. The contract (procedure / router).
-2. A call to catalog(contract, { prefix: '/rpc' }).
-3. Some way for the client team to get that JSON.
-
-The usual way is to serve it in userland, not from FetchHandler:
-
-if (url.pathname === '/catalog.json') {
-  return Response.json(catalog(contract, { prefix: '/rpc' }))
-}
-const result = await handler.handle(req, { prefix: '/rpc', context })
-
-That is what examples/codegen/server does. There is no edited catalog file in the request path — the running server prints the current contract as JSON.
-
-How the client team consumes it
-
-• URL: ts-pf-codegen pull https://api.example.com/catalog.json -o contract.d.ts
-• File/artifact: ts-pf-codegen emit catalog.json -o contract.d.ts
-
-A file is only needed if you choose a file-based handoff (CI artifact, S3, a gist, a committed snapshot). It is still generated, never authored.
-
-Why this example commits server/catalog.json
-
-That file is a snapshot of catalog(), so you can inspect the spec and run emit without starting a server. The smoke test fails if it drifts from catalog(contract). It is not a second source of truth.
-
-In a real split repo, backend CI can write that snapshot as a build artifact, or skip the file entirely and just serve GET /catalog.json. The client commits contract.d.ts (and optionally a catalog.lock.json hash from pull).
-```
-
-## Project Structure
+## What it shows
 
 ```
 server/     live contract, implementer, FetchHandler, GET /catalog.json
 client/     generated Contract + createClient<Contract>(FetchLink)
 ```
 
-```ts
-import { catalog } from '@ts-pf/docs'
-import { emit } from '@ts-pf/codegen'
+The server team maintains the contract (`procedure` / `router`), one `catalog(contract, { prefix: '/rpc' })` call, and a way to hand that JSON to the client team. Nobody edits a catalog file: the running server prints the current contract. Here the JSON is served in userland, before `FetchHandler`:
 
-const spec = catalog(contract, { prefix: '/rpc' })
+```ts no-check
+if (url.pathname === '/catalog.json') return Response.json(spec)
+const result = await handler.handle(req, { prefix: '/rpc', context })
 ```
 
-```
-ts-pf-codegen emit server/catalog.json -o client/src/contract.d.ts
-```
+The client team turns it into types with `ts-pf-codegen pull https://api.example.com/catalog.json -o contract.d.ts` from a URL, or `ts-pf-codegen emit catalog.json -o contract.d.ts` from a file. A file is only needed for a file-based handoff (CI artifact, bucket, committed snapshot), and it is generated, never authored.
 
 ```ts
 import { asResult, createClient } from '@ts-pf/client'
@@ -60,12 +24,21 @@ import { FetchLink } from '@ts-pf/client-http'
 import type { Contract } from './contract.js'
 
 const client = createClient<Contract>(new FetchLink({ url: '/rpc' }))
-await client.planet.find({ id: 1 })
-
 const result = await asResult(client.planet.find({ id: 1 }))
-if (!result.ok && result.error.code === 'NOT_FOUND') {
-  result.error.data.id
-}
+if (!result.ok && result.error.code === 'NOT_FOUND') result.error.data.id
 ```
 
-Serve `catalog.json` in userland, not `FetchHandler`. Refresh committed artifacts with `npm run generate` in this folder.
+`server/catalog.json` is committed as a snapshot of `catalog()` so the spec can be read and `emit` run without starting a server. It is not a second source of truth: the smoke test fails when it drifts. In a real split repo, backend CI writes that snapshot as an artifact or skips the file and serves `GET /catalog.json`; the client commits `contract.d.ts` (and optionally a `catalog.lock.json` hash from `pull`).
+
+## Run
+
+Build the packages once from the repo root (`npm install && npm run build`), then in this folder:
+
+```sh
+npm test            # smoke test
+npm run generate    # rewrite server/catalog.json + client/src/contract.d.ts from the live contract
+```
+
+## What the smoke test asserts
+
+`tests/smoke.test.ts` checks that `client/package.json` and `client/src` reference nothing server-side (`@ts-pf/server`, `@ts-pf/docs`, `@ts-pf/codegen`, the server package, any `/server` import); that `catalog.json` equals `catalog(contract)` and `contract.d.ts` equals `emit(spec)`; that `GET /catalog.json` returns the spec; and that `list` / `find` / `create` work from the generated `Contract`, with `asResult` narrowing `NOT_FOUND` to `error.data.id`.

@@ -1,8 +1,13 @@
 import {
+  type EnvelopeTextCodec,
+  isJsonContentType,
   JSONCodec,
+  jsonBodySource,
+  mimeType,
   type RpcBodySource,
   type RpcCodec,
   type RpcEncodedBody,
+  type RpcEncodedText,
 } from '@ts-pf/http'
 import { PFError, type RpcRequest, type RpcResponse } from '@ts-pf/protocol'
 import {
@@ -15,49 +20,21 @@ import {
 const DEFAULT_MAX_FILES = 32
 const DEFAULT_MAX_FILE_SIZE = 10 * 1024 * 1024
 
-function mime(contentType: string | null): string {
-  if (contentType == null || contentType === '') {
-    return ''
-  }
-  return contentType.split(';')[0]?.trim().toLowerCase() ?? ''
-}
-
-function isJsonContentType(contentType: string | null): boolean {
-  const type = mime(contentType)
-  return type === '' || type === 'application/json'
-}
-
 function isMultipartContentType(contentType: string | null): boolean {
-  return mime(contentType) === 'multipart/form-data'
+  return mimeType(contentType) === 'multipart/form-data'
 }
 
 function badRequest(message: string): PFError {
   return new PFError({ code: 'BAD_REQUEST', status: 400, message })
 }
 
-function jsonSource(text: string): RpcBodySource {
-  return {
-    contentType: 'application/json',
-    text: async () => text,
-    formData: async () => new FormData(),
-    body: () => null,
-  }
-}
-
-async function jsonText(encoded: RpcEncodedBody): Promise<string> {
-  if (typeof encoded.body === 'string') {
-    return encoded.body
-  }
-  throw new Error('MultipartCodec inner codec must produce a JSON string')
-}
-
 export class MultipartCodec implements RpcCodec {
-  private readonly inner: RpcCodec
+  private readonly inner: EnvelopeTextCodec
   private readonly maxFiles: number
   private readonly maxFileSize: number
 
   constructor(options?: {
-    inner?: RpcCodec
+    inner?: EnvelopeTextCodec
     maxFiles?: number
     maxFileSize?: number
   }) {
@@ -75,7 +52,7 @@ export class MultipartCodec implements RpcCodec {
   async decodeRequest(source: RpcBodySource): Promise<RpcRequest> {
     if (isMultipartContentType(source.contentType)) {
       const { json, parts } = await this.readMultipart(source)
-      const decoded = await this.inner.decodeRequest(jsonSource(json))
+      const decoded = await this.inner.decodeRequest(jsonBodySource(json))
       return { input: injectFiles(decoded.input, parts) }
     }
     if (!isJsonContentType(source.contentType)) {
@@ -105,7 +82,7 @@ export class MultipartCodec implements RpcCodec {
   ): Promise<RpcResponse<T>> {
     if (isMultipartContentType(source.contentType)) {
       const { json, parts } = await this.readMultipart(source)
-      const decoded = await this.inner.decodeResponse<T>(jsonSource(json))
+      const decoded = await this.inner.decodeResponse<T>(jsonBodySource(json))
       if (!decoded.ok) {
         return decoded
       }
@@ -123,7 +100,7 @@ export class MultipartCodec implements RpcCodec {
 
   private async encodeWithFiles(
     value: unknown,
-    encodeJson: (value: unknown) => RpcEncodedBody | Promise<RpcEncodedBody>,
+    encodeJson: (value: unknown) => RpcEncodedText | Promise<RpcEncodedText>,
   ): Promise<RpcEncodedBody> {
     const extracted = extractFiles(value, {
       maxFiles: this.maxFiles,
@@ -133,7 +110,7 @@ export class MultipartCodec implements RpcCodec {
     if (extracted.files.length === 0) {
       return encoded
     }
-    const json = await jsonText(encoded)
+    const json = encoded.body
     const form = new FormData()
     form.set('rpc', new Blob([json], { type: 'application/json' }))
     for (const [index, file] of extracted.files.entries()) {

@@ -1,15 +1,53 @@
 // Every published @ts-pf/* package must ship skills/ts-pf-<pkg>/SKILL.md
 // (contract also ships ts-pf-app). "files" must include "skills".
 // package.json keywords must include the shared family terms.
-// ts-pf-app description must keep opt-in discovery tokens.
+// ts-pf-app description must name every opt-in (non-core) package.
 // skills/README.md must list every published package skill path.
-import { readFile, readdir } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+// Every symbol a ts-pf-<pkg> skill lists under "## API" must be named in that
+// package's README (README = narrative + install + one snippet; SKILL = Do /
+// API / Pair with / Don't; the two surfaces must not drift).
+// Code, skills, READMEs, and examples must not use oRPC names
+// (.agents/rules.md "Public names").
+import { readdir, readFile } from 'node:fs/promises'
+import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const packagesDir = join(root, 'packages')
 const errors = []
+
+// Core packages are the default install; everything else published under
+// packages/ is an opt-in capability the hub must name. message-server /
+// message-client are named by their family token "message".
+const CORE = new Set([
+  'contract',
+  'protocol',
+  'server',
+  'client',
+  'http',
+  'server-http',
+  'client-http',
+])
+
+// rules.md "Public names" → "Not" column. Word-boundary matches fail in code
+// and prose; `oc.` / `os.` only in code files (prose cannot be told apart
+// from ordinary words such as "macOS." or "os.").
+const BANNED_WORDS = [
+  'RPCHandler',
+  'RPCLink',
+  'mergeRouters',
+  'createRouterClient',
+  'createRouterUtils',
+  'createSWRUtils',
+  'eventIterator',
+]
+const BANNED = new RegExp(`\\b(?:${BANNED_WORDS.join('|')})\\b|\\bsafe\\(`, 'g')
+const BANNED_CODE_ONLY = /\b(?:oc|os)\./g
+const HUB_REL = 'packages/contract/skills/ts-pf-app/SKILL.md'
+// Prose may forbid a name: "No `mergeRouters`", a `## Don't` /
+// `## Anti-patterns` section, or the hub's Use / Not table rows.
+const NEGATED = /\b(?:no|not|never)\s+`?(?:[\w*]+`?\s*\/\s*`?)*$/i
+const DONT_HEADING = /^#+\s*(?:don'?t|anti-patterns?)\b/i
 
 function parseFrontmatter(text) {
   const match = text.match(/^---\r?\n([\s\S]*?)\r?\n---/)
@@ -75,11 +113,15 @@ for (const entry of entries) {
   ]
   const keywords = Array.isArray(pkg.keywords) ? pkg.keywords : []
   if (keywords.length === 0) {
-    errors.push(`${entry.name}: package.json must include a non-empty keywords array`)
+    errors.push(
+      `${entry.name}: package.json must include a non-empty keywords array`,
+    )
   } else {
     for (const keyword of requiredKeywords) {
       if (!keywords.includes(keyword)) {
-        errors.push(`${entry.name}: package.json keywords must include "${keyword}"`)
+        errors.push(
+          `${entry.name}: package.json keywords must include "${keyword}"`,
+        )
       }
     }
   }
@@ -96,24 +138,118 @@ try {
   const hub = await readFile(join(packagesDir, hubRel), 'utf8')
   const frontmatter = parseFrontmatter(hub)
   const haystack = (frontmatter?.description ?? '').toLowerCase()
-  const requiredTokens = [
-    'file',
-    'stream',
-    'sse',
-    'message',
-    'docs',
-    'openapi',
-    'codegen',
-    'swr',
-    'mvc-kit',
-  ]
-  for (const token of requiredTokens) {
+  const requiredTokens = new Set()
+  for (const name of published) {
+    if (CORE.has(name)) continue
+    const family = name.replace(/-(?:server|client)$/, '')
+    requiredTokens.add(published.includes(family) ? family : name)
+  }
+  for (const token of [...requiredTokens].sort()) {
     if (!haystack.includes(token)) {
-      errors.push(`${hubRel}: description must mention "${token}" (capability catalog)`)
+      errors.push(
+        `${hubRel}: description must mention "${token}" (capability catalog)`,
+      )
     }
   }
 } catch {
   errors.push(`missing ${hubRel}`)
+}
+
+async function walk(dir, out = []) {
+  let entries
+  try {
+    entries = await readdir(dir, { withFileTypes: true })
+  } catch {
+    return out
+  }
+  for (const entry of entries) {
+    if (entry.name === 'node_modules' || entry.name === 'dist') continue
+    const path = join(dir, entry.name)
+    if (entry.isDirectory()) await walk(path, out)
+    else out.push(path)
+  }
+  return out
+}
+
+async function bannedNameTargets() {
+  const files = [join(root, 'README.md')]
+  for (const name of published) {
+    await walk(join(packagesDir, name, 'src'), files)
+    await walk(join(packagesDir, name, 'skills'), files)
+  }
+  for (const path of await walk(join(root, 'examples'))) {
+    const rel = relative(root, path)
+    if (rel.split('/').includes('src') || rel.endsWith('/README.md'))
+      files.push(path)
+  }
+  return files
+}
+
+function checkBannedNames(rel, text) {
+  const prose = rel.endsWith('.md')
+  let inDont = false
+  text.split('\n').forEach((line, index) => {
+    if (prose) {
+      if (/^#/.test(line)) inDont = DONT_HEADING.test(line)
+      if (inDont) return
+      if (rel === HUB_REL && /^\|/.test(line)) return
+    }
+    const patterns = prose ? [BANNED] : [BANNED, BANNED_CODE_ONLY]
+    for (const pattern of patterns) {
+      pattern.lastIndex = 0
+      for (const match of line.matchAll(pattern)) {
+        if (prose && NEGATED.test(line.slice(0, match.index))) continue
+        errors.push(
+          `${rel}:${index + 1}: banned name "${match[0]}" (see .agents/rules.md "Public names")`,
+        )
+      }
+    }
+  })
+}
+
+for (const path of await bannedNameTargets()) {
+  if (!/\.(?:ts|tsx|mts|cts|js|mjs|cjs|astro|md)$/.test(path)) continue
+  checkBannedNames(relative(root, path), await readFile(path, 'utf8'))
+}
+
+// Backticked exported identifiers in a skill's "## API" section (`stream()` →
+// `stream`; `./stdio`, `"."`, `.call`, and option sketches are not symbols).
+const IDENT = /^[A-Za-z_$][\w$]*(?:\(\))?$/
+function apiSymbols(skill) {
+  const section = skill.match(/^## API[ \t]*$([\s\S]*?)(?=^## |(?![\s\S]))/m)
+  if (!section) return null
+  const out = new Set()
+  for (const [, token] of section[1].matchAll(/`([^`]+)`/g)) {
+    if (IDENT.test(token)) out.add(token.replace(/\(\)$/, ''))
+  }
+  return out
+}
+
+for (const name of published) {
+  const skillRel = `${name}/skills/ts-pf-${name}/SKILL.md`
+  let skill
+  let readme
+  try {
+    skill = await readFile(join(packagesDir, skillRel), 'utf8')
+    readme = await readFile(join(packagesDir, name, 'README.md'), 'utf8')
+  } catch {
+    if (skill === undefined) continue // reported by checkSkill
+    errors.push(`${name}: missing README.md`)
+    continue
+  }
+  const symbols = apiSymbols(skill)
+  if (!symbols) {
+    errors.push(`${skillRel}: missing "## API" section`)
+    continue
+  }
+  for (const symbol of symbols) {
+    const mentioned = new RegExp(`(?<![\\w$])${symbol}(?![\\w$])`).test(readme)
+    if (!mentioned) {
+      errors.push(
+        `${name}: README.md does not mention ${symbol} (listed in SKILL API)`,
+      )
+    }
+  }
 }
 
 const indexRel = 'skills/README.md'

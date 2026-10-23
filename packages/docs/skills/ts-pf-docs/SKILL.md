@@ -14,6 +14,7 @@ Link for agents: `npx skills experimental_sync -y`
 ## Do
 
 ```ts
+import { procedure } from '@ts-pf/contract'
 import { docs, catalog } from '@ts-pf/docs'
 
 procedure.meta(docs({ description: 'Find a planet by id' }))
@@ -22,7 +23,7 @@ const spec = catalog(contract, { prefix: '/rpc' })
 
 Serve JSON in userland, outside the RPC prefix:
 
-```ts
+```ts no-check
 if (url.pathname === '/catalog.json') {
   return Response.json(catalog(contract, { prefix: '/rpc' }))
 }
@@ -44,6 +45,6 @@ if (url.pathname === '/catalog.json') {
 ## Don't
 
 - `.docs()` on the contract builder.
-- Serve the catalog from `FetchHandler` (`GET /rpc/...` is a procedure miss).
+- Serve the catalog from `FetchHandler` (`GET /rpc/...` answers `405 METHOD_NOT_ALLOWED`; the RPC prefix serves procedures only).
 - Walk an implemented `app` — pass `contract`.
 - REST `method` / `path` / path params.

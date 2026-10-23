@@ -14,6 +14,8 @@ Link for agents: `npx skills experimental_sync -y`
 ## Do
 
 ```ts
+import { procedure } from '@ts-pf/contract'
+import { z } from 'zod'
 import { stream } from '@ts-pf/stream'
 import { SseCodec } from '@ts-pf/sse'
 import { FetchHandler } from '@ts-pf/server-http'
@@ -27,6 +29,8 @@ procedure.output(stream(z.object({ token: z.string() })))
 ```
 
 Contracts still use `stream()` from `@ts-pf/stream`. This package does not re-export it.
+
+An `event: error` after the stream started rejects the iterator with a `PFError` whose `status` is `undefined` (the response was already 200); switch on `code`.
 
 ## API
 

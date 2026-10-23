@@ -5,7 +5,7 @@ import { JSONCodec, PROTOCOL_HEADER } from '@ts-pf/http'
 import { isPFError, PFError, PROTOCOL_VERSION } from '@ts-pf/protocol'
 import { createImplementer } from '@ts-pf/server'
 import { FetchHandler } from '@ts-pf/server-http'
-import { describe, expect, expectTypeOf, it } from 'vitest'
+import { describe, expect, expectTypeOf, it, vi } from 'vitest'
 import { z } from 'zod'
 
 const contract = router({
@@ -84,6 +84,14 @@ describe('createClient', () => {
 
   it('rejects with PFError', async () => {
     await expect(client.planet.find({ id: -1 })).rejects.toSatisfy(isPFError)
+  })
+
+  it('sets status from the HTTP response on declared errors', async () => {
+    await expect(client.planet.find({ id: -1 })).rejects.toMatchObject({
+      code: 'NOT_FOUND',
+      status: 404,
+      data: { id: -1 },
+    })
   })
 
   it('rethrows PFError from decodeResponse', async () => {
@@ -210,6 +218,73 @@ describe('createClient', () => {
       status: 400,
       message: 'Invalid JSON',
     })
+  })
+
+  it('rejects another protocol major as INTERNAL without reading the body', async () => {
+    const response = new Response('{"v2":true}', {
+      status: 200,
+      headers: {
+        'content-type': 'application/json',
+        [PROTOCOL_HEADER]: '2',
+      },
+    })
+    const text = vi.spyOn(response, 'text')
+    const formData = vi.spyOn(response, 'formData')
+    const future = createClient<typeof contract>(
+      new FetchLink({
+        url: 'http://localhost/rpc',
+        fetch: async () => response,
+      }),
+    )
+    await expect(future.planet.list()).rejects.toSatisfy((error: unknown) => {
+      expect(isPFError(error)).toBe(true)
+      if (!isPFError(error)) {
+        return false
+      }
+      expect(error.code).toBe('INTERNAL')
+      expect(error.status).toBe(200)
+      expect(error.message).toBe(
+        'Unsupported protocol version (x-ts-pf-protocol: 2)',
+      )
+      expect(error.cause).toBe(response)
+      expect(isLocalFailure(error)).toBe(false)
+      return true
+    })
+    expect(text).not.toHaveBeenCalled()
+    expect(formData).not.toHaveBeenCalled()
+    expect(response.bodyUsed).toBe(false)
+  })
+
+  it('decodes a response whose protocol header has surrounding whitespace', async () => {
+    const padded = createClient<typeof contract>(
+      new FetchLink({
+        url: 'http://localhost/rpc',
+        fetch: async () =>
+          new Response(JSON.stringify({ ok: true, output: [] }), {
+            headers: {
+              'content-type': 'application/json',
+              [PROTOCOL_HEADER]: ` ${PROTOCOL_VERSION} `,
+            },
+          }),
+      }),
+    )
+    expect(await padded.planet.list()).toEqual([])
+  })
+
+  it('still rethrows a PFError thrown by a Fetch interceptor', async () => {
+    const thrown = new PFError({ code: 'UNAUTHORIZED', status: 401 })
+    const guarded = createClient<typeof contract>(
+      new FetchLink({
+        url: 'http://localhost/rpc',
+        fetch: fetchImpl,
+        interceptors: [
+          async () => {
+            throw thrown
+          },
+        ],
+      }),
+    )
+    await expect(guarded.planet.list()).rejects.toBe(thrown)
   })
 
   it('asResult() returns a result union', async () => {

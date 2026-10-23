@@ -1,5 +1,5 @@
 import { PFError, type RpcRequest, type RpcResponse } from '@ts-pf/protocol'
-import type { RpcBodySource, RpcCodec, RpcEncodedBody } from './rpc.js'
+import type { EnvelopeTextCodec, RpcBodySource, RpcEncodedText } from './rpc.js'
 
 function parseJson(body: string): unknown {
   try {
@@ -13,12 +13,12 @@ function parseJson(body: string): unknown {
   }
 }
 
-function jsonBody(body: string): RpcEncodedBody {
+function jsonBody(body: string): RpcEncodedText {
   return { contentType: 'application/json', body }
 }
 
-export class JSONCodec implements RpcCodec {
-  encodeRequest(req: RpcRequest): RpcEncodedBody {
+export class JSONCodec implements EnvelopeTextCodec {
+  encodeRequest(req: RpcRequest): RpcEncodedText {
     if (req.input === undefined) {
       return jsonBody('{}')
     }
@@ -39,6 +39,15 @@ export class JSONCodec implements RpcCodec {
         message: 'Request body must be a JSON object',
       })
     }
+    if (!('input' in parsed) && Object.keys(parsed).length > 0) {
+      // `{"name":"x"}` instead of `{"input":{"name":"x"}}` is an invalid
+      // envelope, not an undefined input. `{}` and `{"input":null}` are fine.
+      throw new PFError({
+        code: 'BAD_REQUEST',
+        status: 400,
+        message: 'Request body must be {"input": ...}',
+      })
+    }
     const input = (parsed as { input?: unknown }).input
     if (input === undefined || input === null) {
       return { input: undefined }
@@ -46,7 +55,7 @@ export class JSONCodec implements RpcCodec {
     return { input }
   }
 
-  encodeSuccess<T>(output: T): RpcEncodedBody {
+  encodeSuccess<T>(output: T): RpcEncodedText {
     return jsonBody(JSON.stringify({ ok: true, output }))
   }
 
@@ -54,7 +63,7 @@ export class JSONCodec implements RpcCodec {
     code: string
     message: string
     data?: unknown
-  }): RpcEncodedBody {
+  }): RpcEncodedText {
     const payload: { code: string; message: string; data?: unknown } = {
       code: error.code,
       message: error.message,

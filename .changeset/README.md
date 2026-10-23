@@ -12,7 +12,7 @@ npx changeset
 
 Pick the packages, the bump (`patch` / `minor` / `major`), and a changelog summary. Examples are private and ignored.
 
-New published packages start at `0.0.0` and need a changeset. They also ship `skills/ts-pf-<pkg>/SKILL.md` with `"files"` including `skills`, and a `keywords` array (shared family terms plus package-specific). New examples must be added to `config.json` `ignore`.
+New published packages start at `0.0.0` and need a changeset. They also ship `skills/ts-pf-<pkg>/SKILL.md` with `"files"` including `skills`, a `keywords` array (shared family terms plus package-specific), a `LICENSE` copy of the root file, and `engines.node >=20`. New examples must be added to `config.json` `ignore`.
 
 ## Release
 
@@ -24,10 +24,10 @@ On `main`, the [release workflow](../.github/workflows/release.yml) opens a **Ve
 npm install @ts-pf/contract
 ```
 
-Local equivalent:
+Local equivalent (`changeset version` needs `GITHUB_TOKEN` in the environment because `config.json` uses `@changesets/changelog-github` to link PRs and authors; a read-only token is enough):
 
 ```sh
-npm run changeset:version   # consumes .changeset/*.md, writes versions + CHANGELOG.md, refreshes the lockfile
+GITHUB_TOKEN=<token> npm run changeset:version   # consumes .changeset/*.md, writes versions + CHANGELOG.md, refreshes the lockfile
 npm run build
 npm run changeset:publish   # npm dist-tag `latest`
 ```

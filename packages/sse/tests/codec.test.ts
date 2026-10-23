@@ -1,7 +1,8 @@
 import { JSONCodec, type RpcBodySource } from '@ts-pf/http'
+import { PFError } from '@ts-pf/protocol'
 import { SSE_CONTENT_TYPE, SseCodec } from '@ts-pf/sse'
 import { StreamCodec } from '@ts-pf/stream'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 async function collect<T>(items: AsyncIterable<T>): Promise<T[]> {
   const out: T[] = []
@@ -65,16 +66,25 @@ describe('SseCodec', () => {
   })
 
   it('emits keepalive comments while waiting for the next item', async () => {
-    const pinging = new SseCodec({ keepAliveMs: 25 })
-    async function* tokens() {
-      await new Promise((resolve) => setTimeout(resolve, 80))
-      yield { token: 'a' }
+    vi.useFakeTimers()
+    try {
+      const pinging = new SseCodec({ keepAliveMs: 25 })
+      async function* tokens() {
+        await new Promise((resolve) => setTimeout(resolve, 80))
+        yield { token: 'a' }
+      }
+      const encoded = await pinging.encodeSuccess(tokens())
+      const reading = readStream(encoded.body as ReadableStream<Uint8Array>)
+      // Fires the 25ms keepalive interval three times, then the 80ms item;
+      // the interval is cleared once the iterable completes.
+      await vi.runAllTimersAsync()
+      const text = await reading
+      expect((text.match(/:\n\n/g) ?? []).length).toBeGreaterThan(1)
+      expect(text).toContain('event: message')
+      expect(text).toContain('event: close')
+    } finally {
+      vi.useRealTimers()
     }
-    const encoded = await pinging.encodeSuccess(tokens())
-    const text = await readStream(encoded.body as ReadableStream<Uint8Array>)
-    expect((text.match(/:\n\n/g) ?? []).length).toBeGreaterThan(1)
-    expect(text).toContain('event: message')
-    expect(text).toContain('event: close')
   })
 
   it('roundtrips an output async iterable as SSE', async () => {
@@ -140,7 +150,14 @@ describe('SseCodec', () => {
       done: false,
       value: { token: 'Hel' },
     })
-    await expect(iter.next()).rejects.toMatchObject({ code: 'INTERNAL' })
+    const error = await iter.next().then(
+      () => undefined,
+      (reason: unknown) => reason as PFError,
+    )
+    expect(error).toBeInstanceOf(PFError)
+    expect(error?.code).toBe('INTERNAL')
+    // In-band failures arrive on an HTTP 200 body; status is not stamped.
+    expect(error?.status).toBeUndefined()
   })
 
   it('throws INTERNAL when the stream ends without close', async () => {
@@ -152,7 +169,11 @@ describe('SseCodec', () => {
     }
     await expect(
       collect(decoded.output as AsyncIterable<unknown>),
-    ).rejects.toMatchObject({ code: 'INTERNAL', message: 'Stream truncated' })
+    ).rejects.toMatchObject({
+      code: 'INTERNAL',
+      message: 'Stream truncated',
+      status: undefined,
+    })
   })
 
   it('rejects SSE as a request content type', async () => {

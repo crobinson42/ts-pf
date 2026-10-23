@@ -1,4 +1,4 @@
-import { localFailure } from '@ts-pf/protocol'
+import { isAsyncIterable, localFailure } from '@ts-pf/protocol'
 import type { CallInterceptor } from './call-interceptor.js'
 import type { CallPlugin } from './plugin.js'
 
@@ -135,10 +135,4 @@ function defaultKey(path: string[], input: unknown): string | undefined {
   } catch {
     return undefined
   }
-}
-
-function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
-  return (
-    typeof value === 'object' && value !== null && Symbol.asyncIterator in value
-  )
 }

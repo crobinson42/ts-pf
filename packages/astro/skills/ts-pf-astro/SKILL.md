@@ -7,7 +7,7 @@ description: Use when serving a ts-pf API from an Astro endpoint or calling it i
 
 Opt-in Astro endpoint and in-process page caller. Thin shell around `FetchHandler` and `createClient`. Not an integration, middleware mount, or Astro Actions adapter.
 
-Install: `npm i @ts-pf/astro` (peer **astro >= 4.9.0**). The app already has `@ts-pf/server`, `@ts-pf/server-http`, `@ts-pf/client`, and `@ts-pf/client-http`.
+Install: `npm i @ts-pf/astro` (peer **astro >= 4.9.0**). The app already has `@ts-pf/contract`, `@ts-pf/server`, `@ts-pf/server-http`, `@ts-pf/client`, and `@ts-pf/client-http`.
 
 Link for agents: `npx skills experimental_sync -y`
 
@@ -37,7 +37,7 @@ const planet = await caller.planet.find({ id: 1 })
 
 Browser or island module. Import the contract with `import type`. Do not import the implementer.
 
-```ts
+```ts bundler
 import { createAstroClient, withBase } from '@ts-pf/astro/client'
 import type { contract } from './contract'
 
@@ -47,6 +47,8 @@ export const client = createAstroClient<typeof contract>({
 ```
 
 `@ts-pf/astro` (root) exports the same client helpers. `@ts-pf/swr` works on that client for React islands.
+
+`createAstroHandler(handler, { context })` checks `context` against the context type `FetchHandler` inferred from `app`; `createAstroLocalClient(app, Astro, context)` checks it against `app`'s `$context<C>()`. `createAstroClient` needs the contract type: `createAstroClient<typeof contract>({ prefix })`, or a `ContractClient<typeof contract>` annotation on the variable or return type. Without either the result is `{ readonly '~error': 'Pass createAstroClient<typeof contract>({ prefix })' }`, not an empty client.
 
 ## API
 

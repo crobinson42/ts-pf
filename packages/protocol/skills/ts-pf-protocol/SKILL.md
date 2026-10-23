@@ -1,6 +1,6 @@
 ---
 name: ts-pf-protocol
-description: Use when throwing or handling ts-pf PFError, localFailure, PROTOCOL_VERSION, or the JSON RPC envelope. Triggers: @ts-pf/protocol, PFError, isPFError, localFailure, ProtocolErrorCode.
+description: Use when throwing or handling ts-pf PFError, localFailure, PROTOCOL_MAJOR / PROTOCOL_VERSION, or the JSON RPC envelope, or writing a codec / adapter that needs toWireError or isAsyncIterable. Triggers: @ts-pf/protocol, PFError, isPFError, localFailure, ProtocolErrorCode, PROTOCOL_MAJOR, PROTOCOL_VERSION, toWireError, isAsyncIterable.
 ---
 
 # @ts-pf/protocol
@@ -19,15 +19,22 @@ Wire spec ships as `PROTOCOL.md` in this package.
 import { PFError, isPFError, localFailure } from '@ts-pf/protocol'
 
 throw new PFError({ code: 'UNAUTHORIZED', status: 401, message: 'Nope' })
+new PFError({ code: 'TEAPOT' }).status // undefined — no default
 // localFailure('Request aborted') → INTERNAL, local: true, status: 0 (not on the wire)
 ```
 
-Envelope: `{ input }`, `{ ok: true, output }`, `{ ok: false, error: { code, message, data? } }`. Discriminator is JSON `error.code`. `status` is a TS/HTTP hint, not identity.
+Envelope: `{ input }`, `{ ok: true, output }`, `{ ok: false, error: { code, message, data? } }`. Discriminator is JSON `error.code`.
+
+`PFError.status?: number` is transport metadata, not identity. It is the HTTP response status on a unary Fetch failure, `undefined` on message transports and after a stream has started, and `0` on local failures. Guard it (`err.status ?? 400`); switch on `code`. The HTTP default (400 for a code with no status) is applied by `httpStatus()` in `@ts-pf/http`, not by the constructor.
+
+Writing a codec or transport adapter: `toWireError(error)` is the failure envelope's `error` for any thrown value (`PFError` → `toJSON()`; anything else → fixed `{ code: 'INTERNAL', message: 'Internal server error' }`, no stack, no message leak — log the original value yourself). `isAsyncIterable(value)` is the shared "is this a stream" predicate (object or function with a `Symbol.asyncIterator` function). A `ReadableStream` is async-iterable on Node; a site that wants bytes excludes it explicitly. `defined({ signal, headers })` is the shared way to forward optional fields under `exactOptionalPropertyTypes`: it returns a copy without the `undefined`-valued keys, typed so those keys are optional (`{ ...required, ...defined({ signal }) }`).
 
 ## API
 
 - `PFError`, `PFErrorInit`, `isPFError`, `localFailure`, `ProtocolErrorCode`
-- `PROTOCOL_VERSION`, `RpcRequest`, `RpcResponse`, `RpcSuccess`, `RpcFailure`, `PFResultPromise`
+- `PROTOCOL_MAJOR` (`1`, the wire major: `v` on message `hello`), `PROTOCOL_VERSION` (`'1'`, its string: the `x-ts-pf-protocol` header value), `RpcRequest`, `RpcResponse`, `RpcSuccess`, `RpcFailure`, `PFResultPromise`
+- `toWireError`, `isAsyncIterable`
+- `defined`, `Defined` — `defined(obj)` drops the keys whose value is `undefined`, so `{ ...required, ...defined({ signal }) }` builds an `exactOptionalPropertyTypes` option bag without one spread per field
 
 ## Pair with
 

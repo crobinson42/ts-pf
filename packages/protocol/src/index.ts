@@ -1,5 +1,7 @@
+export { type Defined, defined } from './defined.js'
 export {
   type PFResultPromise,
+  PROTOCOL_MAJOR,
   PROTOCOL_VERSION,
   type RpcFailure,
   type RpcRequest,
@@ -13,3 +15,5 @@ export {
   type PFErrorInit,
   ProtocolErrorCode,
 } from './error.js'
+export { isAsyncIterable } from './is-async-iterable.js'
+export { toWireError } from './wire-error.js'

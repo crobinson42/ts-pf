@@ -33,15 +33,17 @@ if (!result.ok && result.error.code === 'NOT_FOUND') {
 ## `emit` / `catalogHash`
 
 ```ts
+import { catalog } from '@ts-pf/docs'
 import { emit, catalogHash, type EmitOptions } from '@ts-pf/codegen'
 
-emit(catalog, {
+const spec = catalog(contract, { prefix: '/rpc' })
+emit(spec, {
   name: 'Contract', // default
   failOnUnavailable: false, // default; true throws on kind: 'unavailable'
   banner: true, // catalogVersion + sha256 hash
 })
 
-catalogHash(catalog) // 'sha256:<hex>' of canonical JSON
+catalogHash(spec) // 'sha256:<hex>' of canonical JSON
 ```
 
 Generated procedures are `ContractProcedure<I, O, E>` with Phantom Standard Schema leaves so `InferErrorData` / `asResult` still narrow `error.code === 'NOT_FOUND'`. Protocol errors stay out of the generated error map (`ClientError` already unions them). No-input is `void`. Streams are `AsyncIterable<Item>`.
@@ -58,9 +60,10 @@ The generated file uses `import type { ContractProcedure } from '@ts-pf/contract
 ts-pf-codegen emit <catalog.json|-> [-o contract.d.ts] [--name Contract] [--fail-on-unavailable]
 ts-pf-codegen pull <url> [-o contract.d.ts] [--lock catalog.lock.json]
 ts-pf-codegen hash <catalog.json|->
+ts-pf-codegen --help
 ```
 
-`emit` and `hash` read stdin when the path is `-`. Omit `-o` to write the `.d.ts` to stdout.
+`emit` and `hash` read stdin when the path is `-`. Omit `-o` to write the `.d.ts` to stdout. `--help` / `-h` print usage and exit 0; no command prints usage to stderr and exits 1. Run it as `npx ts-pf-codegen …` or from an npm script — the bin resolves through the `node_modules/.bin` symlink.
 
 Commit `contract.d.ts`, or CI-run `ts-pf-codegen pull` and pin `catalog.lock.json`:
 
@@ -78,7 +81,7 @@ Mismatch on pull exits non-zero. No registry in v1.
 
 Do **not** put this on `FetchHandler`. A GET under `/rpc/...` is a procedure miss / `METHOD_NOT_ALLOWED`, not a spec.
 
-```ts
+```ts no-check
 // Userland — not FetchHandler, not @ts-pf/codegen:
 if (url.pathname === '/catalog.json') {
   return Response.json(catalog(contract, { prefix: '/rpc' }))

@@ -43,7 +43,7 @@ export async function validateSchema<T = unknown>(
 
 export type AnySchema = StandardSchemaV1 | TypeBoxLike
 
-export interface TypeBoxLike {
+interface TypeBoxLike {
   readonly '~kind': string
 }
 

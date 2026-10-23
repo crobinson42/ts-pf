@@ -1,4 +1,5 @@
 import { JSONCodec, type RpcBodySource } from '@ts-pf/http'
+import { PFError } from '@ts-pf/protocol'
 import { StreamCodec } from '@ts-pf/stream'
 import { describe, expect, it } from 'vitest'
 
@@ -103,7 +104,14 @@ describe('StreamCodec', () => {
       done: false,
       value: { token: 'Hel' },
     })
-    await expect(iter.next()).rejects.toMatchObject({ code: 'INTERNAL' })
+    const error = await iter.next().then(
+      () => undefined,
+      (reason: unknown) => reason as PFError,
+    )
+    expect(error).toBeInstanceOf(PFError)
+    expect(error?.code).toBe('INTERNAL')
+    // In-band failures arrive on an HTTP 200 body; status is not stamped.
+    expect(error?.status).toBeUndefined()
   })
 
   it('rejects nested streams', async () => {

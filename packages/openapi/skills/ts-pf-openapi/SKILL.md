@@ -14,6 +14,7 @@ Link for agents: `npx skills experimental_sync -y`
 ## Do
 
 ```ts
+import { procedure } from '@ts-pf/contract'
 import { catalog, docs } from '@ts-pf/docs'
 import { openapi } from '@ts-pf/openapi'
 

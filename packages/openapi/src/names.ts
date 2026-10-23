@@ -1,6 +1,6 @@
 const UNSAFE = /[^A-Za-z0-9._-]/g
 
-export function sanitizeSegment(value: string): string {
+function sanitizeSegment(value: string): string {
   const next = value.replace(UNSAFE, '_')
   return next.length > 0 ? next : '_'
 }

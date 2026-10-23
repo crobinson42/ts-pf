@@ -2,6 +2,9 @@
   "name": "@ts-pf/example-message",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "test": "vitest run",
     "type-check": "tsc --noEmit",

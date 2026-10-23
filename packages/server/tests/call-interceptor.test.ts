@@ -6,6 +6,7 @@ import {
   createImplementer,
   createLocalClient,
   isImplementedProcedure,
+  type MiddlewareFn,
   runProcedure,
 } from '@ts-pf/server'
 import { describe, expect, it } from 'vitest'
@@ -371,5 +372,88 @@ describe('call interceptors', () => {
       throw new Error('expected procedure')
     }
     expect(await runProcedure(app.ping, undefined, {})).toBe('pong')
+  })
+})
+
+describe('concurrent next() from one interceptor', () => {
+  const tick = () => new Promise<void>((resolve) => setTimeout(resolve, 0))
+  // A `.use()` that yields before `next()` so a second concurrent `next()`
+  // from the interceptor starts while this run is still before its handler.
+  const yieldFirst: MiddlewareFn = async ({ next }) => {
+    await tick()
+    return next()
+  }
+
+  it('gives each run its own input', async () => {
+    const impl = createImplementer(contract)
+    const app = impl.router({
+      ping: impl.ping.handler(async () => 'pong'),
+      echo: impl.echo.use(yieldFirst).handler(async ({ input }) => input),
+      raw: impl.raw.handler(async ({ input }) => input),
+    })
+    const client = createLocalClient(app, {
+      context: {},
+      interceptors: [
+        async ({ next }) =>
+          Promise.all([next({ input: { n: 1 } }), next({ input: { n: 2 } })]),
+      ],
+    })
+    expect(await client.echo({ n: 0 })).toEqual([{ n: 1 }, { n: 2 }])
+  })
+
+  it('gives each run its own context, as .use() middleware sees it', async () => {
+    const impl = createImplementer(contract)
+    const seenByMiddleware: unknown[] = []
+    const app = impl.router({
+      ping: impl.ping.handler(async () => 'pong'),
+      echo: impl.echo.handler(async ({ input }) => input),
+      raw: impl.raw
+        .use(yieldFirst)
+        .use(async ({ context, next }) => {
+          seenByMiddleware.push(context)
+          return next()
+        })
+        .handler(async ({ context }) => context),
+    })
+    const client = createLocalClient(app, {
+      context: { who: 'base' },
+      interceptors: [
+        async ({ next }) =>
+          Promise.all([
+            next({ context: { who: 'a' } }),
+            next({ context: { who: 'b' } }),
+          ]),
+      ],
+    })
+    expect(await client.raw()).toEqual([{ who: 'a' }, { who: 'b' }])
+    expect(seenByMiddleware).toEqual([{ who: 'a' }, { who: 'b' }])
+  })
+
+  it('gives each run its own signal', async () => {
+    const impl = createImplementer(contract)
+    const seen: Array<AbortSignal | undefined> = []
+    const app = impl.router({
+      ping: impl.ping.use(yieldFirst).handler(async ({ signal }) => {
+        seen.push(signal)
+        return 'pong'
+      }),
+      echo: impl.echo.handler(async ({ input }) => input),
+      raw: impl.raw.handler(async ({ input }) => input),
+    })
+    const a = new AbortController()
+    const b = new AbortController()
+    const client = createLocalClient(app, {
+      context: {},
+      interceptors: [
+        async ({ next }) =>
+          Promise.all([
+            next({ signal: a.signal }),
+            next({ signal: b.signal }),
+            next(),
+          ]),
+      ],
+    })
+    expect(await client.ping()).toEqual(['pong', 'pong', 'pong'])
+    expect(seen).toEqual([a.signal, b.signal, undefined])
   })
 })

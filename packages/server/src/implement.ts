@@ -1,14 +1,17 @@
 import {
-  type ContractBuilder,
   type ContractProcedure,
+  type IsContractProcedure,
   isContractProcedure,
 } from '@ts-pf/contract'
 import type { MiddlewareFn } from './middleware.js'
 import {
+  type ContractKeys,
+  type ContractShape,
   type HandlerFn,
   type ImplementedProcedure,
   type ImplementedRouter,
   isImplementedProcedure,
+  type RouterImplCheck,
 } from './runtime.js'
 
 type Inherited = {
@@ -106,18 +109,30 @@ function assertComplete(
 }
 
 function createNode(contract: unknown, inherited: Inherited): object {
-  const extraUse: MiddlewareFn[] = []
-  const extraUseAfter: MiddlewareFn[] = []
+  return isContractProcedure(contract)
+    ? createProcedureNode(contract, inherited)
+    : createRouterNode(contract, inherited)
+}
 
+/**
+ * Router level of the implementer (`impl`, `impl.planet`). Immutable: `use()`
+ * / `useAfter()` / `$context()` return a fresh node with the middleware added
+ * to `inherited`, so `impl.use(a)` does not change `impl`. Property access
+ * walks the contract and builds a child node per access.
+ */
+function createRouterNode(contract: unknown, inherited: Inherited): object {
   const self: Record<string | symbol, unknown> = {
     $context() {
-      return createNode(contract, inherited)
+      return createRouterNode(contract, inherited)
     },
     use(mw: MiddlewareFn) {
-      return createNode(contract, { ...inherited, use: [...inherited.use, mw] })
+      return createRouterNode(contract, {
+        ...inherited,
+        use: [...inherited.use, mw],
+      })
     },
     useAfter(mw: MiddlewareFn) {
-      return createNode(contract, {
+      return createRouterNode(contract, {
         ...inherited,
         useAfter: [...inherited.useAfter, mw],
       })
@@ -128,28 +143,6 @@ function createNode(contract: unknown, inherited: Inherited): object {
     router(impl: ImplementedRouter) {
       assertComplete(contract, impl, inherited.path)
       return applyInherited(impl, inherited) as ImplementedRouter
-    },
-  }
-
-  if (isContractProcedure(contract)) {
-    self.handler = (fn: HandlerFn) =>
-      createImplemented(contract, inherited, extraUse, extraUseAfter, fn)
-    self.use = (mw: MiddlewareFn) => {
-      extraUse.push(mw)
-      return new Proxy(self, procedureProxy)
-    }
-    self.useAfter = (mw: MiddlewareFn) => {
-      extraUseAfter.push(mw)
-      return new Proxy(self, procedureProxy)
-    }
-  }
-
-  const procedureProxy: ProxyHandler<typeof self> = {
-    get(target, key) {
-      if (key in target) {
-        return target[key]
-      }
-      return undefined
     },
   }
 
@@ -173,6 +166,35 @@ function createNode(contract: unknown, inherited: Inherited): object {
   })
 }
 
+/**
+ * Procedure level (`impl.planet.find`). A short-lived builder: `use()` /
+ * `useAfter()` push onto this node's own arrays and return the same node, and
+ * `handler()` seals them behind the inherited router middleware. Each access
+ * of `impl.planet.find` makes a new node, so the mutation never leaks past
+ * the chain it was written in.
+ */
+function createProcedureNode(
+  contract: ContractProcedure,
+  inherited: Inherited,
+): object {
+  const extraUse: MiddlewareFn[] = []
+  const extraUseAfter: MiddlewareFn[] = []
+  const self = {
+    use(mw: MiddlewareFn) {
+      extraUse.push(mw)
+      return self
+    },
+    useAfter(mw: MiddlewareFn) {
+      extraUseAfter.push(mw)
+      return self
+    },
+    handler(fn: HandlerFn) {
+      return createImplemented(contract, inherited, extraUse, extraUseAfter, fn)
+    },
+  }
+  return self
+}
+
 export function createImplementer<T>(contract: T) {
   return createNode(contract, {
     use: [],
@@ -181,18 +203,29 @@ export function createImplementer<T>(contract: T) {
   }) as Implementer<T, object>
 }
 
+/**
+ * Builder for one contract procedure. `TContract` is the contract procedure
+ * type (`typeof contract.planet.find`); `handler()` returns an
+ * `ImplementedProcedure` branded with it and with `TCtx`.
+ *
+ * `use()` runs before input validation and takes the same loose
+ * `MiddlewareFn<TCtx, unknown, unknown>` as `impl.use()`, so a middleware
+ * from `impl.middleware()` fits both. `useAfter()` is typed with this
+ * procedure's input and output, so it takes an inline function.
+ */
 export type ProcedureBuilder<
   TInput,
   TOutput,
   TCtx,
   TErrors extends Record<string, unknown> = Record<string, unknown>,
+  TContract = unknown,
 > = {
   use: (
-    mw: MiddlewareFn<TCtx, unknown, TOutput>,
-  ) => ProcedureBuilder<TInput, TOutput, TCtx, TErrors>
+    mw: MiddlewareFn<TCtx, unknown, unknown>,
+  ) => ProcedureBuilder<TInput, TOutput, TCtx, TErrors, TContract>
   useAfter: (
     mw: MiddlewareFn<TCtx, TInput, TOutput>,
-  ) => ProcedureBuilder<TInput, TOutput, TCtx, TErrors>
+  ) => ProcedureBuilder<TInput, TOutput, TCtx, TErrors, TContract>
   handler: (
     fn: (opts: {
       input: TInput
@@ -201,7 +234,7 @@ export type ProcedureBuilder<
       path: string[]
       signal?: AbortSignal
     }) => TOutput | Promise<TOutput>,
-  ) => ImplementedProcedure
+  ) => ImplementedProcedure<TContract, TCtx>
 }
 
 export type Implementer<T, TCtx> = {
@@ -211,29 +244,27 @@ export type Implementer<T, TCtx> = {
   middleware: (
     fn: MiddlewareFn<TCtx, unknown, unknown>,
   ) => MiddlewareFn<TCtx, unknown, unknown>
-  router: (impl: RouterImpl<T, TCtx>) => ImplementedRouter<T>
+  /**
+   * Builds the finished tree. The argument must implement exactly the
+   * contract: a missing key, an extra key, a handler built from another
+   * procedure, or a slice built with a different `$context` is a type error
+   * that names the key. `I` is inferred so the error shows that key, not the
+   * whole contract. Runtime `assertComplete` enforces the same.
+   */
+  router: <I>(
+    impl: I & RouterImplCheck<T, TCtx, I>,
+  ) => ImplementedRouter<T, TCtx>
 } & {
-  [K in keyof T as K extends '~pf' ? never : K]: T[K] extends ContractBuilder<
-    infer I,
-    infer O,
-    infer _E,
-    infer _M
-  >
-    ? ProcedureBuilder<I, O, TCtx, _E>
-    : T[K] extends ContractProcedure<infer I, infer O, infer _E, infer _M>
-      ? ProcedureBuilder<I, O, TCtx, _E>
-      : Implementer<T[K], TCtx>
+  [K in ContractKeys<T>]: IsContractProcedure<T[K]> extends true
+    ? ProcedureBuilderFor<T[K], TCtx>
+    : Implementer<T[K], TCtx>
 }
 
-export type RouterImpl<T, TCtx> = {
-  [K in keyof T as K extends '~pf' ? never : K]: T[K] extends ContractBuilder<
-    infer _I,
-    infer _O,
-    infer _E,
-    infer _M
-  >
-    ? ImplementedProcedure
-    : T[K] extends ContractProcedure<infer _I, infer _O, infer _E, infer _M>
-      ? ImplementedProcedure
-      : RouterImpl<T[K], TCtx>
-}
+type ProcedureBuilderFor<TContract, TCtx> =
+  ContractShape<TContract> extends {
+    input: infer I
+    output: infer O
+    errors: infer E extends Record<string, unknown>
+  }
+    ? ProcedureBuilder<I, O, TCtx, E, TContract>
+    : never

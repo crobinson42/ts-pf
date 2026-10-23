@@ -58,7 +58,11 @@ function openPeer(
 describe('PortLink', () => {
   it('exports PortLink and not StdioLink or attachClient', async () => {
     const exported = await import('../src/index.js')
-    expect(Object.keys(exported).sort()).toEqual(['PortLink', 'WsLink'])
+    expect(Object.keys(exported).sort()).toEqual([
+      'DuplexLink',
+      'PortLink',
+      'WsLink',
+    ])
     expect(exported).not.toHaveProperty('StdioLink')
     expect(exported).not.toHaveProperty('attachClient')
     expect(exported).not.toHaveProperty('RPCLink')
@@ -219,10 +223,11 @@ describe('PortLink', () => {
     expect(isLocalFailure(error)).toBe(false)
     expect(error).toMatchObject({
       code: 'NOT_FOUND',
-      status: 400,
       message: 'missing',
       data: { id: 7 },
     })
+    // Message transports carry no HTTP status; the declared 404 stays server-side.
+    expect((error as { status?: number }).status).toBeUndefined()
 
     link.close()
     peer.session.close()
@@ -745,9 +750,9 @@ describe('PortLink', () => {
     expect(isLocalFailure(error)).toBe(false)
     expect(error).toMatchObject({
       code: 'PAYLOAD_TOO_LARGE',
-      status: 400,
       message: 'Frame too large',
     })
+    expect((error as { status?: number }).status).toBeUndefined()
     expect(peer.frames.filter((frame) => frame.type === 'call')).toEqual([])
 
     link.close()

@@ -6,7 +6,6 @@ export {
   createImplementer,
   type Implementer,
   type ProcedureBuilder,
-  type RouterImpl,
 } from './implement.js'
 export type { ErrorFactory, MiddlewareFn, NextFn } from './middleware.js'
 export { applyPlugins, type CallPlugin } from './plugin.js'
@@ -16,6 +15,7 @@ export {
   isImplementedProcedure,
   lookupProcedure,
   type ProcedureValidation,
+  type RouterImpl,
   type RunProcedureOptions,
   runProcedure,
 } from './runtime.js'

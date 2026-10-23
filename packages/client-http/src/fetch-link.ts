@@ -96,19 +96,34 @@ export class FetchLink implements Link {
       )
     }
 
+    // A response from another wire major may carry an envelope this codec
+    // cannot read: do not touch the body. It did come from a server, so this
+    // is not a local failure (not retried by default); it is shaped like the
+    // non-RPC decode failure below.
+    const version = protocolVersion(response)
+    if (version === 'mismatch') {
+      throw new PFError({
+        code: 'INTERNAL',
+        status: response.status,
+        message: `Unsupported protocol version (${PROTOCOL_HEADER}: ${response.headers.get(PROTOCOL_HEADER)})`,
+        cause: response,
+      })
+    }
+
     let decoded: RpcResponse
     try {
       decoded = await this.codec.decodeResponse(bodySource(response))
     } catch (error) {
-      if (isPFError(error) && isProtocolResponse(response)) {
+      if (isPFError(error) && version === 'match') {
         throw error
       }
       throw new PFError({
         code: 'INTERNAL',
         status: response.status,
-        message: isProtocolResponse(response)
-          ? 'Invalid response'
-          : `Non-RPC response (HTTP ${response.status})`,
+        message:
+          version === 'match'
+            ? 'Invalid response'
+            : `Non-RPC response (HTTP ${response.status})`,
         cause: error,
       })
     }
@@ -159,6 +174,11 @@ function isAbortFailure(error: unknown, signal?: AbortSignal): boolean {
   return error instanceof Error && error.name === 'AbortError'
 }
 
-function isProtocolResponse(response: Response): boolean {
-  return response.headers.get(PROTOCOL_HEADER) != null
+/** `x-ts-pf-protocol` on the response: absent (proxy, non-RPC), ours, or another major. */
+function protocolVersion(response: Response): 'absent' | 'match' | 'mismatch' {
+  const value = response.headers.get(PROTOCOL_HEADER)
+  if (value === null) {
+    return 'absent'
+  }
+  return value.trim() === PROTOCOL_VERSION ? 'match' : 'mismatch'
 }

@@ -1,7 +1,15 @@
 import type { ErrorDef, InferErrorData } from '@ts-pf/contract'
 
+/**
+ * Continues the middleware chain. `next({ context })` **merges** into the
+ * current context (`{ ...ctx, ...added }`); `next({ input })` replaces the
+ * input. Compare `CallInterceptor`'s `next()`, which replaces `context`
+ * entirely.
+ */
 export type NextFn<TCtx, TInput, TOutput> = (opts?: {
+  /** Merged into the current context; added keys are not inferred. */
   context?: Partial<TCtx>
+  /** Replaces the input for the rest of the chain. */
   input?: TInput
 }) => Promise<TOutput>
 

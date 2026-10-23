@@ -13,6 +13,9 @@
     "astro"
   ],
   "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/crobinson42/ts-pf.git",
@@ -54,6 +57,8 @@
   "dependencies": {
     "@ts-pf/client": "0.1.5",
     "@ts-pf/client-http": "0.1.5",
+    "@ts-pf/contract": "0.1.5",
+    "@ts-pf/protocol": "0.1.2",
     "@ts-pf/server": "0.3.1",
     "@ts-pf/server-http": "0.2.1"
   },

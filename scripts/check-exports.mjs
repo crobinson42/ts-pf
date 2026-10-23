@@ -1,6 +1,7 @@
 // Published @ts-pf/* packages must export dist. npm does not rewrite
 // publishConfig.exports into the packed package.json — putting src there
-// ships a tarball that cannot be imported.
+// ships a tarball that cannot be imported. Every tarball must also carry
+// LICENSE (a copy of the root file; npm packs it regardless of `files`).
 import { execFileSync } from 'node:child_process'
 import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -45,7 +46,9 @@ function checkExportMap(pkgName, exports) {
     }
     for (const [condition, target] of Object.entries(value)) {
       if (typeof target !== 'string') {
-        errors.push(`${pkgName}: exports["${key}"].${condition} must be a string`)
+        errors.push(
+          `${pkgName}: exports["${key}"].${condition} must be a string`,
+        )
         continue
       }
       const sourceTs = target.endsWith('.ts') && !target.endsWith('.d.ts')
@@ -107,30 +110,47 @@ if (errors.length === 0) {
   try {
     for (const { dir, pkg } of published) {
       try {
-        execFileSync('npm', ['pack', join(packagesDir, dir), '--pack-destination', dest], {
-          stdio: 'pipe',
-        })
+        execFileSync(
+          'npm',
+          ['pack', join(packagesDir, dir), '--pack-destination', dest],
+          {
+            stdio: 'pipe',
+          },
+        )
       } catch (error) {
         const detail = error.stderr?.toString().trim() || error.message
         errors.push(`${dir}: npm pack failed (${detail})`)
         continue
       }
-      const tarballs = (await readdir(dest)).filter((name) => name.endsWith('.tgz'))
+      const tarballs = (await readdir(dest)).filter((name) =>
+        name.endsWith('.tgz'),
+      )
       if (tarballs.length !== 1) {
         errors.push(`${dir}: npm pack produced ${tarballs.length} tarballs`)
-        await Promise.all(tarballs.map((name) => rm(join(dest, name), { force: true })))
+        await Promise.all(
+          tarballs.map((name) => rm(join(dest, name), { force: true })),
+        )
         continue
       }
       const tgz = join(dest, tarballs[0])
       const files = listTar(tgz)
-      if (files.some((file) => file === 'package/src' || file.startsWith('package/src/'))) {
+      if (
+        files.some(
+          (file) => file === 'package/src' || file.startsWith('package/src/'),
+        )
+      ) {
         errors.push(`${dir}: packed tarball includes src/`)
+      }
+      if (!files.includes('package/LICENSE')) {
+        errors.push(`${dir}: packed tarball missing package/LICENSE`)
       }
       let packed
       try {
         packed = JSON.parse(readTarFile(tgz, 'package/package.json'))
       } catch (error) {
-        errors.push(`${dir}: packed package.json missing or invalid (${error.message})`)
+        errors.push(
+          `${dir}: packed package.json missing or invalid (${error.message})`,
+        )
         await rm(tgz)
         continue
       }
@@ -140,7 +160,9 @@ if (errors.length === 0) {
         )
       }
       if (packed.publishConfig?.exports) {
-        errors.push(`${dir}: packed package.json still has publishConfig.exports`)
+        errors.push(
+          `${dir}: packed package.json still has publishConfig.exports`,
+        )
       }
       for (const value of Object.values(pkg.exports ?? {})) {
         for (const target of Object.values(value)) {

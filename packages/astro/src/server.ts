@@ -20,9 +20,13 @@ export type AstroLocalClientOptions = {
   validation?: ProcedureValidation
 }
 
+/**
+ * `TCtx` comes from the `FetchHandler` (which inferred it from the router), so
+ * `options.context` is checked against the app's `$context<C>()` type.
+ */
 export function createAstroHandler<TCtx>(
   handler: FetchHandler<TCtx>,
-  options: AstroHandlerOptions<TCtx>,
+  options: AstroHandlerOptions<NoInfer<TCtx>>,
 ): (context: APIContext) => Promise<Response> {
   return async (astro) => {
     const context = await resolveContext(options.context, astro)
@@ -37,14 +41,20 @@ export function createAstroHandler<TCtx>(
   }
 }
 
+/**
+ * `TCtx` is inferred from the router's context brand, so `context` is checked
+ * against the app's `$context<C>()` type.
+ */
 export async function createAstroLocalClient<
   TApp,
   TAstro extends { request: Request },
   TCtx,
 >(
-  app: ImplementedRouter<TApp>,
+  app: ImplementedRouter<TApp, TCtx>,
   astro: TAstro,
-  context: TCtx | ((astro: TAstro) => TCtx | Promise<TCtx>),
+  context:
+    | NoInfer<TCtx>
+    | ((astro: TAstro) => NoInfer<TCtx> | Promise<NoInfer<TCtx>>),
   options?: AstroLocalClientOptions,
 ): Promise<ContractClient<TApp>> {
   const resolved = await resolveContext(context, astro)

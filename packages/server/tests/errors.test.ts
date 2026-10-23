@@ -23,10 +23,34 @@ describe('declared error data', () => {
     const client = createLocalClient(app, { context: {} })
     await expect(client.find({ id: 1 })).rejects.toMatchObject({
       code: 'INTERNAL',
-      status: 400,
+      status: undefined,
     })
     await expect(client.find({ id: 1 })).rejects.not.toMatchObject({
       data: { id: 'nope' },
+    })
+  })
+
+  it('keeps the original declared error as cause, off the wire', async () => {
+    const c = router({
+      find: procedure.errors({
+        NOT_FOUND: { status: 404, data: z.object({ id: z.number() }) },
+      }),
+    })
+    const impl = createImplementer(c)
+    const app = impl.router({
+      find: impl.find.handler(async ({ errors }) => {
+        throw errors.NOT_FOUND({ id: 'nope' } as never)
+      }),
+    })
+    const client = createLocalClient(app, { context: {} })
+    const err = (await client.find().catch((e: unknown) => e)) as PFError
+    expect(err).toBeInstanceOf(PFError)
+    expect(err.cause).toBeInstanceOf(PFError)
+    expect((err.cause as PFError).code).toBe('NOT_FOUND')
+    expect((err.cause as PFError).data).toEqual({ id: 'nope' })
+    expect(JSON.parse(JSON.stringify(err))).toEqual({
+      code: 'INTERNAL',
+      message: 'Internal server error',
     })
   })
 
@@ -65,9 +89,18 @@ describe('declared error data', () => {
       () => undefined,
       (error: unknown) => error,
     )
-    expect(err).toMatchObject({ code: 'INTERNAL', status: 400 })
+    expect(err).toMatchObject({ code: 'INTERNAL' })
     expect(err).toBeInstanceOf(PFError)
+    expect((err as PFError).status).toBeUndefined()
     expect((err as PFError).data).toBeUndefined()
+    // The schema issues ride on `cause` for the server log only.
+    expect((err as PFError).cause).toEqual([
+      expect.objectContaining({ message: expect.any(String) }),
+    ])
+    expect(JSON.parse(JSON.stringify(err))).toEqual({
+      code: 'INTERNAL',
+      message: 'Internal server error',
+    })
   })
 
   it('returns handler output when output validation is off', async () => {
@@ -118,7 +151,43 @@ describe('declared error data', () => {
       }
     }).rejects.toMatchObject({
       code: 'INTERNAL',
-      status: 400,
+      status: undefined,
+    })
+  })
+
+  it('stamps a declared status and leaves it undefined when not declared', async () => {
+    const c = router({
+      ping: procedure.errors({
+        TEAPOT: { message: 'short and stout' },
+        GONE: { status: 410 },
+      }),
+    })
+    const impl = createImplementer(c)
+    const teapot = createLocalClient(
+      impl.router({
+        ping: impl.ping.handler(async ({ errors }) => {
+          throw errors.TEAPOT()
+        }),
+      }),
+      { context: {} },
+    )
+    const gone = createLocalClient(
+      impl.router({
+        ping: impl.ping.handler(async ({ errors }) => {
+          throw errors.GONE()
+        }),
+      }),
+      { context: {} },
+    )
+    const teapotError = await teapot.ping().then(
+      () => undefined,
+      (error: unknown) => error as PFError,
+    )
+    expect(teapotError?.code).toBe('TEAPOT')
+    expect(teapotError?.status).toBeUndefined()
+    await expect(gone.ping()).rejects.toMatchObject({
+      code: 'GONE',
+      status: 410,
     })
   })
 })

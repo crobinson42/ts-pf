@@ -1,16 +1,21 @@
 import {
+  type EnvelopeTextCodec,
+  isJsonContentType,
   JSONCodec,
+  jsonBodySource,
+  mimeType,
   type RpcBodySource,
   type RpcCodec,
   type RpcEncodedBody,
 } from '@ts-pf/http'
 import {
-  isPFError,
   PFError,
+  type RpcFailure,
   type RpcRequest,
   type RpcResponse,
+  toWireError,
 } from '@ts-pf/protocol'
-import { isAsyncIterable } from './is-async-iterable.js'
+import { isItemStream } from './item-stream.js'
 import {
   badRequest,
   encodeJsonl,
@@ -18,40 +23,12 @@ import {
   readJsonlLines,
 } from './jsonl.js'
 
-function mime(contentType: string | null): string {
-  if (contentType == null || contentType === '') {
-    return ''
-  }
-  return contentType.split(';')[0]?.trim().toLowerCase() ?? ''
-}
-
-function isJsonContentType(contentType: string | null): boolean {
-  const type = mime(contentType)
-  return type === '' || type === 'application/json'
-}
-
 function isJsonlContentType(contentType: string | null): boolean {
-  return mime(contentType) === JSONL_CONTENT_TYPE
-}
-
-function jsonSource(text: string): RpcBodySource {
-  return {
-    contentType: 'application/json',
-    text: async () => text,
-    formData: async () => new FormData(),
-    body: () => null,
-  }
-}
-
-async function jsonText(encoded: RpcEncodedBody): Promise<string> {
-  if (typeof encoded.body === 'string') {
-    return encoded.body
-  }
-  throw new Error('StreamCodec inner codec must produce a JSON string')
+  return mimeType(contentType) === JSONL_CONTENT_TYPE
 }
 
 function assertItem(value: unknown): void {
-  if (isAsyncIterable(value)) {
+  if (isItemStream(value)) {
     throw badRequest('Nested streams are not supported')
   }
   if (typeof Blob !== 'undefined' && value instanceof Blob) {
@@ -60,7 +37,7 @@ function assertItem(value: unknown): void {
 }
 
 function assertNoNestedStreams(value: unknown, atRoot: boolean): void {
-  if (isAsyncIterable(value)) {
+  if (isItemStream(value)) {
     if (!atRoot) {
       throw badRequest('Nested streams are not supported')
     }
@@ -85,23 +62,23 @@ function assertNoNestedStreams(value: unknown, atRoot: boolean): void {
 }
 
 export class StreamCodec implements RpcCodec {
-  private readonly inner: RpcCodec
+  private readonly inner: EnvelopeTextCodec
 
-  constructor(options?: { inner?: RpcCodec }) {
+  constructor(options?: { inner?: EnvelopeTextCodec }) {
     this.inner = options?.inner ?? new JSONCodec()
   }
 
   async encodeRequest(req: RpcRequest): Promise<RpcEncodedBody> {
-    if (isAsyncIterable(req.input)) {
+    if (isItemStream(req.input)) {
       return {
         contentType: JSONL_CONTENT_TYPE,
         body: encodeJsonl(
           req.input,
           async (item) => {
             assertItem(item)
-            return jsonText(await this.inner.encodeRequest({ input: item }))
+            return (await this.inner.encodeRequest({ input: item })).body
           },
-          (error) => this.failureLine(error),
+          failureLine,
         ),
       }
     }
@@ -126,16 +103,16 @@ export class StreamCodec implements RpcCodec {
   }
 
   async encodeSuccess<T>(output: T): Promise<RpcEncodedBody> {
-    if (isAsyncIterable(output)) {
+    if (isItemStream(output)) {
       return {
         contentType: JSONL_CONTENT_TYPE,
         body: encodeJsonl(
           output,
           async (item) => {
             assertItem(item)
-            return jsonText(await this.inner.encodeSuccess(item))
+            return (await this.inner.encodeSuccess(item)).body
           },
-          (error) => this.failureLine(error),
+          failureLine,
         ),
       }
     }
@@ -171,7 +148,7 @@ export class StreamCodec implements RpcCodec {
     stream: ReadableStream<Uint8Array>,
   ): AsyncIterable<unknown> {
     for await (const line of readJsonlLines(stream)) {
-      const decoded = await this.inner.decodeRequest(jsonSource(line))
+      const decoded = await this.inner.decodeRequest(jsonBodySource(line))
       yield decoded.input
     }
   }
@@ -180,11 +157,10 @@ export class StreamCodec implements RpcCodec {
     stream: ReadableStream<Uint8Array>,
   ): AsyncIterable<unknown> {
     for await (const line of readJsonlLines(stream)) {
-      const decoded = await this.inner.decodeResponse(jsonSource(line))
+      const decoded = await this.inner.decodeResponse(jsonBodySource(line))
       if (!decoded.ok) {
         throw new PFError({
           code: decoded.error.code,
-          status: 200,
           message: decoded.error.message,
           ...(decoded.error.data !== undefined
             ? { data: decoded.error.data }
@@ -194,21 +170,10 @@ export class StreamCodec implements RpcCodec {
       yield decoded.output
     }
   }
+}
 
-  private failureLine(error: unknown): string {
-    if (isPFError(error)) {
-      const payload: { code: string; message: string; data?: unknown } = {
-        code: error.code,
-        message: error.message,
-      }
-      if (error.data !== undefined) {
-        payload.data = error.data
-      }
-      return JSON.stringify({ ok: false, error: payload })
-    }
-    return JSON.stringify({
-      ok: false,
-      error: { code: 'INTERNAL', message: 'Internal server error' },
-    })
-  }
+/** In-band failure after the stream started: an unknown throw is `INTERNAL`. */
+function failureLine(error: unknown): string {
+  const failure: RpcFailure = { ok: false, error: toWireError(error) }
+  return JSON.stringify(failure)
 }

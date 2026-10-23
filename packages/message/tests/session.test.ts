@@ -1,5 +1,5 @@
 import { isPFError } from '@ts-pf/protocol'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createMemoryDuplex } from '../src/duplex.js'
 import { encodeFrame, type MessageFrame } from '../src/frame.js'
 import { frameByteLength, MessageSession } from '../src/session.js'
@@ -124,7 +124,7 @@ describe('MessageSession', () => {
       throw new Error('expected PFError')
     }
     expect(error.code).toBe('INTERNAL')
-    expect(error.status).toBe(400)
+    expect(error.status).toBeUndefined()
     expect(error.message).toBe('Internal server error')
     expect(error.message).not.toContain('secret')
 
@@ -339,27 +339,34 @@ describe('MessageSession', () => {
   })
 
   it('hello timeout rejects ready with Network error', async () => {
-    const { a } = createMemoryDuplex()
-    const client = new MessageSession({
-      duplex: a,
-      role: 'client',
-      helloTimeoutMs: 20,
-      onFrame: noopFrame(),
-    })
+    vi.useFakeTimers()
+    try {
+      const { a } = createMemoryDuplex()
+      const client = new MessageSession({
+        duplex: a,
+        role: 'client',
+        helloTimeoutMs: 20,
+        onFrame: noopFrame(),
+      })
 
-    const error = await client.ready.then(
-      () => {
-        throw new Error('ready should reject')
-      },
-      (reason: unknown) => reason,
-    )
-    expect(isPFError(error)).toBe(true)
-    if (!isPFError(error)) {
-      throw new Error('expected PFError')
+      const settled = client.ready.then(
+        () => {
+          throw new Error('ready should reject')
+        },
+        (reason: unknown) => reason,
+      )
+      await vi.advanceTimersByTimeAsync(20)
+      const error = await settled
+      expect(isPFError(error)).toBe(true)
+      if (!isPFError(error)) {
+        throw new Error('expected PFError')
+      }
+      expect(error.message).toBe('Network error')
+      expect(error.status).toBe(0)
+      expect(error.code).toBe('INTERNAL')
+    } finally {
+      vi.useRealTimers()
     }
-    expect(error.message).toBe('Network error')
-    expect(error.status).toBe(0)
-    expect(error.code).toBe('INTERNAL')
   })
 
   it('after ready, decode failure with an id calls onInvalidFrame and does not close', async () => {

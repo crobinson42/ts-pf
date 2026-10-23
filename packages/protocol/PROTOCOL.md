@@ -1,4 +1,4 @@
-# ts-pf RPC Protocol v1
+# ts-pf RPC Protocol 1 (revision 1.1)
 
 Canonical JSON envelope language for ts-pf. Same `{ "input" }`, `{ "ok": true, "output" }`, `{ "ok": false, "error": { "code", "message", "data?" } }` on every pipe. Discriminator is `error.code`. Implementable from TypeScript, Kotlin, Swift, or any HTTP client.
 
@@ -42,6 +42,10 @@ Procedure path is the nested router keys joined by `/`. Example: `planet.find` �
 
 v1 accepts **POST only**. Other methods return HTTP 405 with `error.code: "METHOD_NOT_ALLOWED"`.
 
+Servers read the request header `x-ts-pf-protocol`. Absent → accept (plain HTTP clients). Present and equal to `1` (after trimming surrounding whitespace) → accept. Any other value → HTTP 400 with `error.code: "BAD_REQUEST"` and `message: "Unsupported protocol version"`; the response still carries `x-ts-pf-protocol: 1`. The check runs after the method check and before the body is read.
+
+Clients send `x-ts-pf-protocol: 1` on every request. A response whose `x-ts-pf-protocol` is present and not `1` must not be decoded; the TypeScript client rejects it with `INTERNAL`, the HTTP status, and message `Unsupported protocol version (x-ts-pf-protocol: <value>)` — it is not a local failure, because the response came from a server. A response without the header follows the `Non-RPC response` rule below.
+
 Success:
 
 ```
@@ -73,7 +77,7 @@ x-ts-pf-protocol: 1
 | `PAYLOAD_TOO_LARGE` | 413 | Request body larger than the configured handler limit |
 | `INTERNAL` | 500 | Unknown throw. A unary output schema failure is also 500 (server bug). Output schema checks are optional. |
 
-The discriminator is `error.code`. HTTP status is unary transport only; it is not in the JSON body.
+The discriminator is `error.code`. HTTP status is unary transport only; it is not in the JSON body. The TypeScript `PFError.status` is optional transport metadata, never identity (see [`status` on the TypeScript client](#status-on-the-typescript-client)).
 
 The table above is a **closed** set. Procedure-declared codes are application-defined strings with optional `data`. `VALIDATION` is the only protocol code with a specified `data` shape: `{ issues: { message, path }[] }` where `path` is `(string | number)[]`. Other protocol codes omit `data`. `INTERNAL` never includes a stack or output-schema issues. Servers may skip output schema checks. When a server checks a unary output schema and it fails, the code is `INTERNAL` and `data` is omitted. When a server checks a stream item and it fails, the code is `VALIDATION` with `issues`, in-band after the stream has started.
 
@@ -83,13 +87,29 @@ After a stream starts, HTTP status stays 200; the same `{ ok: false, error }` ob
 
 TypeScript `PFError`, `instanceof`, and `asResult` are JS conveniences. They are not required to consume the API. Any HTTP client parses this envelope.
 
-Contract-declared error codes use the status on the error definition.
+Contract-declared error codes use the status on the error definition when the HTTP binding sends a unary failure; a declared code with no `status` is sent as HTTP 400 (`httpStatus()` in `@ts-pf/http`).
 
-The TypeScript client maps **local** failures (never got a protocol result) to `INTERNAL` with `local: true` and `status: 0`. `local` and `status` are TypeScript client conventions, not protocol fields, and are **not** on the wire. `isLocalFailure` is `local === true`. Abort uses message `Request aborted`. Network throws keep `error.message` and set `Error.cause` to the thrown value (Node’s `ECONNREFUSED` is then `error.cause.cause`). HTTP responses **without** `x-ts-pf-protocol` that fail `decodeResponse` become `INTERNAL` with the HTTP status and message `Non-RPC response (HTTP …)` — do not surface codec `BAD_REQUEST` 400 for proxy HTML. Codec `PFError` is rethrown only when `x-ts-pf-protocol` is present (truncated JSONL/SSE at decode time, malformed ts-pf JSON). `toJSON()` still omits `status`, `cause`, and `local`.
+### `status` on the TypeScript client
+
+`PFError.status` is `number | undefined`. It is set only where a transport really has one. Switch on `error.code`; treat `status` as a hint and guard it (`err.status ?? 400`).
+
+| Transport | `status` on the rejected `PFError` |
+|---|---|
+| HTTP unary failure (`FetchLink`) | The HTTP response status (declared `NOT_FOUND { status: 404 }` → `404`; declared code without `status` → `400`; protocol codes → the table above) |
+| HTTP after a stream started (JSONL line / SSE `event: error`) | `undefined` (the response was already 200) |
+| WebSocket / stdio / MessagePort | `undefined` (no HTTP status on a frame; `errorFromEnvelope` does not synthesize one) |
+| Local failure (`localFailure`, `isLocalFailure`) | `0` with `local: true` |
+| In-process `createLocalClient` | The declared `ErrorDef.status` when there is one, else `undefined` |
+
+The TypeScript client maps **local** failures (never got a protocol result) to `INTERNAL` with `local: true` and `status: 0`. `local` and `status` are TypeScript client conventions, not protocol fields, and are **not** on the wire. `isLocalFailure` is `local === true`. Abort uses message `Request aborted`. Network throws keep `error.message` and set `Error.cause` to the thrown value (Node’s `ECONNREFUSED` is then `error.cause.cause`). HTTP responses **without** `x-ts-pf-protocol` that fail `decodeResponse` become `INTERNAL` with the HTTP status and message `Non-RPC response (HTTP …)` — do not surface codec `BAD_REQUEST` 400 for proxy HTML. Codec `PFError` is rethrown only when `x-ts-pf-protocol` is present and equal to `1` (truncated JSONL/SSE at decode time, malformed ts-pf JSON); a different value is never decoded (see [HTTP Fetch binding](#http-fetch-binding-default)). `toJSON()` still omits `status`, `cause`, and `local`.
 
 ## Versioning
 
-Header `x-ts-pf-protocol` is `1`. JSON is the default content type and the envelope above does not change for JSON calls. Other content types are codec-defined (see [Binary attachments](#binary-attachments-optional), [Message streams](#message-streams-optional), and [SSE](#sse-optional)). A codec may stream the HTTP body (`ReadableStream`) without changing this envelope. Optional [message transports](#message-transports-optional) carry the same version as `v: 1` on `hello` instead of this header. Bump the header only if the JSON contract breaks.
+Header `x-ts-pf-protocol` and `v` on `hello` / `hello-ok` carry the **wire major**, currently `1` (`PROTOCOL_MAJOR`; the header is its decimal string, `PROTOCOL_VERSION`). JSON is the default content type and the envelope above does not change for JSON calls. Other content types are codec-defined (see [Binary attachments](#binary-attachments-optional), [Message streams](#message-streams-optional), and [SSE](#sse-optional)). A codec may stream the HTTP body (`ReadableStream`) without changing this envelope. Optional [message transports](#message-transports-optional) carry the same major as `v: 1` on `hello` instead of this header.
+
+**Revisions.** This document has a revision number (this is 1.1). Revisions are additive and keep the wire major: a peer cannot tell 1.0 from 1.1 on the wire. Additive means a 1.x sender emits a new key, frame type, header, or content type only when the user opted in, and a 1.0 receiver that does not understand it fails **that call** (`BAD_REQUEST`), never the connection and never silently. Receivers must not reject a value that 1.0 defined as valid. Bump the wire major only when the JSON envelope, a required frame field, or the handshake changes.
+
+**Content negotiation.** Clients MAY send `Accept` listing the response media types they can decode (`application/json`, `application/jsonl`, `text/event-stream`). Servers MAY use it to choose the framing of a streamed response and MUST ignore it when they cannot satisfy it (never 406; the JSON failure envelope is always `application/json`). `Content-Type` on the request selects the request codec as today.
 
 ## Binary attachments (optional)
 
@@ -272,7 +292,7 @@ These bindings are not HTTP:
 - `METHOD_NOT_ALLOWED` is Fetch-only. There is no HTTP method on a frame.
 - Procedure-declared `.errors()` `status` is Fetch-only. Every client, including TypeScript, switches on `error.code`.
 
-`v: 1` on `hello` / `hello-ok` is the same protocol version as header `x-ts-pf-protocol: 1`. Different carrier, same number.
+`v: 1` on `hello` / `hello-ok` is the same wire major as header `x-ts-pf-protocol: 1`. Different carrier, same number.
 
 ### Framing
 
@@ -403,6 +423,12 @@ After a terminal frame, the id is free for reuse. Until then:
 A hostile peer cannot cancel an in-flight call by reusing its id or sending `{ "type": "nope", "id" }`. They can still send `{ "type": "cancel", "id" }` — that is the documented cancel path.
 
 The connection keeps reading frames while a call runs. Two in-flight ids complete independently.
+
+#### Backpressure
+
+No frame acknowledges `item` or `in-item`, and no frame carries a window; flow control in wire major 1 is the transport's. A sender SHOULD NOT pull the next value from the producing iterator until the transport has drained the previous frame of that id (`bufferedAmount` under a high-water mark, `write()` accepted or `drain` fired). A receiver MAY stop reading the transport while a per-id queue is over a local high-water mark; pausing is connection-wide, so one slow consumer delays every id on that connection. On a transport the receiver cannot pause (`MessagePort`, a browser `WebSocket`) receiver memory is bounded only by the peer's behaviour; a receiver may `cancel` a stream it cannot keep up with.
+
+A sender MAY give up on a peer that does not drain within a timeout. That is a server-side condition, not a protocol code: the server sends `{ "type": "result", "id", "ok": false, "error": { "code": "INTERNAL", "message": "Peer did not drain within <n> ms" } }` as the terminal frame for that id (after the items already handed to the transport; no `done`), stops the procedure as if cancelled, and keeps the connection open. A client that gives up on a server that does not drain its `in-item` frames fails the call locally and sends `cancel`. A 1.x receiver already ignores an unknown frame type with an in-flight `id` (table above), so a future credit frame is harmless to it; one for an id that has already terminated would draw `BAD_REQUEST`, so a later major must never send credit after a terminal frame.
 
 ### Size limits
 
@@ -553,7 +579,7 @@ Nested streams and `File` / `Blob` values inside items are `BAD_REQUEST`.
 { "type": "in-done", "id": "1" }
 ```
 
-The server must accept `in-item` for that id as soon as `call` is accepted (the next-turn item must not be lost). Backpressure is implicit (JS queue / pipe buffer). No credit-based flow control in v1. Cancel of the call aborts both sides.
+The server must accept `in-item` for that id as soon as `call` is accepted (the next-turn item must not be lost). Backpressure is the transport's; see "Backpressure" under Multiplex. No credit-based flow control in v1. Cancel of the call aborts both sides.
 
 ### Cancel and mid-stream errors
 
@@ -579,7 +605,7 @@ Clients distinguish three ways:
 2. `error.code` — declared / protocol codes from the envelope
 3. `INTERNAL` without `local` — protocol `INTERNAL`
 
-Declared `.errors()` `status` is Fetch-only. Mid-stream Fetch JSONL keeps HTTP 200. Message transports do **not** reconstruct HTTP status from `error.code`; the TypeScript `PFError.status` default is 400. Non-JS clients ignore `status` and switch on `error.code`. Do not copy `status: 200`.
+Declared `.errors()` `status` is Fetch-only. Mid-stream Fetch JSONL keeps HTTP 200. Message transports do **not** reconstruct HTTP status from `error.code`; the TypeScript `PFError.status` is `undefined` on this pipe (there is no default). Non-JS clients ignore `status` and switch on `error.code`. Do not copy `status: 200`.
 
 | Event | TypeScript `PFError` | `isLocalFailure` |
 |---|---|---|
@@ -589,7 +615,7 @@ Declared `.errors()` `status` is Fetch-only. Mid-stream Fetch JSONL keeps HTTP 2
 | Hello timeout / connect fail / hello stringify fail | `INTERNAL`, `local: true`, status `0`, message `Network error`, `cause` set; close | true |
 | Malformed frame from peer with no usable id (connection closes) | Inflight: `INTERNAL`, `local: true`, status `0`, message `Invalid response` or `Connection closed`, `cause` set | true |
 | First frame for an id is illegal | `INTERNAL`, `local: true`, status `0`, message `Invalid response`; that call only | true |
-| Protocol `result` `{ "ok": false, "error" }` | code / message / data from the envelope; `status` defaults to 400 | false |
+| Protocol `result` `{ "ok": false, "error" }` | code / message / data from the envelope; `status` is `undefined` | false |
 | `NOT_FOUND` / `VALIDATION` / `BAD_REQUEST` from the server | as envelope | false |
 | Version mismatch `hello-error` | `BAD_REQUEST` from the envelope (if received) or `local: true` if the connection closed first | depends |
 | Client refused to send oversize / could not stringify a `call` | `PAYLOAD_TOO_LARGE` or `INTERNAL` (stringify) | false |

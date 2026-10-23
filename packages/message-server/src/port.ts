@@ -1,12 +1,18 @@
 import { createPortDuplex } from '@ts-pf/message'
 import type { ImplementedRouter } from '@ts-pf/server'
-import { attachRouter, type HandlerOptions } from './shared.js'
+import { DuplexHandler } from './duplex.js'
+import { contextWithInfo, type HandlerOptions } from './shared.js'
 
+/** `DuplexHandler` over `createPortDuplex`. `TCtx` is inferred from the router's context brand; see `FetchHandler`. */
 export class PortHandler<TCtx = unknown> {
+  private readonly handler: DuplexHandler<TCtx>
+
   constructor(
-    private readonly router: ImplementedRouter,
-    private readonly options?: HandlerOptions,
-  ) {}
+    router: ImplementedRouter<unknown, TCtx>,
+    options?: HandlerOptions,
+  ) {
+    this.handler = new DuplexHandler(router, options)
+  }
 
   bind(
     port: MessagePort,
@@ -19,39 +25,8 @@ export class PortHandler<TCtx = unknown> {
           }) => TCtx | Promise<TCtx>)
     },
   ): { close(): void } {
-    const duplex = createPortDuplex(port)
-    const context =
-      typeof opts.context === 'function'
-        ? (info: { meta?: unknown }) => {
-            const factory = opts.context as (info: {
-              port: MessagePort
-              meta?: unknown
-            }) => TCtx | Promise<TCtx>
-            return info.meta !== undefined
-              ? factory({ port, meta: info.meta })
-              : factory({ port })
-          }
-        : opts.context
-
-    const attached = attachRouter({
-      duplex,
-      router: this.router,
-      context,
-      ...(this.options?.maxFrameBytes !== undefined
-        ? { maxFrameBytes: this.options.maxFrameBytes }
-        : {}),
-      ...(this.options?.helloTimeoutMs !== undefined
-        ? { helloTimeoutMs: this.options.helloTimeoutMs }
-        : {}),
-      ...(this.options?.onError !== undefined
-        ? { onError: this.options.onError }
-        : {}),
-      ...(this.options?.interceptors !== undefined
-        ? { interceptors: this.options.interceptors }
-        : {}),
-      ...(this.options?.validation !== undefined
-        ? { validation: this.options.validation }
-        : {}),
+    const attached = this.handler.bind(createPortDuplex(port), {
+      context: contextWithInfo(opts.context, { port }),
     })
     port.start()
 

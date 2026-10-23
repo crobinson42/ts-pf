@@ -16,6 +16,9 @@
     "ipc"
   ],
   "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/crobinson42/ts-pf.git",
@@ -52,5 +55,8 @@
   },
   "dependencies": {
     "@ts-pf/protocol": "0.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0"
   }
 }

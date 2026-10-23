@@ -1,4 +1,4 @@
-import { localFailure } from '@ts-pf/protocol'
+import { isAsyncIterable, localFailure } from '@ts-pf/protocol'
 import type { CallInterceptor } from './call-interceptor.js'
 import { isLocalFailure } from './is-local-failure.js'
 import type { CallPlugin } from './plugin.js'
@@ -52,12 +52,6 @@ export class RetryPlugin implements CallPlugin {
       }
     }
   }
-}
-
-function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
-  return (
-    typeof value === 'object' && value !== null && Symbol.asyncIterator in value
-  )
 }
 
 function wait(ms: number, signal: AbortSignal | undefined): Promise<void> {

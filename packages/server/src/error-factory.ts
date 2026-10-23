@@ -1,5 +1,5 @@
 import { type ErrorMap, validateSchema } from '@ts-pf/contract'
-import { isPFError, PFError } from '@ts-pf/protocol'
+import { defined, isPFError, PFError } from '@ts-pf/protocol'
 import type { ErrorFactory } from './middleware.js'
 
 export function createErrorFactory(map: ErrorMap): ErrorFactory<ErrorMap> {
@@ -8,9 +8,8 @@ export function createErrorFactory(map: ErrorMap): ErrorFactory<ErrorMap> {
     factory[code] = ((data?: unknown) => {
       throw new PFError({
         code,
-        status: def.status ?? 400,
         message: def.message ?? code,
-        ...(data !== undefined ? { data } : {}),
+        ...defined({ status: def.status, data }),
       })
     }) as ErrorFactory[string]
   }
@@ -30,15 +29,17 @@ export async function finalizeDeclaredError(
   }
   const result = await validateSchema(def.data, error.data)
   if (!result.success) {
+    // The bad payload never reaches the wire (`toJSON()` omits `cause`); the
+    // original error is kept so the server log can show what was thrown.
     throw new PFError({
       code: 'INTERNAL',
       message: 'Internal server error',
+      cause: error,
     })
   }
   throw new PFError({
     code: error.code,
-    status: error.status,
     message: error.message,
-    ...(result.value !== undefined ? { data: result.value } : {}),
+    ...defined({ status: error.status, data: result.value }),
   })
 }

@@ -33,7 +33,7 @@ export const contract = router({
 
 ```ts
 import { catalog } from '@ts-pf/docs'
-import { contract } from './contract'
+import { contract } from './contract.js'
 
 const spec = catalog(contract, { prefix: '/rpc' })
 // spec.procedures[0].key === 'planet/find'
@@ -53,6 +53,7 @@ The catalog is the portable spec (like `.proto` / `openapi.yaml`). Downstream pa
 OpenAPI 3.1 (polyglot, POST JSON RPC only):
 
 ```ts
+import { catalog } from '@ts-pf/docs'
 import { openapi } from '@ts-pf/openapi'
 
 const spec = openapi(catalog(contract, { prefix: '/rpc' }), {
@@ -63,6 +64,7 @@ const spec = openapi(catalog(contract, { prefix: '/rpc' }), {
 Typed `.d.ts` for a split-repo `createClient<Contract>`:
 
 ```ts
+import { catalog } from '@ts-pf/docs'
 import { emit } from '@ts-pf/codegen'
 import { writeFileSync } from 'node:fs'
 
@@ -71,9 +73,9 @@ writeFileSync('contract.d.ts', emit(catalog(contract, { prefix: '/rpc' })))
 
 `emit()` prints JSDoc from `docs()`. Other `.meta()` keys stay on the catalog JSON.
 
-Serve the JSON in **userland**, outside the RPC prefix (`GET /rpc/...` is a procedure miss, not a spec):
+Serve the JSON in **userland**, outside the RPC prefix (`GET /rpc/...` answers `405 METHOD_NOT_ALLOWED`; the RPC prefix serves procedures, not a spec):
 
-```ts
+```ts no-check
 if (url.pathname === '/catalog.json') {
   return Response.json(catalog(contract, { prefix: '/rpc' }))
 }
@@ -81,6 +83,11 @@ const result = await handler.handle(req, { prefix: '/rpc', context })
 ```
 
 See [`@ts-pf/openapi`](../openapi) and [`@ts-pf/codegen`](../codegen).
+
+## API
+
+- `docs`, `getDocs`, `catalog`, `walkContract`
+- `registerJsonSchemaConverter`, `toJsonSchema`
 
 ## Not in this package
 

@@ -1,7 +1,11 @@
 {
   "name": "@ts-pf/example-codegen-client",
+  "version": "0.0.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "exports": {
     ".": "./src/client.ts"
   },

@@ -233,3 +233,16 @@ describe('compose slice contracts and implementations', () => {
     >()
   })
 })
+
+describe('lookupProcedure', () => {
+  it('reads own keys only, so prototype names miss', () => {
+    const c = router({ ping: procedure.output(z.string()) })
+    const impl = createImplementer(c)
+    const app = impl.router({ ping: impl.ping.handler(async () => 'pong') })
+    expect(lookupProcedure(app, ['ping'])).toBe(app.ping)
+    expect(lookupProcedure(app, ['constructor'])).toBeUndefined()
+    expect(lookupProcedure(app, ['__proto__', 'x'])).toBeUndefined()
+    expect(lookupProcedure(app, ['toString'])).toBeUndefined()
+    expect(lookupProcedure(app, ['ping', 'constructor'])).toBeUndefined()
+  })
+})

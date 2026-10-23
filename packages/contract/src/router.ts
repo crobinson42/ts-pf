@@ -1,7 +1,5 @@
 import { isContractProcedure } from './procedure.js'
 
-export const ROUTER_BRAND = '~pf' as const
-
 export interface ContractRouterBrand {
   readonly '~pf': { type: 'router' }
 }
