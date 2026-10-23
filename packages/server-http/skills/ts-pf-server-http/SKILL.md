@@ -46,11 +46,13 @@ new FetchHandler(app, {
 })
 ```
 
-A JSON body with keys but no `input` key (`{"id":1}` instead of `{"input":{"id":1}}`) is `400 BAD_REQUEST` `Request body must be {"input": ...}`. `{}` and `{"input":null}` still mean no input.
+Errors thrown after a streamed response has started (`StreamCodec` / `SseCodec` output) are written in-band by the codec as `INTERNAL` items; they do not reach `onError` or the default log.
+
+A JSON envelope object with keys but no `input` key (`{"id":1}` instead of `{"input":{"id":1}}`) is `400 BAD_REQUEST` `Request body must be {"input": ...}`, whichever codec carries it (plain JSON, the multipart `rpc` part, or a JSONL input line). `{}` and `{"input":null}` still mean no input.
 
 ## API
 
-- `FetchHandler`, `HandleResult`, `HandlerPlugin`
+- `FetchHandler`, `FetchHandlerOnError`, `HandleResult`, `HandlerPlugin`
 - `CORSPlugin`, `RequestLimitPlugin`, `RequestHeadersPlugin`, `ResponseHeadersPlugin`
 
 ## Pair with

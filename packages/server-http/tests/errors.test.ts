@@ -1,5 +1,6 @@
 import { procedure, router } from '@ts-pf/contract'
-import { isPFError, PFError } from '@ts-pf/protocol'
+import { JSONCodec, type RpcBodySource } from '@ts-pf/http'
+import { isPFError, PFError, type RpcRequest } from '@ts-pf/protocol'
 import { createImplementer } from '@ts-pf/server'
 import { FetchHandler, type HandlerPlugin } from '@ts-pf/server-http'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -272,5 +273,77 @@ describe('FetchHandler request envelope', () => {
     )
     expect(status).toBe(200)
     expect(json).toEqual({ ok: true, output: { id: 1, name: 'Earth' } })
+  })
+})
+
+describe('FetchHandler envelope check through a wrapping codec', () => {
+  // Mirrors MultipartCodec / StreamCodec: read the envelope text from a
+  // multipart part (or a JSONL line) and delegate to the inner JSONCodec via
+  // a fresh RpcBodySource, never through request.text(). `@ts-pf/file` and
+  // `@ts-pf/stream` cannot be devDependencies here: both already depend on
+  // `@ts-pf/server-http` for their own tests.
+  class PartCodec extends JSONCodec {
+    override async decodeRequest(source: RpcBodySource): Promise<RpcRequest> {
+      const form = await source.formData()
+      const part = form.get('rpc')
+      const text = typeof part === 'string' ? part : ''
+      return super.decodeRequest({
+        contentType: 'application/json',
+        text: async () => text,
+        formData: async () => new FormData(),
+        body: () => null,
+      })
+    }
+  }
+
+  function multipart(path: string, rpc: string): Request {
+    const form = new FormData()
+    form.set('rpc', rpc)
+    return new Request(`http://localhost/rpc/${path}`, {
+      method: 'POST',
+      body: form,
+    })
+  }
+
+  it('returns 400 for an envelope part with keys but no input', async () => {
+    const handler = new FetchHandler(app, { codec: new PartCodec() })
+    const { status, json } = await call(
+      handler,
+      multipart('planet/find', '{"id":1}'),
+    )
+    expect(status).toBe(400)
+    expect(json.error).toEqual({
+      code: 'BAD_REQUEST',
+      message: 'Request body must be {"input": ...}',
+    })
+  })
+
+  it('does not fire for {} or a wrapped envelope part', async () => {
+    const handler = new FetchHandler(app, { codec: new PartCodec() })
+    const empty = await call(handler, multipart('planet/find', '{}'))
+    expect(empty.status).toBe(422)
+    expect(empty.json.error?.code).toBe('VALIDATION')
+
+    const ok = await call(
+      handler,
+      multipart('planet/find', '{"input":{"id":1}}'),
+    )
+    expect(ok.status).toBe(200)
+  })
+})
+
+describe('FetchHandler onError failures', () => {
+  it('rejects handle() when onError throws', async () => {
+    const handler = new FetchHandler(app, {
+      onError() {
+        throw new Error('logger down')
+      },
+    })
+    await expect(
+      handler.handle(post('planet/crash', '{"input":{"id":1}}'), {
+        prefix: '/rpc',
+        context: {},
+      }),
+    ).rejects.toThrow('logger down')
   })
 })

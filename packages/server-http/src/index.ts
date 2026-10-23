@@ -3,7 +3,11 @@ export {
   CORSPlugin,
   type CORSPluginOptions,
 } from './cors-plugin.js'
-export { FetchHandler, type HandleResult } from './handler.js'
+export {
+  FetchHandler,
+  type FetchHandlerOnError,
+  type HandleResult,
+} from './handler.js'
 export type { HandlerPlugin } from './plugins.js'
 export {
   RequestHeadersPlugin,

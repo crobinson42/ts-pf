@@ -22,7 +22,8 @@ export type HandleResult =
   | { matched: false; response?: undefined }
   | { matched: true; response: Response }
 
-type OnError = (
+/** `FetchHandler` `onError` option. `context` is `unknown` like `HandlerPlugin`. */
+export type FetchHandlerOnError = (
   error: unknown,
   info: { request: Request; path: readonly string[]; context: unknown },
 ) => void | Promise<void>
@@ -32,7 +33,7 @@ export class FetchHandler<TCtx = unknown> {
   private readonly plugins: HandlerPlugin[]
   private readonly interceptors: readonly CallInterceptor[]
   private readonly validation: ProcedureValidation | undefined
-  private readonly onError: OnError | undefined
+  private readonly onError: FetchHandlerOnError | undefined
 
   constructor(
     private readonly router: ImplementedRouter,
@@ -49,7 +50,10 @@ export class FetchHandler<TCtx = unknown> {
        * `HandlerPlugin.onError` (array order) and before the failure is
        * encoded. It cannot replace the response. A `Response` returned from
        * `HandlerPlugin.onRequest` is not an error to this hook, and a throw
-       * from `onError` itself rejects `handle()`.
+       * from `onError` itself rejects `handle()`. Errors thrown after a
+       * streamed response has started are written in-band by the codec
+       * (unknown throws as `INTERNAL`) and do not reach this hook or the
+       * default log.
        *
        * When omitted, `FetchHandler` logs with `console.error`: unknown
        * (non-`PFError`) throws, and `INTERNAL` `PFError`s (an output schema
@@ -57,7 +61,7 @@ export class FetchHandler<TCtx = unknown> {
        * an explicit `INTERNAL` throw). Declared and other protocol errors are
        * not logged. Passing `onError` replaces that default logging entirely.
        */
-      onError?: OnError
+      onError?: FetchHandlerOnError
     },
   ) {
     this.codec = options?.codec ?? new JSONCodec()
@@ -104,11 +108,7 @@ export class FetchHandler<TCtx = unknown> {
         })
       }
 
-      const source = bodySource(inbound)
-      const decoded = await this.codec.decodeRequest(source)
-      if (decoded.input === undefined && source.rawText !== undefined) {
-        assertWrappedBody(source.rawText)
-      }
+      const decoded = await this.codec.decodeRequest(bodySource(inbound))
       const procedure = lookupProcedure(this.router, path)
       if (!procedure) {
         throw new PFError({
@@ -232,46 +232,13 @@ export class FetchHandler<TCtx = unknown> {
   }
 }
 
-/**
- * `RpcBodySource` that remembers the text the codec read, so the handler can
- * reject an unwrapped JSON body after decode without re-reading the request.
- */
-function bodySource(request: Request): RpcBodySource & { rawText?: string } {
-  const source: RpcBodySource & { rawText?: string } = {
+function bodySource(request: Request): RpcBodySource {
+  return {
     contentType: request.headers.get('content-type'),
-    text: async () => {
-      source.rawText = await request.text()
-      return source.rawText
-    },
+    text: () => request.text(),
     formData: () => request.formData(),
     body: () => request.body,
   }
-  return source
-}
-
-/**
- * A JSON object body with keys but no `input` key (`{"name":"x"}` instead of
- * `{"input":{"name":"x"}}`) is an invalid envelope, not an undefined input.
- * `{}` and `{"input": null}` still decode to `input: undefined`.
- */
-function assertWrappedBody(text: string): void {
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(text) as unknown
-  } catch {
-    return
-  }
-  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    return
-  }
-  if ('input' in parsed || Object.keys(parsed).length === 0) {
-    return
-  }
-  throw new PFError({
-    code: 'BAD_REQUEST',
-    status: 400,
-    message: 'Request body must be {"input": ...}',
-  })
 }
 
 function encodedResponse(encoded: RpcEncodedBody, status: number): Response {
