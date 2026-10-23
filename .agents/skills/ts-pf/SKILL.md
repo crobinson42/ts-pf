@@ -17,7 +17,7 @@ Wire format: `packages/protocol/PROTOCOL.md`. DX overview: `README.md`.
 
 ```
 examples/
-  README.md           learning path; build first, `npm test` (turbo) or `npm run test:root` (root vitest.config.ts projects)
+  README.md           learning path; `npm test` (turbo, builds first) or `npm run build && npm run test:root` (root vitest.config.ts projects)
   hello/              contract, implementer, FetchHandler, FetchLink, createClient; src/serve.ts = example-local node:http bridge for `npm run dev` (not an adapter)
   codegen/            split-repo emit(catalog) → createClient<Contract>; scripts/generate.mjs refreshes catalog.json + contract.d.ts
   message/            PortHandler + PortLink over MessageChannel
