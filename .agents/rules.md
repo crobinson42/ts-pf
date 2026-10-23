@@ -35,7 +35,7 @@ Contract-first TypeScript RPC library (`@ts-pf/*`). oRPC-like DX is the bar; oRP
 - `@ts-pf/http` is wire helpers only (codec, header, URL path, `httpStatus`). No `FetchHandler`. No `FetchLink`.
 - `@ts-pf/file` depends on `http` + `protocol`. `@ts-pf/stream` depends on `http` + `protocol` + `contract` (`stream()` schema). `@ts-pf/sse` depends on `stream` + `http` + `protocol`. All three are opt-in; default handler/link stay JSON.
 - `@ts-pf/message` depends on `protocol` only. `@ts-pf/message-server` depends on `message` + `server` + `protocol` (never client, prod or dev). `@ts-pf/message-client` depends on `message` + `client` (never server in prod; one-way `message-server` **devDependency** for e2e).
-- `@ts-pf/docs` depends on `contract`, `protocol`, and `http` (header name + `joinProcedurePath` for href). Not imported by core.
+- `@ts-pf/docs` depends on `contract`, `protocol`, and `http` (header name, `joinProcedurePath` for href, `PROTOCOL_HTTP_STATUS` for `protocolErrors`). Not imported by core.
 - `@ts-pf/openapi` depends on `docs`. `@ts-pf/codegen` depends on `docs`. `@ts-pf/swr` depends on `contract` only (peer `swr`). `@ts-pf/mvc-kit` depends on `contract` only (peer `mvc-kit >= 4.9.0`).
 - `@ts-pf/astro` `./server` depends on `server-http`, `server`, and `contract` (type-only, for `ContractClient`). `.` and `./client` depend on `client-http`, `client`, and `contract` (type-only). The server entry never imports the client entry. The client entry never imports the server entry. Peer `astro >= 4.9.0`. Root export is client-only.
 - Routers are nested objects, not a package.
