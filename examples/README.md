@@ -12,6 +12,8 @@ Small, smoke-tested apps for the procedure model. Fetch is the default adapter; 
 
 Suggested order: `hello` → `plugins` → `stream` → `message` → `codegen`. Each README has the same three sections: "What it shows", "Run", "What the smoke test asserts".
 
+The in-process pattern every smoke test uses is written up in [`docs/testing.md`](../docs/testing.md) (guide index: [`docs/README.md`](../docs/README.md)).
+
 ## Run
 
 Examples import `@ts-pf/*` from each package's `dist`, so build once from the repo root:

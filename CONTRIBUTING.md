@@ -6,6 +6,7 @@ ts-pf is a contract-first TypeScript RPC library published as 19 `@ts-pf/*` pack
 - **Why each rule exists**: [`DECISIONS.md`](DECISIONS.md). Read it before proposing to change a lock.
 - **Architecture map and "how to add things"**: [`.agents/skills/ts-pf/SKILL.md`](.agents/skills/ts-pf/SKILL.md).
 - **Wire format**: [`packages/protocol/PROTOCOL.md`](packages/protocol/PROTOCOL.md).
+- **User guides** (concepts, errors, testing, migration): [`docs/README.md`](docs/README.md). Their `ts` blocks are covered by `check:snippets`.
 - **Security reports**: [`SECURITY.md`](SECURITY.md), not an issue.
 
 ## Setup
