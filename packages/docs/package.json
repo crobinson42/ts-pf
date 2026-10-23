@@ -46,7 +46,6 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@standard-schema/spec": "^1.0.0",
     "@ts-pf/contract": "0.1.5",
     "@ts-pf/http": "0.1.2",
     "@ts-pf/protocol": "0.1.2"

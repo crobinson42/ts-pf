@@ -7,7 +7,7 @@ description: Use when serving a ts-pf API from an Astro endpoint or calling it i
 
 Opt-in Astro endpoint and in-process page caller. Thin shell around `FetchHandler` and `createClient`. Not an integration, middleware mount, or Astro Actions adapter.
 
-Install: `npm i @ts-pf/astro` (peer **astro >= 4.9.0**). The app already has `@ts-pf/server`, `@ts-pf/server-http`, `@ts-pf/client`, and `@ts-pf/client-http`.
+Install: `npm i @ts-pf/astro` (peer **astro >= 4.9.0**). The app already has `@ts-pf/contract`, `@ts-pf/server`, `@ts-pf/server-http`, `@ts-pf/client`, and `@ts-pf/client-http`.
 
 Link for agents: `npx skills experimental_sync -y`
 
