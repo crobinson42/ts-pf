@@ -1,10 +1,8 @@
 import type { Link } from '@ts-pf/client'
-import {
-  createWsDuplex,
-  localFailure,
-  type WebSocketLike,
-} from '@ts-pf/message'
-import { attachClient, type LinkOptions } from './shared.js'
+import { createWsDuplex, type WebSocketLike } from '@ts-pf/message'
+import { localFailure } from '@ts-pf/protocol'
+import { DuplexLink } from './duplex.js'
+import { awaitWithAbort, type LinkOptions } from './shared.js'
 
 export type { WebSocketLike }
 
@@ -24,20 +22,18 @@ type WsLinkOpts =
       WebSocket?: WebSocketCtor
     } & LinkOptions)
 
-function abortedFailure(signal: AbortSignal): ReturnType<typeof localFailure> {
-  return signal.reason !== undefined
-    ? localFailure('Request aborted', signal.reason)
-    : localFailure('Request aborted')
-}
-
+/**
+ * `DuplexLink` over `createWsDuplex`, started once the socket is open.
+ * Calls made before that wait for the connect; `close()` also closes the socket.
+ */
 export class WsLink implements Link {
   private readonly socket: WebSocketLike
-  private attached: ReturnType<typeof attachClient> | undefined
-  private readonly connected: Promise<ReturnType<typeof attachClient>>
+  private link: DuplexLink | undefined
+  private readonly connected: Promise<DuplexLink>
   private closed = false
   private settleConnect:
     | {
-        resolve: (value: ReturnType<typeof attachClient>) => void
+        resolve: (value: DuplexLink) => void
         reject: (reason: unknown) => void
       }
     | undefined
@@ -67,17 +63,17 @@ export class WsLink implements Link {
       // connect / hello failures reject ready; call() re-awaits the same promise
     })
 
-    const attachOpts: LinkOptions = {}
+    const linkOpts: LinkOptions = {}
     if (opts.meta !== undefined) {
-      attachOpts.meta = opts.meta
+      linkOpts.meta = opts.meta
     }
     if (opts.maxFrameBytes !== undefined) {
-      attachOpts.maxFrameBytes = opts.maxFrameBytes
+      linkOpts.maxFrameBytes = opts.maxFrameBytes
     }
     if (opts.helloTimeoutMs !== undefined) {
-      attachOpts.helloTimeoutMs = opts.helloTimeoutMs
+      linkOpts.helloTimeoutMs = opts.helloTimeoutMs
     }
-    this.boot(attachOpts)
+    this.boot(linkOpts)
   }
 
   call(
@@ -95,7 +91,7 @@ export class WsLink implements Link {
     this.closed = true
     this.unsubConnect?.()
     this.unsubConnect = undefined
-    this.attached?.close()
+    this.link?.close()
     this.failConnect(localFailure('Connection closed'))
     try {
       this.socket.close(1000)
@@ -144,20 +140,12 @@ export class WsLink implements Link {
     if (this.closed) {
       return
     }
-    const duplex = createWsDuplex(this.socket)
-    const attach: Parameters<typeof attachClient>[0] = { duplex }
-    if (opts.meta !== undefined) {
-      attach.meta = opts.meta
-    }
-    if (opts.maxFrameBytes !== undefined) {
-      attach.maxFrameBytes = opts.maxFrameBytes
-    }
-    if (opts.helloTimeoutMs !== undefined) {
-      attach.helloTimeoutMs = opts.helloTimeoutMs
-    }
-    const attached = attachClient(attach)
-    this.attached = attached
-    this.settleConnect?.resolve(attached)
+    const link = new DuplexLink({
+      duplex: createWsDuplex(this.socket),
+      ...opts,
+    })
+    this.link = link
+    this.settleConnect?.resolve(link)
     this.settleConnect = undefined
   }
 
@@ -174,43 +162,7 @@ export class WsLink implements Link {
     input: unknown,
     signal?: AbortSignal,
   ): Promise<unknown> {
-    const attached = await this.waitConnected(signal)
-    return attached.call(path, input, signal)
-  }
-
-  private waitConnected(
-    signal?: AbortSignal,
-  ): Promise<ReturnType<typeof attachClient>> {
-    if (signal === undefined) {
-      return this.connected
-    }
-    if (signal.aborted) {
-      return Promise.reject(abortedFailure(signal))
-    }
-    return new Promise((resolve, reject) => {
-      const onAbort = (): void => {
-        signal.removeEventListener('abort', onAbort)
-        reject(abortedFailure(signal))
-      }
-      signal.addEventListener('abort', onAbort)
-      this.connected.then(
-        (attached) => {
-          signal.removeEventListener('abort', onAbort)
-          if (signal.aborted) {
-            reject(abortedFailure(signal))
-            return
-          }
-          resolve(attached)
-        },
-        (error) => {
-          signal.removeEventListener('abort', onAbort)
-          if (signal.aborted) {
-            reject(abortedFailure(signal))
-            return
-          }
-          reject(error)
-        },
-      )
-    })
+    const link = await awaitWithAbort(this.connected, signal)
+    return link.call(path, input, signal)
   }
 }
