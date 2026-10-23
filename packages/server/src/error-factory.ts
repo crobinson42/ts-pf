@@ -8,7 +8,7 @@ export function createErrorFactory(map: ErrorMap): ErrorFactory<ErrorMap> {
     factory[code] = ((data?: unknown) => {
       throw new PFError({
         code,
-        status: def.status ?? 400,
+        ...(def.status !== undefined ? { status: def.status } : {}),
         message: def.message ?? code,
         ...(data !== undefined ? { data } : {}),
       })
@@ -37,7 +37,7 @@ export async function finalizeDeclaredError(
   }
   throw new PFError({
     code: error.code,
-    status: error.status,
+    ...(error.status !== undefined ? { status: error.status } : {}),
     message: error.message,
     ...(result.value !== undefined ? { data: result.value } : {}),
   })

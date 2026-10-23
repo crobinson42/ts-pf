@@ -198,6 +198,15 @@ describe('asResult', () => {
     }
   })
 
+  it('types error.status as optional', async () => {
+    const result = await asResult(client.planet.find({ id: 1 }))
+    if (!result.ok) {
+      expectTypeOf(result.error.status).toEqualTypeOf<number | undefined>()
+      // @ts-expect-error status may be undefined; guard or default it
+      result.error.status.toFixed()
+    }
+  })
+
   it('has only protocol codes for a procedure without .errors()', async () => {
     const result = await asResult(client.planet.list())
     if (!result.ok) {

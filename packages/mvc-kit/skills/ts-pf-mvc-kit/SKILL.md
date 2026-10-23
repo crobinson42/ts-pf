@@ -33,7 +33,7 @@ if (!result.ok && result.error.code === 'VALIDATION') {
 }
 ```
 
-`bindClient` injects `{ signal: host.disposeSignal }` at call time. A caller-provided `{ signal }` wins. Resource methods **throw** `PFError` (`errorCode === 'NOT_FOUND'`, not `'not_found'`). `asResult` without rethrow leaves `async.method.error` null.
+`bindClient` injects `{ signal: host.disposeSignal }` at call time. A caller-provided `{ signal }` wins. Resource methods **throw** `PFError` (`errorCode === 'NOT_FOUND'`, not `'not_found'`). mvc-kit needs a numeric `status` to classify by `code`; `bindClient` supplies `400` when the transport does not carry one (message links, mid-stream failures, declared errors without `status`), so `errorCode` is the `PFError.code` on every `Link`. `asResult` without rethrow leaves `async.method.error` null.
 
 ## API
 

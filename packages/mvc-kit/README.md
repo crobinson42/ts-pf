@@ -60,7 +60,7 @@ resource.async.loadById.errorCode === 'NOT_FOUND' // not 'not_found'
 resource.async.loadById.cause // the PFError; .data is on the instance
 ```
 
-Do not wrap `PFError` in `CodedError` or `HttpError`. `PFError` already has `code` and numeric `status`. `CodedError` is mvc-kit’s class if **you** throw by hand without that envelope.
+Do not wrap `PFError` in `CodedError` or `HttpError`. mvc-kit classifies by `code` only when `status` is a finite number, and `PFError.status` is transport metadata (the HTTP response status over `FetchLink`; `undefined` on message links, after a stream has started, and for declared errors without a `status`), so `bindClient` hands mvc-kit a copy with `status: 400` whenever the transport did not carry one. HTTP failures and `localFailure` (`status: 0`) pass through as-is. `CodedError` is mvc-kit’s class if **you** throw by hand without that envelope.
 
 Do not throw `error.toJSON()` — the JSON object has no `status`, so 4.9 will classify it as `'unknown'`.
 

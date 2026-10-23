@@ -19,10 +19,13 @@ Wire spec ships as `PROTOCOL.md` in this package.
 import { PFError, isPFError, localFailure } from '@ts-pf/protocol'
 
 throw new PFError({ code: 'UNAUTHORIZED', status: 401, message: 'Nope' })
+new PFError({ code: 'TEAPOT' }).status // undefined — no default
 // localFailure('Request aborted') → INTERNAL, local: true, status: 0 (not on the wire)
 ```
 
-Envelope: `{ input }`, `{ ok: true, output }`, `{ ok: false, error: { code, message, data? } }`. Discriminator is JSON `error.code`. `status` is a TS/HTTP hint, not identity.
+Envelope: `{ input }`, `{ ok: true, output }`, `{ ok: false, error: { code, message, data? } }`. Discriminator is JSON `error.code`.
+
+`PFError.status?: number` is transport metadata, not identity. It is the HTTP response status on a unary Fetch failure, `undefined` on message transports and after a stream has started, and `0` on local failures. Guard it (`err.status ?? 400`); switch on `code`. The HTTP default (400 for a code with no status) is applied by `httpStatus()` in `@ts-pf/http`, not by the constructor.
 
 ## API
 

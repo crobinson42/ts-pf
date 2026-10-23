@@ -142,6 +142,19 @@ describe('ClientError union', () => {
     take({ code: 'GONE', status: 410, message: 'x' })
   })
 
+  it('types status as optional transport metadata', () => {
+    expectTypeOf<FindError['status']>().toEqualTypeOf<number | undefined>()
+    function take(err: FindError) {
+      // status is undefined on message transports and mid-stream items.
+      expectTypeOf(err.status).toEqualTypeOf<number | undefined>()
+      // @ts-expect-error status may be undefined; guard or default it
+      err.status.toFixed()
+      return err.status ?? 400
+    }
+    take({ code: 'GONE', message: 'x' })
+    take({ code: 'INTERNAL', message: 'x' })
+  })
+
   it('has only the protocol codes when nothing is declared', () => {
     type ListError = NonNullable<
       ReturnType<Client['planet']['list']>['~pfError']

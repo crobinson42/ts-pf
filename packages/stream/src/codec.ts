@@ -184,7 +184,6 @@ export class StreamCodec implements RpcCodec {
       if (!decoded.ok) {
         throw new PFError({
           code: decoded.error.code,
-          status: 200,
           message: decoded.error.message,
           ...(decoded.error.data !== undefined
             ? { data: decoded.error.data }

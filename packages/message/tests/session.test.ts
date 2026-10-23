@@ -124,7 +124,7 @@ describe('MessageSession', () => {
       throw new Error('expected PFError')
     }
     expect(error.code).toBe('INTERNAL')
-    expect(error.status).toBe(400)
+    expect(error.status).toBeUndefined()
     expect(error.message).toBe('Internal server error')
     expect(error.message).not.toContain('secret')
 

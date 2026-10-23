@@ -205,6 +205,7 @@ describe('SseCodec e2e', () => {
     await expect(iter.next()).rejects.toMatchObject({
       code: 'INTERNAL',
       message: 'upstream died',
+      status: undefined,
     })
   })
 

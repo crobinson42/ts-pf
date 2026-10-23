@@ -23,7 +23,7 @@ describe('declared error data', () => {
     const client = createLocalClient(app, { context: {} })
     await expect(client.find({ id: 1 })).rejects.toMatchObject({
       code: 'INTERNAL',
-      status: 400,
+      status: undefined,
     })
     await expect(client.find({ id: 1 })).rejects.not.toMatchObject({
       data: { id: 'nope' },
@@ -65,8 +65,9 @@ describe('declared error data', () => {
       () => undefined,
       (error: unknown) => error,
     )
-    expect(err).toMatchObject({ code: 'INTERNAL', status: 400 })
+    expect(err).toMatchObject({ code: 'INTERNAL' })
     expect(err).toBeInstanceOf(PFError)
+    expect((err as PFError).status).toBeUndefined()
     expect((err as PFError).data).toBeUndefined()
   })
 
@@ -118,7 +119,43 @@ describe('declared error data', () => {
       }
     }).rejects.toMatchObject({
       code: 'INTERNAL',
-      status: 400,
+      status: undefined,
+    })
+  })
+
+  it('stamps a declared status and leaves it undefined when not declared', async () => {
+    const c = router({
+      ping: procedure.errors({
+        TEAPOT: { message: 'short and stout' },
+        GONE: { status: 410 },
+      }),
+    })
+    const impl = createImplementer(c)
+    const teapot = createLocalClient(
+      impl.router({
+        ping: impl.ping.handler(async ({ errors }) => {
+          throw errors.TEAPOT()
+        }),
+      }),
+      { context: {} },
+    )
+    const gone = createLocalClient(
+      impl.router({
+        ping: impl.ping.handler(async ({ errors }) => {
+          throw errors.GONE()
+        }),
+      }),
+      { context: {} },
+    )
+    const teapotError = await teapot.ping().then(
+      () => undefined,
+      (error: unknown) => error as PFError,
+    )
+    expect(teapotError?.code).toBe('TEAPOT')
+    expect(teapotError?.status).toBeUndefined()
+    await expect(gone.ping()).rejects.toMatchObject({
+      code: 'GONE',
+      status: 410,
     })
   })
 })

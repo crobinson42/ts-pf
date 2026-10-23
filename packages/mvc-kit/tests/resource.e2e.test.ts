@@ -18,6 +18,7 @@ const contract = router({
       .errors({
         NOT_FOUND: { status: 404, data: z.object({ id: z.number() }) },
       }),
+    brew: procedure.errors({ TEAPOT: { message: 'short and stout' } }),
   },
 })
 
@@ -33,6 +34,9 @@ const app = impl.router({
         return { id: 1, name: 'Earth' }
       }
       throw errors.NOT_FOUND({ id: input.id })
+    }),
+    brew: impl.planet.brew.handler(async ({ errors }) => {
+      throw errors.TEAPOT()
     }),
   },
 })
@@ -53,6 +57,10 @@ class PlanetsResource extends Resource<Planet> {
 
   async loadById(id: number) {
     this.upsert(await this.rpc.planet.find({ id }))
+  }
+
+  async brew() {
+    await this.rpc.planet.brew()
   }
 }
 
@@ -78,6 +86,18 @@ describe('bindClient + Resource', () => {
     const cause = resource.async.loadById.cause
     expect(cause).toBeInstanceOf(PFError)
     expect((cause as PFError).data).toEqual({ id: 999 })
+  })
+
+  it('classifies a declared error without status by its code, not unknown', async () => {
+    const client = createLocalClient(app, { context: {} })
+    const resource = new PlanetsResource(client)
+    resource.init()
+    await expect(resource.brew()).rejects.toBeInstanceOf(PFError)
+    expect(resource.async.brew.errorCode).toBe('TEAPOT')
+    const cause = resource.async.brew.cause as PFError
+    expect(cause).toBeInstanceOf(PFError)
+    expect(cause.code).toBe('TEAPOT')
+    expect(cause.status).toBe(400)
   })
 
   it('swallows FetchLink-shaped abort and does not set async.error', async () => {

@@ -1,5 +1,11 @@
 export type PFErrorInit<TCode extends string = string, TData = unknown> = {
   code: TCode
+  /**
+   * Transport metadata, not identity. Set by the server from a declared
+   * `ErrorDef.status` and by `FetchLink` from the HTTP response. Absent on
+   * message transports, on mid-stream failures, and when nothing declared
+   * one; `httpStatus()` in `@ts-pf/http` supplies the HTTP default (400).
+   */
   status?: number
   message?: string
   data?: TData
@@ -12,7 +18,7 @@ export class PFError<
   TData = unknown,
 > extends Error {
   readonly code: TCode
-  readonly status: number
+  readonly status?: number
   readonly data?: TData
   readonly local?: true
 
@@ -25,7 +31,9 @@ export class PFError<
     }
     this.name = 'PFError'
     this.code = init.code
-    this.status = init.status ?? 400
+    if (init.status !== undefined) {
+      this.status = init.status
+    }
     if (init.data !== undefined) {
       this.data = init.data
     }
