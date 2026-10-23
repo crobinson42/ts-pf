@@ -4,6 +4,7 @@ export type {
   CallOptions,
   ClientError,
   ContractClient,
+  ContractProtocolErrorCode,
   ContractResultPromise,
   InferContractErrorCodes,
   InferContractErrors,

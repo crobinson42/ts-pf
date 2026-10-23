@@ -42,6 +42,7 @@ Nest slice routers: `router({ planet: planetContract, star: starContract })`. Pi
 - `isContractProcedure`, `isContractRouter`
 - `ClientError`, `ContractClient`, `CallOptions`
 - `InferContractInputs`, `InferContractOutputs`, `InferContractErrors`, `InferErrorData`
+- `ContractProtocolErrorCode` (type) — the closed protocol codes `ClientError` falls back to
 
 ## Pair with
 

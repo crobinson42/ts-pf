@@ -1,4 +1,8 @@
-import { joinProcedurePath, PROTOCOL_HEADER } from '@ts-pf/http'
+import {
+  joinProcedurePath,
+  PROTOCOL_HEADER,
+  PROTOCOL_HTTP_STATUS,
+} from '@ts-pf/http'
 import { PROTOCOL_VERSION, ProtocolErrorCode } from '@ts-pf/protocol'
 import { getDocs } from './docs.js'
 import { tryToJsonSchema } from './json-schema.js'
@@ -44,22 +48,21 @@ const VALIDATION_DATA_SCHEMA: JsonSchema = {
   },
 }
 
+// Codes come from ProtocolErrorCode (key order); statuses from the
+// @ts-pf/http table. Neither is hand-copied here.
 const PROTOCOL_ERRORS: ReadonlyArray<{
   code: string
   status: number
   data?: CatalogSchema
-}> = [
-  { code: ProtocolErrorCode.BAD_REQUEST, status: 400 },
-  {
-    code: ProtocolErrorCode.VALIDATION,
-    status: 422,
-    data: { kind: 'json', jsonSchema: VALIDATION_DATA_SCHEMA },
-  },
-  { code: ProtocolErrorCode.NOT_FOUND, status: 404 },
-  { code: ProtocolErrorCode.INTERNAL, status: 500 },
-  { code: ProtocolErrorCode.METHOD_NOT_ALLOWED, status: 405 },
-  { code: ProtocolErrorCode.PAYLOAD_TOO_LARGE, status: 413 },
-]
+}> = Object.values(ProtocolErrorCode).map((code) =>
+  code === ProtocolErrorCode.VALIDATION
+    ? {
+        code,
+        status: PROTOCOL_HTTP_STATUS[code],
+        data: { kind: 'json', jsonSchema: VALIDATION_DATA_SCHEMA },
+      }
+    : { code, status: PROTOCOL_HTTP_STATUS[code] },
+)
 
 export function catalog(
   contract: unknown,

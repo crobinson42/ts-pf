@@ -34,15 +34,15 @@ packages/contract/src/
   schema.ts           validateSchema dispatch
   adapters/           standard-schema, typebox
   errors.ts           ErrorDef, ErrorMap, InferErrorData
-  infer.ts            InferContract*, InferContractErrors, ClientError, ContractClient, ContractResultPromise, CallOptions
+  infer.ts            InferContract*, InferContractErrors, ClientError, ContractClient, ContractResultPromise, CallOptions, ContractProtocolErrorCode (hand-written duplicate of the protocol set; no protocol import)
 packages/protocol/src/
-  error.ts            PFError (cause?; local?; toJSON omits status/cause/local), localFailure
+  error.ts            PFError (cause?; local?; toJSON omits status/cause/local), localFailure, ProtocolErrorCode (closed set; source of truth)
   envelope.ts         RpcRequest/Response, PROTOCOL_VERSION, PFResultPromise
 packages/http/src/
   rpc.ts              PROTOCOL_HEADER, RpcCodec, RpcEncodedBody, RpcBodySource
   codec.ts            JSONCodec
   path.ts             join/parse procedure URL path
-  http-status.ts      httpStatus / PROTOCOL_HTTP_STATUS
+  http-status.ts      httpStatus / PROTOCOL_HTTP_STATUS (code → status; keys must equal ProtocolErrorCode)
 packages/server/src/
   implement.ts        createImplementer proxy tree
   error-factory.ts    createErrorFactory, finalizeDeclaredError (internal; not exported)
@@ -89,6 +89,7 @@ packages/sse/src/
   codec.ts            SSE output wrap of StreamCodec
 packages/docs/src/
   index.ts            catalog, docs, getDocs, walkContract, toJsonSchema, registerJsonSchemaConverter
+  catalog.ts          catalog(); protocolErrors derived from ProtocolErrorCode + PROTOCOL_HTTP_STATUS (no local table)
 packages/openapi/src/
   index.ts            openapi, OpenAPIOptions, OpenAPIDocument
 packages/codegen/src/
@@ -316,7 +317,7 @@ New **published** packages: `version` `0.0.0`, `license: "MIT"`, `files: ["dist"
 - `FetchLink` rethrows `PFError` from `decodeResponse` only when `x-ts-pf-protocol` is present. Non-RPC decode wrap uses HTTP status, not `local: true`. `FetchLink` binds fetch to `globalThis`. Streamed `ReadableStream` responses get anti-buffering headers.
 - Procedure completeness: `impl.router()` rejects missing/extra keys (types + runtime)
 - Errors: unknown throws → `INTERNAL`, no stack in JSON. Input checks default on. Output checks, including stream output items, default off (`validation.output: true`). Unary output schema failure → `INTERNAL`, no issues. A bad stream output item → `VALIDATION` with `issues`. Invalid declared error `data` → `INTERNAL`, never serialize the bad payload (always, not behind `validation.output`). `ClientError` narrows `data` from `code`. `asResult` is `CallResult<T, E>`.
-- Protocol edits update `PROTOCOL.md`, `ProtocolErrorCode` in `packages/protocol/src/error.ts`, and the duplicated **private** `ProtocolErrorCode` union in `packages/contract/src/infer.ts`
+- Protocol error-code edits update every copy of the closed set: (1) `ProtocolErrorCode` in `packages/protocol/src/error.ts` (source of truth), (2) the duplicated **private** `ProtocolErrorCode` union in `packages/contract/src/infer.ts` (exported as `ContractProtocolErrorCode`; still no protocol import), (3) `PROTOCOL_HTTP_STATUS` in `packages/http/src/http-status.ts`, (4) `packages/docs/src/catalog.ts` — derived from (1) + (3), so it needs no edit but its `VALIDATION` data branch may, and (5) the "Protocol errors" table in `packages/protocol/PROTOCOL.md`. Conformance tests: `packages/http/tests/protocol-table.test.ts` (3 = 1 codes; 3 = 5 statuses), `packages/server/tests/protocol-error-code.test.ts` (2 = 1, type), `packages/protocol/tests/protocol-md.test.ts` (5 = 1 codes).
 - `npm run lint && npm run check:skills && npm run type-check && npm test && npm run build && npm run check:exports`
 - Published-package changes include a `.changeset/*.md`. Releases publish to npm dist-tag `latest`. New published packages: `license` / `exports` → `dist` / `publishConfig.access` only / `files: ["dist", "skills"]` / `keywords` / `skills/ts-pf-<pkg>/SKILL.md`. Do not restore `"*"` after a version bump.
 - Matching `packages/<pkg>/skills/ts-pf-<pkg>` still matches public exports and names. Hub `ts-pf-app` description still names opt-in capabilities. `skills/README.md` lists every published skill path. Published `package.json` files include npm `keywords` (shared family terms plus package-specific). `npm run check:skills`.
