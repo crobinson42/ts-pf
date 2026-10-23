@@ -1,8 +1,8 @@
 ---
 "@ts-pf/http": minor
-"@ts-pf/file": patch
-"@ts-pf/stream": patch
-"@ts-pf/sse": patch
+"@ts-pf/file": minor
+"@ts-pf/stream": minor
+"@ts-pf/sse": minor
 ---
 
 `@ts-pf/http` exports the scaffolding its wrapping codecs share, so `MultipartCodec`, `StreamCodec`, and `SseCodec` stop carrying private copies:
