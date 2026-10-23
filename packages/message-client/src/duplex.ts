@@ -1,5 +1,10 @@
 import type { Link } from '@ts-pf/client'
-import { type Duplex, type MessageFrame, MessageSession } from '@ts-pf/message'
+import {
+  type Duplex,
+  type MessageFrame,
+  MessageSession,
+  resolveBackpressure,
+} from '@ts-pf/message'
 import { localFailure } from '@ts-pf/protocol'
 import { ClientCall, type ClientCallHost } from './call.js'
 import { abortedFailure, awaitWithAbort, type LinkOptions } from './shared.js'
@@ -9,7 +14,10 @@ import { abortedFailure, awaitWithAbort, type LinkOptions } from './shared.js'
  * (Electron IPC, a Chrome runtime port, WebTransport, a Unix socket) and
  * hand it here. `PortLink` / `WsLink` / `StdioLink` are this plus their
  * duplex adapter. The link owns the handshake, id allocation, multiplexing,
- * and cancel; the duplex only moves JSON text. `close()` closes the duplex.
+ * cancel, and slow-peer protection (`LinkOptions.backpressure`); the duplex
+ * only moves JSON text. `close()` closes the duplex. Reads pause
+ * (connection-wide) while any output stream's queue is over its high-water
+ * mark and the duplex can pause.
  */
 export class DuplexLink implements Link {
   private readonly inflight = new Map<string, ClientCall>()
@@ -19,10 +27,25 @@ export class DuplexLink implements Link {
   private closed = false
 
   constructor(opts: { duplex: Duplex } & LinkOptions) {
+    const backpressure = resolveBackpressure(opts.backpressure)
+    let pausedQueues = 0
     this.host = {
       send: (frame) => this.session.send(frame),
       settle: (id) => {
         this.inflight.delete(id)
+      },
+      backpressure,
+      pauseReads: () => {
+        pausedQueues += 1
+        if (pausedQueues === 1) {
+          opts.duplex.pause?.()
+        }
+      },
+      resumeReads: () => {
+        pausedQueues -= 1
+        if (pausedQueues === 0) {
+          opts.duplex.resume?.()
+        }
       },
     }
     this.session = new MessageSession({
@@ -35,8 +58,8 @@ export class DuplexLink implements Link {
         ? { helloTimeoutMs: opts.helloTimeoutMs }
         : {}),
       ...(opts.meta !== undefined ? { helloMeta: opts.meta } : {}),
-      onFrame: (frame) => {
-        this.onFrame(frame)
+      onFrame: (frame, size) => {
+        this.onFrame(frame, size)
       },
       // decode failures never settle a call, in-flight or not
       onInvalidFrame: () => {},
@@ -83,7 +106,7 @@ export class DuplexLink implements Link {
   }
 
   /** `PROTOCOL.md` "Multiplex": frames route by id; a handshake frame after `ready` closes. */
-  private onFrame(frame: MessageFrame): void {
+  private onFrame(frame: MessageFrame, size: number): void {
     if (
       frame.type === 'hello' ||
       frame.type === 'hello-ok' ||
@@ -92,7 +115,7 @@ export class DuplexLink implements Link {
       this.session.close()
       return
     }
-    this.inflight.get(frame.id)?.onFrame(frame)
+    this.inflight.get(frame.id)?.onFrame(frame, size)
   }
 
   private onClose(reason?: unknown): void {

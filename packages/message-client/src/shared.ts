@@ -1,9 +1,19 @@
+import type { BackpressureOptions } from '@ts-pf/message'
 import { isAsyncIterable, localFailure, type PFError } from '@ts-pf/protocol'
+
+export type { BackpressureOptions, StallInfo } from '@ts-pf/message'
 
 export type LinkOptions = {
   meta?: unknown
   maxFrameBytes?: number
   helloTimeoutMs?: number
+  /**
+   * Slow-peer protection for input streams this client pushes and output
+   * streams it reads, on by default (1 MiB `highWaterMark`, 30 s
+   * `drainTimeout`, one `console.warn` per stall). A bad value throws a
+   * `TypeError` from the constructor.
+   */
+  backpressure?: BackpressureOptions
 }
 
 /** Envelope items only: a `ReadableStream` is bytes, not items; it is sent as a plain JSON value. */
