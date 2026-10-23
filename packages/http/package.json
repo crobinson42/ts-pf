@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/http",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "HTTP wire helpers: JSONCodec, RpcCodec, PROTOCOL_HEADER, path helpers, httpStatus",
   "keywords": [
     "ts-pf",
@@ -50,6 +50,6 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/protocol": "0.1.2"
+    "@ts-pf/protocol": "0.2.0"
   }
 }
