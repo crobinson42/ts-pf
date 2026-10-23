@@ -1,9 +1,11 @@
 import {
   type CallFrame,
+  createPushQueue,
   type Duplex,
   type ItemFrame,
   type MessageFrame,
   MessageSession,
+  type PushQueue,
   type WireError,
 } from '@ts-pf/message'
 import {
@@ -20,7 +22,6 @@ import {
   type RunProcedureOptions,
   runProcedure,
 } from '@ts-pf/server'
-import { createPushQueue, type PushQueue } from './push-queue.js'
 
 export type HandlerOptions = {
   maxFrameBytes?: number

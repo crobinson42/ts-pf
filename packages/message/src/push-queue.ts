@@ -1,3 +1,12 @@
+/**
+ * An unbounded async-iterable queue: a transport adapter pushes into it from
+ * a frame callback and a consumer pulls from it with `for await`. One pending
+ * `next()` at a time, which is what a single `for await` loop produces.
+ *
+ * `end()` completes the iteration after the buffered values; `fail(error)`
+ * rejects the next pull after them. Both are one-shot: later `push` / `end` /
+ * `fail` calls are ignored.
+ */
 export type PushQueue<T> = AsyncIterable<T> & {
   push(value: T): void
   end(): void

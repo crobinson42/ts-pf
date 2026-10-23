@@ -1,15 +1,20 @@
 import type { Link } from '@ts-pf/client'
 import {
   type CallFrame,
+  createPushQueue,
   type Duplex,
   errorFromEnvelope,
   type InItemFrame,
-  localFailure,
   type MessageFrame,
   MessageSession,
+  type PushQueue,
 } from '@ts-pf/message'
-import { isItemStream } from './item-stream.js'
-import { createPushQueue, type PushQueue } from './push-queue.js'
+import {
+  isAsyncIterable,
+  isPFError,
+  localFailure,
+  type PFError,
+} from '@ts-pf/protocol'
 
 export type LinkOptions = {
   meta?: unknown
@@ -21,11 +26,9 @@ export type AttachClientOptions = LinkOptions & {
   duplex: Duplex
 }
 
-type CallError = ReturnType<typeof errorFromEnvelope>
-
 type ClientInflight = {
   resolve: (value: unknown) => void
-  reject: (error: CallError) => void
+  reject: (error: PFError) => void
   mode: 'pending-first' | 'streaming-out' | 'done'
   sendingInput: boolean
   output?: PushQueue<unknown>
@@ -33,27 +36,30 @@ type ClientInflight = {
   unsubAbort?: () => void
 }
 
-function abortedFailure(signal: AbortSignal): CallError {
+/** Envelope items only: a `ReadableStream` is bytes, not items; it is sent as a plain JSON value. */
+function isItemStream(value: unknown): value is AsyncIterable<unknown> {
+  return (
+    isAsyncIterable(value) &&
+    !(typeof ReadableStream !== 'undefined' && value instanceof ReadableStream)
+  )
+}
+
+function abortedFailure(signal: AbortSignal): PFError {
   return signal.reason !== undefined
     ? localFailure('Request aborted', signal.reason)
     : localFailure('Request aborted')
 }
 
-function asCallError(error: unknown): CallError {
-  if (
-    error instanceof Error &&
-    'code' in error &&
-    typeof error.code === 'string' &&
-    'status' in error
-  ) {
-    return error as CallError
+function asCallError(error: unknown): PFError {
+  if (isPFError(error)) {
+    return error
   }
   return error instanceof Error
     ? localFailure(error.message, error)
     : localFailure('Input stream failed', error)
 }
 
-function sendFailure(reason: 'oversize' | 'stringify' | 'closed'): CallError {
+function sendFailure(reason: 'oversize' | 'stringify' | 'closed'): PFError {
   if (reason === 'oversize') {
     return errorFromEnvelope({
       code: 'PAYLOAD_TOO_LARGE',
