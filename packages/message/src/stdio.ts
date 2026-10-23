@@ -11,6 +11,13 @@ function asBuffer(chunk: unknown): Buffer {
   return Buffer.from(String(chunk), 'utf8')
 }
 
+/**
+ * NDJSON over a Node `Readable` / `Writable` pair. Backpressure is the
+ * streams' own: `send` returns a promise that resolves on `'drain'` when
+ * `output.write()` returned `false` (the Writable's `highWaterMark`), and
+ * `pause` / `resume` are `input.pause()` / `input.resume()`, so a paused
+ * reader fills the pipe and the peer's `write()` returns `false` in turn.
+ */
 export function createStdioDuplex(
   streams: { input: Readable; output: Writable },
   options: { maxFrameBytes?: number } = {},
@@ -20,6 +27,15 @@ export function createStdioDuplex(
   const messageHandlers = new Set<(text: string) => void>()
   let closed = false
   let pending = Buffer.alloc(0)
+  let drainWaiters: (() => void)[] = []
+
+  const settleDrains = (): void => {
+    const waiters = drainWaiters
+    drainWaiters = []
+    for (const resolve of waiters) {
+      resolve()
+    }
+  }
 
   const notifyClose = (reason?: unknown): void => {
     for (const handler of [...closeHandlers]) {
@@ -46,6 +62,7 @@ export function createStdioDuplex(
     input.removeListener('data', onData)
     input.removeListener('end', onEnd)
     input.removeListener('close', onInputClose)
+    output.removeListener('drain', onDrain)
     try {
       if (!input.destroyed) {
         input.destroy()
@@ -62,6 +79,7 @@ export function createStdioDuplex(
     }
     input.removeListener('error', onInputError)
     output.removeListener('error', onOutputError)
+    settleDrains()
     notifyClose(reason)
   }
 
@@ -126,23 +144,35 @@ export function createStdioDuplex(
     close(error)
   }
 
+  const onDrain = (): void => {
+    settleDrains()
+  }
+
   input.on('data', onData)
   input.on('end', onEnd)
   input.on('error', onInputError)
   input.on('close', onInputClose)
   output.on('error', onOutputError)
+  output.on('drain', onDrain)
 
   return {
     send(text) {
       if (closed) {
-        return
+        return undefined
       }
+      let accepted: boolean
       try {
-        output.write(`${text}\n`)
+        accepted = output.write(`${text}\n`)
       } catch (error) {
         close(error)
         throw error
       }
+      if (accepted) {
+        return undefined
+      }
+      return new Promise<void>((resolve) => {
+        drainWaiters.push(resolve)
+      })
     },
     onMessage(handler) {
       messageHandlers.add(handler)
@@ -162,5 +192,15 @@ export function createStdioDuplex(
       }
     },
     close,
+    pause() {
+      if (!closed) {
+        input.pause()
+      }
+    },
+    resume() {
+      if (!closed) {
+        input.resume()
+      }
+    },
   }
 }

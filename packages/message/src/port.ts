@@ -1,5 +1,12 @@
 import type { Duplex } from './duplex.js'
 
+/**
+ * A `Duplex` over a `MessagePort`. A port exposes no buffered amount and
+ * cannot stop receiving, so this adapter reports no backpressure: `send` is
+ * always synchronous and there is no `pause` / `resume`. Receive queues on
+ * this pipe are bounded only by the peer's behaviour; a sender's producer is
+ * paused only on pipes that do report (WebSocket `bufferedAmount`, stdio).
+ */
 export function createPortDuplex(port: MessagePort): Duplex {
   const closeHandlers = new Set<(reason?: unknown) => void>()
   let closed = false

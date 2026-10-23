@@ -7,8 +7,13 @@ import {
   type MessageFrame,
 } from './frame.js'
 
+/**
+ * `drained` is present only when the duplex is above its write high-water
+ * mark: a sender with more frames for the same id awaits it before the next
+ * one. It always resolves (on drain or on session close), never rejects.
+ */
 export type SendResult =
-  | { ok: true }
+  | { ok: true; drained?: Promise<void> }
   | { ok: false; reason: 'oversize' | 'stringify' | 'closed' }
 
 type SessionState = 'waiting-hello' | 'ready' | 'closed'
@@ -17,6 +22,14 @@ const encoder = new TextEncoder()
 
 function isJsonObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function isThenable(value: unknown): value is PromiseLike<void> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as { then?: unknown }).then === 'function'
+  )
 }
 
 function noopHello(): void {}
@@ -38,12 +51,15 @@ export class MessageSession {
   private timeoutId: ReturnType<typeof setTimeout> | undefined
   private resolveReady!: () => void
   private rejectReady!: (reason: unknown) => void
+  /** Settles in `enterClosed`; races every drain promise so none outlives the session. */
+  private readonly closed: Promise<void>
+  private resolveClosed!: () => void
 
   private readonly duplex: Duplex
   private readonly role: 'client' | 'server'
   private readonly maxFrameBytes: number | undefined
   private readonly onHello: (meta?: unknown) => void | Promise<void>
-  private readonly onFrame: (frame: MessageFrame) => void
+  private readonly onFrame: (frame: MessageFrame, size: number) => void
   private readonly onInvalidFrame:
     | ((info: { id: string; message: string }) => void)
     | undefined
@@ -58,7 +74,8 @@ export class MessageSession {
     helloTimeoutMs?: number
     helloMeta?: unknown
     onHello?: (meta?: unknown) => void | Promise<void>
-    onFrame: (frame: MessageFrame) => void
+    /** `size` is the frame's text length — the receive-side `highWaterMark` unit. */
+    onFrame: (frame: MessageFrame, size: number) => void
     onInvalidFrame?: (info: { id: string; message: string }) => void
     onClose?: (reason?: unknown) => void
   }) {
@@ -73,6 +90,9 @@ export class MessageSession {
     this.ready = new Promise<void>((resolve, reject) => {
       this.resolveReady = resolve
       this.rejectReady = reject
+    })
+    this.closed = new Promise<void>((resolve) => {
+      this.resolveClosed = resolve
     })
 
     this.unsubMessage = opts.duplex.onMessage((text) => {
@@ -118,12 +138,31 @@ export class MessageSession {
       return { ok: false, reason: 'oversize' }
     }
     try {
-      this.duplex.send(text)
+      const drain = this.duplex.send(text)
+      if (isThenable(drain)) {
+        return { ok: true, drained: this.untilDrainedOrClosed(drain) }
+      }
       return { ok: true }
     } catch (error) {
       this.close(error)
       return { ok: false, reason: 'closed' }
     }
+  }
+
+  /** The duplex's drain promise, resolved early on close; a rejection is a transport failure and closes. */
+  private untilDrainedOrClosed(drain: PromiseLike<void>): Promise<void> {
+    return new Promise<void>((resolve) => {
+      drain.then(
+        () => {
+          resolve()
+        },
+        (error: unknown) => {
+          this.close(error)
+          resolve()
+        },
+      )
+      void this.closed.then(resolve)
+    })
   }
 
   close(reason?: unknown): void {
@@ -320,7 +359,7 @@ export class MessageSession {
       this.onInvalidFrame?.({ id: decoded.id, message: decoded.message })
       return
     }
-    this.onFrame(decoded.frame)
+    this.onFrame(decoded.frame, text.length)
   }
 
   private failHandshake(code: string, message: string): void {
@@ -357,6 +396,7 @@ export class MessageSession {
     this.clearHelloTimeout()
     this.unsubMessage()
     this.unsubClose()
+    this.resolveClosed()
   }
 
   private succeedReady(): void {

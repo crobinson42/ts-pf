@@ -1,3 +1,10 @@
+export type {
+  Backpressure,
+  BackpressureOptions,
+  DrainOutcome,
+  StallInfo,
+} from './backpressure.js'
+export { DrainWaiter, resolveBackpressure } from './backpressure.js'
 export type { Duplex } from './duplex.js'
 export { createMemoryDuplex } from './duplex.js'
 export { errorFromEnvelope, localFailure } from './error.js'
@@ -20,7 +27,11 @@ export type {
 } from './frame.js'
 export { decodeFrame, encodeFrame } from './frame.js'
 export { createPortDuplex } from './port.js'
-export { createPushQueue, type PushQueue } from './push-queue.js'
+export {
+  createPushQueue,
+  type PushQueue,
+  type PushQueueOptions,
+} from './push-queue.js'
 export {
   frameByteLength,
   MessageSession,
