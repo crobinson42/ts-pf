@@ -47,7 +47,9 @@ export class FetchHandler<TCtx = unknown> {
        * mapped to `INTERNAL`), including `METHOD_NOT_ALLOWED`, `NOT_FOUND`,
        * codec `BAD_REQUEST`, and `VALIDATION`. Runs after every
        * `HandlerPlugin.onError` (array order) and before the failure is
-       * encoded. It cannot replace the response.
+       * encoded. It cannot replace the response. A `Response` returned from
+       * `HandlerPlugin.onRequest` is not an error to this hook, and a throw
+       * from `onError` itself rejects `handle()`.
        *
        * When omitted, `FetchHandler` logs with `console.error`: unknown
        * (non-`PFError`) throws, and `INTERNAL` `PFError`s (an output schema

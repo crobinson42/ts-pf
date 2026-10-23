@@ -17,6 +17,6 @@ const handler = new FetchHandler(app, {
 const result = await handler.handle(request, { prefix: '/rpc', context: { db } })
 ```
 
-Options: `codec`, `plugins`, `interceptors`, `validation`, and `onError(error, { request, path, context })`. Without `onError`, unknown throws and `INTERNAL` errors are logged with `console.error`; passing it replaces that logging. A JSON body that is not wrapped in `{ "input": ... }` is `400 BAD_REQUEST`.
+Options: `codec`, `plugins`, `interceptors`, `validation`, and `onError(error, { request, path, context })`. Without `onError`, unknown throws and `INTERNAL` errors are logged with `console.error`; passing it replaces that logging. A JSON object body with keys but no `input` key is `400 BAD_REQUEST`; `{}` and `{"input":null}` still mean no input.
 
 Do not import this package from `@ts-pf/client-http`.
