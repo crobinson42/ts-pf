@@ -27,6 +27,7 @@ scripts/check-skills.mjs
 scripts/check-deps.mjs                   @ts-pf/* DAG allow-list (mirrors rules.md "Packages"); package.json + src/tests imports; cycles
 scripts/check-exports.mjs
 scripts/check-snippets.mjs                tsc over fenced ```ts in README/SKILL/example docs against dist (flags: `no-check`, `bundler`)
+scripts/bench.mjs                        `npm run bench`: ops/s for local / Fetch / MessagePort unary, declared error, and 2000-item streams (relative numbers; run before and after hot-path changes, see CONTRIBUTING "Benchmarks")
 skills/README.md                         consumer skill index (not published)
 packages/*/skills/ts-pf-<pkg>/SKILL.md   consumer usage (hub catalog ts-pf-app on contract)
 packages/{contract,server,client}/tests/*.test-d.ts   type tests (expectTypeOf + @ts-expect-error); Vitest typecheck + tsc --noEmit
@@ -44,7 +45,7 @@ packages/protocol/src/
   envelope.ts         RpcRequest/Response, PROTOCOL_MAJOR (1 as const) → PROTOCOL_VERSION ('1'), PFResultPromise
   wire-error.ts       toWireError (PFError → toJSON; unknown throw → fixed INTERNAL "Internal server error", no leak) — the only copy of that mapping
   is-async-iterable.ts isAsyncIterable (object or function with a Symbol.asyncIterator function; ReadableStream is NOT excluded — wire sites compose a local isItemStream)
-  defined.ts          defined(obj) / Defined<T> — copy without undefined-valued keys, typed optional; `{ ...required, ...defined({ signal }) }` replaces `...(x ? { x } : {})` at option boundaries (server runtime / call-interceptor / events / error-factory, client events)
+  defined.ts          defined(obj) / Defined<T> — copy without undefined-valued keys, typed optional; `{ ...required, ...defined({ signal }) }` replaces `...(x ? { x } : {})` at cold option boundaries (astro client construction). Per-call hot paths (server runtime / call-interceptor / events / error-factory, client events / call-interceptor) do not call it: they build the object with its required keys and assign each optional key only when present (same `exactOptionalPropertyTypes` outcome, no per-call copy; `npm run bench` guards it)
 packages/http/src/
   rpc.ts              PROTOCOL_HEADER, RpcCodec, RpcEncodedBody, RpcBodySource; RpcEncodedText + EnvelopeTextCodec (the `inner` role of the wrapping codecs: an RpcCodec whose encoded bodies are strings)
   codec.ts            JSONCodec implements EnvelopeTextCodec (envelope object with keys but no `input` → BAD_REQUEST; wrapping codecs inherit it)
