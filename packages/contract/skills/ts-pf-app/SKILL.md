@@ -190,7 +190,7 @@ new PortHandler(app).bind(port1, { context: { db } })
 const client = createClient<typeof contract>(new PortLink({ port: port2 }))
 ```
 
-Minimal Port example. Load `ts-pf-message-server` / `ts-pf-message-client` for WS / stdio (`./stdio`).
+Minimal Port example. Load `ts-pf-message-server` / `ts-pf-message-client` for WS / stdio (`./stdio`), and for `DuplexHandler` / `DuplexLink` over your own `Duplex` (Electron IPC, Chrome runtime port, WebTransport).
 
 ### Catalog / OpenAPI / codegen — `@ts-pf/docs` / `openapi` / `codegen`
 

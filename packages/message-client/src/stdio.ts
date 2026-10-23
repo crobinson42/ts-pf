@@ -1,7 +1,8 @@
 import type { Readable, Writable } from 'node:stream'
 import type { Link } from '@ts-pf/client'
 import { createStdioDuplex } from '@ts-pf/message/stdio'
-import { attachClient, type LinkOptions } from './shared.js'
+import { DuplexLink } from './duplex.js'
+import type { LinkOptions } from './shared.js'
 
 // child (handler)
 // new StdioHandler(app).bind({ input: process.stdin, output: process.stdout }, { context })
@@ -9,30 +10,19 @@ import { attachClient, type LinkOptions } from './shared.js'
 // const child = spawn(cmd, { stdio: ['pipe', 'pipe', 'inherit'] })
 // new StdioLink({ input: child.stdout, output: child.stdin })
 
+/** `DuplexLink` over `createStdioDuplex`. */
 export class StdioLink implements Link {
-  private readonly attached: ReturnType<typeof attachClient>
+  private readonly link: DuplexLink
   private closed = false
 
   constructor(opts: { input: Readable; output: Writable } & LinkOptions) {
+    const { input, output, ...options } = opts
     const duplexOpts: { maxFrameBytes?: number } = {}
-    if (opts.maxFrameBytes !== undefined) {
-      duplexOpts.maxFrameBytes = opts.maxFrameBytes
+    if (options.maxFrameBytes !== undefined) {
+      duplexOpts.maxFrameBytes = options.maxFrameBytes
     }
-    const duplex = createStdioDuplex(
-      { input: opts.input, output: opts.output },
-      duplexOpts,
-    )
-    const attach: Parameters<typeof attachClient>[0] = { duplex }
-    if (opts.meta !== undefined) {
-      attach.meta = opts.meta
-    }
-    if (opts.maxFrameBytes !== undefined) {
-      attach.maxFrameBytes = opts.maxFrameBytes
-    }
-    if (opts.helloTimeoutMs !== undefined) {
-      attach.helloTimeoutMs = opts.helloTimeoutMs
-    }
-    this.attached = attachClient(attach)
+    const duplex = createStdioDuplex({ input, output }, duplexOpts)
+    this.link = new DuplexLink({ duplex, ...options })
   }
 
   call(
@@ -40,7 +30,7 @@ export class StdioLink implements Link {
     input: unknown,
     signal?: AbortSignal,
   ): ReturnType<Link['call']> {
-    return this.attached.call(path, input, signal)
+    return this.link.call(path, input, signal)
   }
 
   close(): void {
@@ -48,6 +38,6 @@ export class StdioLink implements Link {
       return
     }
     this.closed = true
-    this.attached.close()
+    this.link.close()
   }
 }

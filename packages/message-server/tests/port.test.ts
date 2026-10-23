@@ -123,7 +123,11 @@ describe('PortHandler validation', () => {
 describe('PortHandler', () => {
   it('exports PortHandler and not attachRouter or TransportHandler', async () => {
     const exported = await import('../src/index.js')
-    expect(Object.keys(exported).sort()).toEqual(['PortHandler', 'WsHandler'])
+    expect(Object.keys(exported).sort()).toEqual([
+      'DuplexHandler',
+      'PortHandler',
+      'WsHandler',
+    ])
     expect(exported).not.toHaveProperty('attachRouter')
     expect(exported).not.toHaveProperty('TransportHandler')
     expect(exported).not.toHaveProperty('createPortDuplex')

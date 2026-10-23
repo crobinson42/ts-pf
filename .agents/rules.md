@@ -64,8 +64,8 @@ Contract-first TypeScript RPC library (`@ts-pf/*`). oRPC-like DX is the bar; oRP
 | `mvc-kit` | `bindClient(client, host)` / `issuesToFieldErrors` / `DisposeSignalHost`. |
 | `astro` | `createAstroHandler`, `createAstroLocalClient` (`./server`); `createAstroClient`, `withBase` (`.` and `./client`). Peer `astro >= 4.9.0`. Root export is client-only. `context` on `createAstroHandler` / `createAstroLocalClient` is typed from the app's `TCtx` (`NoInfer`); `createAstroClient<T = never>` follows the `createClient` `~error` rule. |
 | `message` | JSON text frames + `MessageSession` / `Duplex` + port/ws/stdio duplex adapters + `createPushQueue` / `PushQueue` (the one push-to-`AsyncIterable` queue, one-shot `end()` / `fail()`; message-server input and message-client output use it, no local copies). `localFailure` is a `@deprecated` re-export; import it from `@ts-pf/protocol`. |
-| `message-server` | `PortHandler`, `WsHandler`, `StdioHandler` (`./stdio` only). Calls `lookupProcedure` + `runProcedure`. `HandlerOptions` may include `interceptors` and `validation`. Handlers infer `TCtx` from `app` like `FetchHandler`; `bind(..., { context })` is typed with it. |
-| `message-client` | `PortLink`, `WsLink`, `StdioLink` (`./stdio` only). Implements `Link`. Uses protocol `isPFError` / `localFailure` / `isAsyncIterable` directly (no duck-typed `PFError` check, no local predicate copy). |
+| `message-server` | `DuplexHandler` (the multiplexer: `bind(duplex, { context })` over any `@ts-pf/message` `Duplex`), `PortHandler`, `WsHandler`, `StdioHandler` (`./stdio` only) — the three build their duplex and delegate to `DuplexHandler`. Calls `lookupProcedure` + `runProcedure`. `HandlerOptions` may include `interceptors` and `validation`. Handlers infer `TCtx` from `app` like `FetchHandler`; `bind(..., { context })` is typed with it. `attachRouter` / `ServerCall` stay internal. |
+| `message-client` | `DuplexLink` (the multiplexer: `Link` over any `@ts-pf/message` `Duplex`), `PortLink`, `WsLink`, `StdioLink` (`./stdio` only) — the three build their duplex and delegate to `DuplexLink`. Implements `Link`. Uses protocol `isPFError` / `localFailure` / `isAsyncIterable` directly (no duck-typed `PFError` check, no local predicate copy). `ClientCall` stays internal. |
 
 ## Public names
 
@@ -75,11 +75,11 @@ Do not resurrect oRPC names in code, docs, or examples.
 |---|---|
 | `procedure` / `router` | `oc` |
 | `createImplementer` / local `impl` | `implement` / `os` |
-| `FetchHandler` / `PortHandler` / `WsHandler` / `StdioHandler` | `RPCHandler` |
+| `FetchHandler` / `PortHandler` / `WsHandler` / `StdioHandler` / `DuplexHandler` | `RPCHandler` / `TransportHandler` |
 | `CORSPlugin` / `RequestLimitPlugin` / `RequestHeadersPlugin` / `ResponseHeadersPlugin` / `RetryPlugin` / `DedupePlugin` / `CachePlugin` | `*HandlerPlugin` / `*LinkPlugin`. Keep interface `HandlerPlugin`; `CallPlugin` is a different type. |
 | `createLocalClient` | `createRouterClient` |
 | `asResult` | `safe` |
-| `FetchLink` / `PortLink` / `WsLink` / `StdioLink` | `RPCLink` |
+| `FetchLink` / `PortLink` / `WsLink` / `StdioLink` / `DuplexLink` | `RPCLink` |
 | `bind` | `upgrade` |
 | `stream()` | `eventIterator` |
 | `createSwr` | `createSWRUtils` / `createRouterUtils` / `swrUtils` |
@@ -143,7 +143,7 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 
 ## Anti-patterns
 
-- Do not invent `TransportHandler`. `FetchHandler` stays Fetch-only. `PortHandler.bind(port)` stays a different shape.
+- Do not invent `TransportHandler`. `FetchHandler` stays Fetch-only. `PortHandler.bind(port)` stays a different shape. `DuplexHandler` / `DuplexLink` are not that: they are generic only over `@ts-pf/message` `Duplex` *inside* the message family (same frames, same handshake), never a request shape shared with Fetch. A new pipe is a `Duplex` plus those two, not a copy of the multiplexer.
 - Do not port `HandlerPlugin` onto WS / stdio / MessagePort.
 - Do not reuse `RpcCodec` as a message framer. Reuse envelope types only.
 - Do not put `.ws()` / `.stdio()` / `.port()` on procedures.

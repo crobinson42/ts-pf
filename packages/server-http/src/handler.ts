@@ -35,6 +35,17 @@ export type FetchHandlerOnError = (
 ) => void | Promise<void>
 
 /**
+ * What the pipeline steps have built so far for one request. Steps mutate it
+ * in place, so the error path sees the latest wrapped `request` and the
+ * context as far as it got (the factory result, then each `onContext`
+ * replacement) — exactly what a throw mid-step leaves behind.
+ */
+type CallState<TCtx> = {
+  request: Request
+  context: TCtx | undefined
+}
+
+/**
  * `TCtx` is inferred from the router's context brand (the `$context<C>()`
  * type behind `impl.router()`), so `handle(request, { context })` is checked
  * against it. A tree not produced by `impl.router()` infers `unknown`. An
@@ -84,6 +95,12 @@ export class FetchHandler<TCtx = unknown> {
     this.onError = options?.onError
   }
 
+  /**
+   * The call pipeline (see the ts-pf skill, "Call pipeline"): each numbered
+   * step is a method below. Any throw from steps 0–5, including
+   * `METHOD_NOT_ALLOWED`, `NOT_FOUND`, codec `BAD_REQUEST`, and an
+   * `onResponse` plugin on the success path, takes the step-6 error path.
+   */
   async handle(
     request: Request,
     opts: {
@@ -97,115 +114,114 @@ export class FetchHandler<TCtx = unknown> {
       return { matched: false }
     }
 
-    let inbound = request
-    let context: TCtx | undefined
-
+    const state: CallState<TCtx> = { request, context: undefined }
     try {
-      for (const plugin of this.plugins) {
-        const result = await plugin.onRequest?.({ request: inbound })
-        if (result instanceof Response) {
-          return {
-            matched: true,
-            response: await this.applyOnResponse(inbound, result, context),
-          }
-        }
-        if (result instanceof Request) {
-          inbound = result
-        }
+      // 0. HandlerPlugin.onRequest: wrap the request or short-circuit (CORS preflight)
+      const shortCircuit = await this.applyOnRequest(state)
+      if (shortCircuit !== undefined) {
+        return await this.respond(state, shortCircuit)
       }
-
-      if (inbound.method !== 'POST') {
-        throw new PFError({
-          code: 'METHOD_NOT_ALLOWED',
-          message: 'Method not allowed',
-        })
-      }
-
-      const decoded = await this.codec.decodeRequest(bodySource(inbound))
-      const procedure = lookupProcedure(this.router, path)
-      if (!procedure) {
-        throw new PFError({
-          code: 'NOT_FOUND',
-          message: 'Procedure not found',
-        })
-      }
-
-      context =
-        typeof opts.context === 'function'
-          ? await (opts.context as (req: Request) => TCtx | Promise<TCtx>)(
-              inbound,
-            )
-          : opts.context
-
-      for (const plugin of this.plugins) {
-        const next = await plugin.onContext?.({
-          request: inbound,
-          context,
-        })
-        if (next !== undefined) {
-          context = next as TCtx
-        }
-      }
-
-      const runOpts: RunProcedureOptions = { signal: inbound.signal }
-      if (this.interceptors.length > 0) {
-        runOpts.interceptors = this.interceptors
-      }
-      if (this.validation) {
-        runOpts.validation = this.validation
-      }
-      const output = await runProcedure(
-        procedure,
-        decoded.input,
-        context,
-        runOpts,
-      )
-      const response = await this.successResponse(output)
-      return {
-        matched: true,
-        response: await this.applyOnResponse(inbound, response, context),
-      }
+      // 1–2. method, body, procedure
+      assertPost(state.request)
+      const decoded = await this.codec.decodeRequest(bodySource(state.request))
+      const procedure = this.lookup(path)
+      // 3. context factory, then HandlerPlugin.onContext
+      state.context = await resolveContext(state.request, opts.context)
+      await this.applyOnContext(state)
+      // 4–5. call-interceptor onion around runProcedure, then encode
+      const output = await this.run(procedure, decoded.input, state)
+      return await this.respond(state, await this.successResponse(output))
     } catch (error) {
-      for (const plugin of this.plugins) {
-        await plugin.onError?.(
-          context === undefined
-            ? { request: inbound, error }
-            : { request: inbound, error, context },
-        )
+      // 6. HandlerPlugin.onError, then onError or the default log, then encode the failure
+      await this.reportError(error, state, path)
+      return this.respond(state, await this.errorResponse(error))
+    }
+  }
+
+  /** Step 0. Returns a plugin's short-circuit `Response`; `state.request` holds the latest wrap. */
+  private async applyOnRequest(
+    state: CallState<TCtx>,
+  ): Promise<Response | undefined> {
+    for (const plugin of this.plugins) {
+      const result = await plugin.onRequest?.({ request: state.request })
+      if (result instanceof Response) {
+        return result
       }
-      if (this.onError) {
-        await this.onError(error, { request: inbound, path, context })
-      } else {
-        this.logError(error, path)
+      if (result instanceof Request) {
+        state.request = result
       }
-      return {
-        matched: true,
-        response: await this.applyOnResponse(
-          inbound,
-          await this.errorResponse(error),
-          context,
-        ),
+    }
+    return undefined
+  }
+
+  /** Step 2. Prefix matched but no procedure at `path`: `NOT_FOUND` (no call interceptors). */
+  private lookup(path: string[]) {
+    const procedure = lookupProcedure(this.router, path)
+    if (!procedure) {
+      throw new PFError({
+        code: 'NOT_FOUND',
+        message: 'Procedure not found',
+      })
+    }
+    return procedure
+  }
+
+  /** Step 3. Each `onContext` may replace the context (header bags). */
+  private async applyOnContext(state: CallState<TCtx>): Promise<void> {
+    for (const plugin of this.plugins) {
+      const next = await plugin.onContext?.({
+        request: state.request,
+        context: state.context,
+      })
+      if (next !== undefined) {
+        state.context = next as TCtx
       }
     }
   }
 
-  private async applyOnResponse(
-    request: Request,
-    response: Response,
-    context: TCtx | undefined,
-  ): Promise<Response> {
-    let current = response
-    for (const plugin of this.plugins) {
-      const next = await plugin.onResponse?.(
-        context === undefined
-          ? { request, response: current }
-          : { request, response: current, context },
-      )
-      if (next) {
-        current = next
-      }
+  /** Step 4. `runProcedure` with the request signal, interceptors, and validation. */
+  private run(
+    procedure: ReturnType<typeof this.lookup>,
+    input: unknown,
+    state: CallState<TCtx>,
+  ): Promise<unknown> {
+    const runOpts: RunProcedureOptions = { signal: state.request.signal }
+    if (this.interceptors.length > 0) {
+      runOpts.interceptors = this.interceptors
     }
-    return current
+    if (this.validation) {
+      runOpts.validation = this.validation
+    }
+    return runProcedure(procedure, input, state.context, runOpts)
+  }
+
+  /** Step 5. */
+  private async successResponse(output: unknown): Promise<Response> {
+    return encodedResponse(await this.codec.encodeSuccess(output), 200)
+  }
+
+  /** Step 6, side effects: `HandlerPlugin.onError` in array order, then `onError` or the default log. */
+  private async reportError(
+    error: unknown,
+    state: CallState<TCtx>,
+    path: readonly string[],
+  ): Promise<void> {
+    for (const plugin of this.plugins) {
+      await plugin.onError?.(
+        state.context === undefined
+          ? { request: state.request, error }
+          : { request: state.request, error, context: state.context },
+      )
+    }
+    if (this.onError) {
+      await this.onError(error, {
+        request: state.request,
+        path,
+        context: state.context,
+      })
+      return
+    }
+    this.logError(error, path)
   }
 
   private logError(error: unknown, path: readonly string[]): void {
@@ -227,17 +243,67 @@ export class FetchHandler<TCtx = unknown> {
     )
   }
 
-  private async successResponse(output: unknown): Promise<Response> {
-    return encodedResponse(await this.codec.encodeSuccess(output), 200)
-  }
-
-  /** `toWireError` maps an unknown throw to `INTERNAL`; its status follows. */
+  /** Step 6, response: `toWireError` maps an unknown throw to `INTERNAL`; its status follows. */
   private async errorResponse(error: unknown): Promise<Response> {
     return encodedResponse(
       await this.codec.encodeFailure(toWireError(error)),
       isPFError(error) ? httpStatus(error) : PROTOCOL_HTTP_STATUS.INTERNAL,
     )
   }
+
+  /** Step 7. Every matched `Response` (success, 405, errors, short-circuit) passes `onResponse`. */
+  private async respond(
+    state: CallState<TCtx>,
+    response: Response,
+  ): Promise<HandleResult> {
+    return {
+      matched: true,
+      response: await this.applyOnResponse(
+        state.request,
+        response,
+        state.context,
+      ),
+    }
+  }
+
+  private async applyOnResponse(
+    request: Request,
+    response: Response,
+    context: TCtx | undefined,
+  ): Promise<Response> {
+    let current = response
+    for (const plugin of this.plugins) {
+      const next = await plugin.onResponse?.(
+        context === undefined
+          ? { request, response: current }
+          : { request, response: current, context },
+      )
+      if (next) {
+        current = next
+      }
+    }
+    return current
+  }
+}
+
+/** Step 1. Thrown inside the pipeline so plugins and `onError` see 405s too. */
+function assertPost(request: Request): void {
+  if (request.method !== 'POST') {
+    throw new PFError({
+      code: 'METHOD_NOT_ALLOWED',
+      message: 'Method not allowed',
+    })
+  }
+}
+
+/** Step 3, factory half: a value or a `(req) => ctx` function. */
+async function resolveContext<TCtx>(
+  request: Request,
+  context: TCtx | ((req: Request) => TCtx | Promise<TCtx>),
+): Promise<TCtx> {
+  return typeof context === 'function'
+    ? await (context as (req: Request) => TCtx | Promise<TCtx>)(request)
+    : context
 }
 
 function bodySource(request: Request): RpcBodySource {
