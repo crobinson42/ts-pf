@@ -17,8 +17,12 @@ Link for agents: `npx skills experimental_sync -y`
 import { asResult, createClient, DedupePlugin, isLocalFailure, RetryPlugin } from '@ts-pf/client'
 import { FetchLink } from '@ts-pf/client-http'
 
+// Dedupe reads only. The default key covers every unary call, writes included.
+const readKey = ({ path, input }: { path: string[]; input: unknown }) =>
+  path.join('.') === 'planet.find' ? JSON.stringify([path, input]) : undefined
+
 const client = createClient<typeof contract>(new FetchLink({ url: '/rpc' }), {
-  plugins: [new RetryPlugin(), new DedupePlugin()],
+  plugins: [new RetryPlugin(), new DedupePlugin({ key: readKey })],
 })
 
 const planet = await client.planet.find({ id: 1 })
@@ -34,6 +38,8 @@ if (!result.ok) {
 ```
 
 Procedure calls take optional `{ signal?: AbortSignal }`. `createClient` options are `{ plugins, interceptors }`. Client-side input validation is off by default. `CachePlugin` needs `ttl` and caches success only. First-party plugins skip `AsyncIterable` input.
+
+`DedupePlugin` and `CachePlugin` default key is `JSON.stringify([path, input])` for every unary call, mutations included — two concurrent `planet.create({ name })` calls share one request and one result. Pass `key` and return `undefined` for anything that is not a read (same `readKey` works for both; runnable form `examples/plugins/src/read-key.ts`). `RetryPlugin` retries local failures (not aborts) up to 3 times; a connection dropped after send is a local failure too, so pass `retry` to exclude non-idempotent writes.
 
 ## API
 
@@ -54,3 +60,4 @@ Procedure calls take optional `{ signal?: AbortSignal }`. `createClient` options
 - Import `@ts-pf/server` from client modules.
 - Widen `asResult` to `CallResult<T, E | PFError>`.
 - Retry/cache on `FetchLink` — use `RetryPlugin` / `CachePlugin` here.
+- Bare `new DedupePlugin()` / `new CachePlugin({ ttl })` in front of writes — pass `key`.
