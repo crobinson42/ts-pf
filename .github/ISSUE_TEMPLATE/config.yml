@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Questions and usage help
+    url: https://github.com/crobinson42/ts-pf/issues/new?labels=question&title=Question%3A+
+    about: Open an issue with the "question" label. Check the package README and skills/README.md first.
+  - name: Security vulnerability
+    url: https://github.com/crobinson42/ts-pf/security/advisories/new
+    about: Report privately via GitHub security advisories, not as a public issue (see SECURITY.md).
