@@ -2,10 +2,13 @@ import {
   type CallOptions,
   type ClientError,
   type ContractClient,
+  type ContractProcedure,
   type ContractResultPromise,
   type InferContractErrorCodes,
   type InferContractInputs,
   type InferContractOutputs,
+  type InferContractProcedure,
+  type IsContractProcedure,
   procedure,
   router,
 } from '@ts-pf/contract'
@@ -88,6 +91,61 @@ describe('ContractClient inference', () => {
     client.planet.list({ id: 1 })
     // @ts-expect-error unknown procedure path
     client.planet.nope
+  })
+})
+
+describe('InferContractProcedure', () => {
+  it('reads a builder and a hand-written ContractProcedure the same way', () => {
+    type Find = typeof contract.planet.find
+    type Written = ContractProcedure<
+      { id: number },
+      { id: number; name: string },
+      Find['~pf']['errors']
+    >
+    expectTypeOf<InferContractProcedure<Find>>().toEqualTypeOf<{
+      input: { id: number }
+      output: { id: number; name: string }
+      errors: Find['~pf']['errors']
+      meta: {}
+    }>()
+    expectTypeOf<InferContractProcedure<Written>['input']>().toEqualTypeOf<
+      InferContractProcedure<Find>['input']
+    >()
+    expectTypeOf<InferContractProcedure<Written>['output']>().toEqualTypeOf<
+      InferContractProcedure<Find>['output']
+    >()
+    type List = InferContractProcedure<typeof contract.planet.list>
+    expectTypeOf<List['input']>().toBeVoid()
+    expectTypeOf<Omit<List, 'input'>>().toEqualTypeOf<{
+      output: string[]
+      errors: {}
+      meta: {}
+    }>()
+  })
+
+  it('is never for routers and plain values', () => {
+    expectTypeOf<InferContractProcedure<typeof contract>>().toBeNever()
+    expectTypeOf<InferContractProcedure<typeof contract.planet>>().toBeNever()
+    expectTypeOf<InferContractProcedure<{ a: 1 }>>().toBeNever()
+    expectTypeOf<InferContractProcedure<string>>().toBeNever()
+    expectTypeOf<
+      IsContractProcedure<typeof contract.planet.find>
+    >().toEqualTypeOf<true>()
+    expectTypeOf<
+      IsContractProcedure<typeof contract.planet>
+    >().toEqualTypeOf<false>()
+    expectTypeOf<IsContractProcedure<never>>().toEqualTypeOf<false>()
+  })
+
+  it('tells builders with different input or output apart', () => {
+    // The phantom `~types` on ContractBuilder makes two builders with
+    // different input / output non-assignable, like ContractProcedure.
+    expectTypeOf<typeof contract.planet.find>().not.toExtend<
+      typeof contract.planet.list
+    >()
+    expectTypeOf<typeof contract.planet.list>().not.toExtend<
+      typeof contract.planet.find
+    >()
   })
 })
 

@@ -68,7 +68,7 @@ Only a tree produced by `impl.router()` carries the brand; a plain object of han
 
 ## Middleware: `.use()` and `.useAfter()`
 
-Middleware wraps the handler inside one procedure, on the implementer (`impl.use(mw)` applies to every procedure below it) or on a single builder (`impl.planet.find.use(mw)`). `impl.middleware(fn)` names a reusable middleware for `impl.use()`; a per-procedure `.use()` takes an inline function, because its `next()` is typed with that procedure's output.
+Middleware wraps the handler inside one procedure, on the implementer (`impl.use(mw)` applies to every procedure below it) or on a single builder (`impl.planet.find.use(mw)`). `impl.middleware(fn)` names a reusable middleware; it fits `impl.use()` and a per-procedure `.use()` alike (both see `input: unknown`). A per-procedure `.useAfter()` is typed with that procedure's input and output, so it takes an inline function.
 
 - `.use()` runs **before** input validation. It sees `input: unknown`. Use it for auth, logging, anything that must run even when the input is garbage.
 - `.useAfter()` runs **after** input validation. It sees the typed, parsed input (when the input check ran; with `validation.input: false` it sees the raw value). Use it for per-record authorization that needs the parsed id.

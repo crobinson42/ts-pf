@@ -41,7 +41,7 @@ localFailure('Request aborted') // INTERNAL with local: true, status 0 (never on
 
 The discriminator is JSON `error.code`. `status`, `cause`, and `local` never appear in the envelope (`toJSON` omits them).
 
-Two helpers the transports share, for codecs and adapters of your own: `toWireError(error)` is the `error` object of a failure envelope for any thrown value — a `PFError`'s `toJSON()`, anything else a fixed `{ code: 'INTERNAL', message: 'Internal server error' }` with no stack or message leak (log the original yourself). `isAsyncIterable(value)` is the one answer to "is this a stream" (a non-null object or function with a `Symbol.asyncIterator` function; a `ReadableStream` counts on Node, so exclude it at a site that wants bytes).
+Two helpers the transports share, for codecs and adapters of your own: `toWireError(error)` is the `error` object of a failure envelope for any thrown value — a `PFError`'s `toJSON()`, anything else a fixed `{ code: 'INTERNAL', message: 'Internal server error' }` with no stack or message leak (log the original yourself). `isAsyncIterable(value)` is the one answer to "is this a stream" (a non-null object or function with a `Symbol.asyncIterator` function; a `ReadableStream` counts on Node, so exclude it at a site that wants bytes). `defined(obj)` returns a shallow copy without the keys whose value is `undefined`, typed with those keys optional — the one helper for forwarding optional fields under `exactOptionalPropertyTypes` (`{ ...required, ...defined({ signal }) }`).
 
 Wire spec: [`PROTOCOL.md`](https://github.com/crobinson42/ts-pf/blob/main/packages/protocol/PROTOCOL.md) (also shipped in this package). Happy path: [root README](https://github.com/crobinson42/ts-pf#readme).
 
@@ -50,6 +50,7 @@ Wire spec: [`PROTOCOL.md`](https://github.com/crobinson42/ts-pf/blob/main/packag
 - `PFError`, `PFErrorInit`, `isPFError`, `localFailure`, `ProtocolErrorCode`
 - `PROTOCOL_VERSION`, `RpcRequest`, `RpcResponse`, `RpcSuccess`, `RpcFailure`, `PFResultPromise`
 - `toWireError`, `isAsyncIterable`
+- `defined`, `Defined` — `defined(obj)` drops the keys whose value is `undefined`, so `{ ...required, ...defined({ signal }) }` builds an `exactOptionalPropertyTypes` option bag without one spread per field
 
 ## Agent skills
 

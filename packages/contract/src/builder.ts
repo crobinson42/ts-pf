@@ -15,6 +15,11 @@ export class ContractBuilder<
 > implements ContractProcedure<TInput, TOutput, TErrors, TMeta>
 {
   readonly '~pf': ContractProcedureDef<TErrors, TMeta>
+  // Phantom, like on `ContractProcedure`; `declare` emits nothing. It makes a
+  // builder structurally a `ContractProcedure<I, O, E, M>`, so one
+  // `InferContractProcedure` branch reads both, and two builders with
+  // different input / output are no longer mutually assignable.
+  declare readonly '~types'?: { input: TInput; output: TOutput }
 
   constructor(def?: Partial<ContractProcedureDef<TErrors, TMeta>>) {
     this['~pf'] = {

@@ -1,31 +1,46 @@
-import type { ContractBuilder } from './builder.js'
 import type { ErrorMap, InferErrorData } from './errors.js'
 import type { ContractProcedure } from './procedure.js'
 import type { ValidationIssue } from './schema-types.js'
 
-type InferProc<T> =
-  T extends ContractBuilder<infer I, infer O, infer E, infer M>
+/**
+ * The `{ input, output, errors, meta }` of one contract procedure type, or
+ * `never` for anything else (a router object, a plain value). Matches a
+ * `ContractBuilder` (which implements `ContractProcedure`, phantom `~types`
+ * included) and a hand-written `ContractProcedure<I, O, E, M>` (codegen
+ * output) alike, so consumers need one branch, not two.
+ */
+export type InferContractProcedure<T> =
+  T extends ContractProcedure<infer I, infer O, infer E, infer M>
     ? { input: I; output: O; errors: E; meta: M }
-    : T extends ContractProcedure<infer I, infer O, infer E, infer M>
-      ? { input: I; output: O; errors: E; meta: M }
-      : never
+    : never
+
+/** `true` when `T` is a contract procedure type (builder or hand-written). */
+export type IsContractProcedure<T> = [InferContractProcedure<T>] extends [never]
+  ? false
+  : true
 
 export type InferContractInputs<T> = {
-  [K in keyof T as K extends '~pf' ? never : K]: InferProc<T[K]> extends never
+  [K in keyof T as K extends '~pf' ? never : K]: IsContractProcedure<
+    T[K]
+  > extends false
     ? InferContractInputs<T[K]>
-    : InferProc<T[K]>['input']
+    : InferContractProcedure<T[K]>['input']
 }
 
 export type InferContractOutputs<T> = {
-  [K in keyof T as K extends '~pf' ? never : K]: InferProc<T[K]> extends never
+  [K in keyof T as K extends '~pf' ? never : K]: IsContractProcedure<
+    T[K]
+  > extends false
     ? InferContractOutputs<T[K]>
-    : InferProc<T[K]>['output']
+    : InferContractProcedure<T[K]>['output']
 }
 
 export type InferContractErrorCodes<T> = {
-  [K in keyof T as K extends '~pf' ? never : K]: InferProc<T[K]> extends never
+  [K in keyof T as K extends '~pf' ? never : K]: IsContractProcedure<
+    T[K]
+  > extends false
     ? InferContractErrorCodes<T[K]>
-    : keyof InferProc<T[K]>['errors']
+    : keyof InferContractProcedure<T[K]>['errors']
 }
 
 // Hand-written duplicate of ProtocolErrorCode in @ts-pf/protocol. contract
@@ -67,9 +82,11 @@ export type ClientError<E extends ErrorMap> =
   | Exclude<ProtocolClientError, { code: keyof E & string }>
 
 export type InferContractErrors<T> = {
-  [K in keyof T as K extends '~pf' ? never : K]: InferProc<T[K]> extends never
+  [K in keyof T as K extends '~pf' ? never : K]: IsContractProcedure<
+    T[K]
+  > extends false
     ? InferContractErrors<T[K]>
-    : ClientError<InferProc<T[K]>['errors']>
+    : ClientError<InferContractProcedure<T[K]>['errors']>
 }
 
 export interface ContractResultPromise<T, E> extends Promise<T> {
@@ -83,11 +100,13 @@ export type ProcedureClient<I, O, E extends ErrorMap> = I extends void
   : (input: I, opts?: CallOptions) => ContractResultPromise<O, ClientError<E>>
 
 export type ContractClient<T> = {
-  [K in keyof T as K extends '~pf' ? never : K]: InferProc<T[K]> extends never
+  [K in keyof T as K extends '~pf' ? never : K]: IsContractProcedure<
+    T[K]
+  > extends false
     ? ContractClient<T[K]>
     : ProcedureClient<
-        InferProc<T[K]>['input'],
-        InferProc<T[K]>['output'],
-        InferProc<T[K]>['errors']
+        InferContractProcedure<T[K]>['input'],
+        InferContractProcedure<T[K]>['output'],
+        InferContractProcedure<T[K]>['errors']
       >
 }

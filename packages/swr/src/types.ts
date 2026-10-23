@@ -27,7 +27,7 @@ export type SwrMatcher = (key?: unknown) => boolean
 
 export type SwrMatcherStrategy = 'exact' | 'partial'
 
-export type DeepPartial<T> = T extends object
+type DeepPartial<T> = T extends object
   ? { [K in keyof T]?: DeepPartial<T[K]> }
   : T
 

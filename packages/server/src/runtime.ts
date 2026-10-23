@@ -1,11 +1,11 @@
 import {
-  type ContractBuilder,
   type ContractProcedure,
   type ErrorMap,
-  isContractProcedure,
+  type InferContractProcedure,
+  type IsContractProcedure,
   validateSchema,
 } from '@ts-pf/contract'
-import { isAsyncIterable, PFError } from '@ts-pf/protocol'
+import { defined, isAsyncIterable, PFError } from '@ts-pf/protocol'
 import {
   type CallInterceptor,
   runCallInterceptors,
@@ -22,22 +22,15 @@ export type HandlerFn = (opts: {
 }) => unknown | Promise<unknown>
 
 /**
- * The `{ input, output, errors }` shape of a contract procedure type, or
- * `never` for anything else. Brands compare this shape, not the builder type:
- * two `ContractBuilder<...>` instantiations with different input or output are
- * mutually assignable (the type parameters only appear in method return
- * types), so the builder alone cannot tell `star.find` from `planet.find`.
+ * The `{ input, output, errors }` of a contract procedure type, or `never`
+ * for anything else: contract's `InferContractProcedure` minus `meta`, so
+ * procedures that differ only in `.meta()` share a brand. Brands compare this
+ * shape, not the procedure type itself, so a handler for `star.find` cannot
+ * fill the `planet.find` slot even when the two types are assignable.
  */
-export type ContractShape<T> =
-  T extends ContractBuilder<infer I, infer O, infer E, infer _M>
-    ? { input: I; output: O; errors: E }
-    : T extends ContractProcedure<infer I, infer O, infer E, infer _M>
-      ? { input: I; output: O; errors: E }
-      : never
-
-export type IsContractProcedure<T> = [ContractShape<T>] extends [never]
-  ? false
-  : true
+export type ContractShape<T> = [InferContractProcedure<T>] extends [never]
+  ? never
+  : Pick<InferContractProcedure<T>, 'input' | 'output' | 'errors'>
 
 /** String keys of a contract router, minus the `~pf` brand. */
 export type ContractKeys<T> = Exclude<keyof T & string, '~pf'>
@@ -215,15 +208,17 @@ export async function runProcedure(
         context: ctx,
         errors,
         path: def.path,
-        ...(signal ? { signal } : {}),
+        ...defined({ signal }),
       })
       const outputSchema = def.contract['~pf'].output
       if (validateOutput && outputSchema) {
         const result = await validateSchema(outputSchema, output)
         if (!result.success) {
+          // `cause` is for the server log only; `toJSON()` omits it.
           throw new PFError({
             code: 'INTERNAL',
             message: 'Internal server error',
+            cause: result.issues,
           })
         }
         return result.value
@@ -299,7 +294,7 @@ export async function runProcedure(
       path: def.path,
       input: rawInput,
       context,
-      ...(signal ? { signal } : {}),
+      ...defined({ signal }),
     },
     async (current) => {
       input = current.input
@@ -356,15 +351,9 @@ export function lookupProcedure(
     if (!current || isImplementedProcedure(current)) {
       return undefined
     }
-    current = current[segment]
+    // Own keys only: a path segment such as `constructor` or `__proto__`
+    // must not reach `Object.prototype`.
+    current = Object.hasOwn(current, segment) ? current[segment] : undefined
   }
   return current && isImplementedProcedure(current) ? current : undefined
-}
-
-export function assertContractProcedure(
-  value: unknown,
-): asserts value is ContractProcedure {
-  if (!isContractProcedure(value)) {
-    throw new Error('Expected a contract procedure')
-  }
 }
