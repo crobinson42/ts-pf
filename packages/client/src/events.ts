@@ -1,4 +1,3 @@
-import { defined } from '@ts-pf/protocol'
 import type { CallInterceptor } from './call-interceptor.js'
 
 type EventCtx = {
@@ -7,12 +6,13 @@ type EventCtx = {
   signal?: AbortSignal
 }
 
+/** The interceptor ctx minus `next`; `signal` is set only when present. */
 function eventCtx(ctx: EventCtx): EventCtx {
-  return {
-    path: ctx.path,
-    input: ctx.input,
-    ...defined({ signal: ctx.signal }),
+  const out: EventCtx = { path: ctx.path, input: ctx.input }
+  if (ctx.signal !== undefined) {
+    out.signal = ctx.signal
   }
+  return out
 }
 
 export function onStart(

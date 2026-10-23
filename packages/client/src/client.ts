@@ -25,43 +25,43 @@ export function createClient(
   options?: CreateClientOptions,
 ): unknown {
   const resolved = intercept(link, options)
-  const create = (path: string[]): unknown =>
-    new Proxy(
-      (...args: unknown[]) => {
-        const { input, signal } = splitCallArgs(args)
-        return signal
-          ? resolved.call(path, input, signal)
-          : resolved.call(path, input)
+  // Each node caches its children, so `client.planet.find(...)` walks two
+  // existing proxies per call instead of building two.
+  const create = (path: string[]): unknown => {
+    const children = new Map<string, unknown>()
+    return new Proxy((...args: unknown[]) => call(resolved, path, args), {
+      get(_, key) {
+        if (key === 'then' || typeof key === 'symbol') {
+          return undefined
+        }
+        const name = String(key)
+        let child = children.get(name)
+        if (child === undefined) {
+          child = create([...path, name])
+          children.set(name, child)
+        }
+        return child
       },
-      {
-        get(_, key) {
-          if (key === 'then' || typeof key === 'symbol') {
-            return undefined
-          }
-          return create([...path, String(key)])
-        },
-      },
-    )
+    })
+  }
   return create([])
 }
 
-function splitCallArgs(args: unknown[]): {
-  input: unknown
-  signal?: AbortSignal
-} {
+/** `(input, opts?)`, or `(opts)` alone when the procedure takes no input. */
+function call(link: Link, path: string[], args: unknown[]): unknown {
   if (args.length >= 2) {
     const opts = args[1] as CallOptions | undefined
     return opts?.signal
-      ? { input: args[0], signal: opts.signal }
-      : { input: args[0] }
+      ? link.call(path, args[0], opts.signal)
+      : link.call(path, args[0])
   }
   const first = args[0]
   if (isCallOptions(first)) {
     return first.signal
-      ? { input: undefined, signal: first.signal }
-      : { input: undefined }
+      ? link.call(path, undefined, first.signal)
+      : link.call(path, undefined)
   }
-  return { input: first }
+  return link.call(path, first)
 }
 
 function isCallOptions(value: unknown): value is CallOptions {

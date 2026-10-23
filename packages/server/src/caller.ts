@@ -10,18 +10,19 @@ import {
   runProcedure,
 } from './runtime.js'
 
+/**
+ * The caller-wide `runProcedure` options, built once per client: the
+ * interceptor list and `validation` never change per call, only `signal`
+ * does. `undefined` when there is nothing to pass.
+ */
 function buildRunOptions(
-  signal: AbortSignal | undefined,
   interceptors: readonly CallInterceptor[],
   validation: ProcedureValidation | undefined,
 ): RunProcedureOptions | undefined {
-  if (!signal && interceptors.length === 0 && !validation) {
+  if (interceptors.length === 0 && !validation) {
     return undefined
   }
   const options: RunProcedureOptions = {}
-  if (signal) {
-    options.signal = signal
-  }
   if (interceptors.length > 0) {
     options.interceptors = interceptors
   }
@@ -31,11 +32,17 @@ function buildRunOptions(
   return options
 }
 
+function withSignal(
+  base: RunProcedureOptions | undefined,
+  signal: AbortSignal | undefined,
+): RunProcedureOptions | undefined {
+  return signal ? { ...base, signal } : base
+}
+
 function createNode(
   node: ImplementedProcedure | ImplementedRouter<unknown>,
   context: unknown,
-  interceptors: readonly CallInterceptor[],
-  validation: ProcedureValidation | undefined,
+  base: RunProcedureOptions | undefined,
 ): unknown {
   if (isImplementedProcedure(node)) {
     return (...args: unknown[]) => {
@@ -49,15 +56,14 @@ function createNode(
         (first as { signal?: unknown }).signal instanceof AbortSignal
       ) {
         const signal = (first as { signal: AbortSignal }).signal
-        const options = buildRunOptions(signal, interceptors, validation)
-        return options
-          ? runProcedure(node, undefined, context, options)
-          : runProcedure(node, undefined, context)
+        return runProcedure(node, undefined, context, withSignal(base, signal))
       }
-      const options = buildRunOptions(second?.signal, interceptors, validation)
-      return options
-        ? runProcedure(node, first, context, options)
-        : runProcedure(node, first, context)
+      return runProcedure(
+        node,
+        first,
+        context,
+        withSignal(base, second?.signal),
+      )
     }
   }
   const nested: Record<string, unknown> = {}
@@ -66,7 +72,7 @@ function createNode(
       continue
     }
     if (child) {
-      nested[key] = createNode(child, context, interceptors, validation)
+      nested[key] = createNode(child, context, base)
     }
   }
   return nested
@@ -90,7 +96,6 @@ export function createLocalClient<T, TCtx>(
   return createNode(
     router,
     opts.context,
-    interceptors,
-    opts.validation,
+    buildRunOptions(interceptors, opts.validation),
   ) as ContractClient<T>
 }

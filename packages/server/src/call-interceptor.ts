@@ -1,4 +1,3 @@
-import { defined } from '@ts-pf/protocol'
 import type { ImplementedProcedure } from './runtime.js'
 
 /**
@@ -31,6 +30,19 @@ type CallState = {
   signal?: AbortSignal
 }
 
+/** `signal` is set only when present: no `undefined`-valued key under `exactOptionalPropertyTypes`. */
+function callState(
+  input: unknown,
+  context: unknown,
+  signal: AbortSignal | undefined,
+): CallState {
+  const state: CallState = { input, context }
+  if (signal !== undefined) {
+    state.signal = signal
+  }
+  return state
+}
+
 export function runCallInterceptors(
   interceptors: readonly CallInterceptor[],
   ctx: {
@@ -48,28 +60,26 @@ export function runCallInterceptors(
     if (!interceptor) {
       return execute(current)
     }
-    return interceptor({
+    const interceptorCtx: Parameters<CallInterceptor>[0] = {
       procedure: ctx.procedure,
       path: interceptorPath,
       input: current.input,
       context: current.context,
-      ...defined({ signal: current.signal }),
-      next: (opts) => {
-        const nextCurrent: CallState = {
-          input: opts && 'input' in opts ? opts.input : current.input,
-          context: opts && 'context' in opts ? opts.context : current.context,
-          ...defined({
-            signal: opts && 'signal' in opts ? opts.signal : current.signal,
-          }),
-        }
-        return run(index + 1, nextCurrent)
-      },
-    })
+      next: (opts) =>
+        run(
+          index + 1,
+          callState(
+            opts && 'input' in opts ? opts.input : current.input,
+            opts && 'context' in opts ? opts.context : current.context,
+            opts && 'signal' in opts ? opts.signal : current.signal,
+          ),
+        ),
+    }
+    if (current.signal !== undefined) {
+      interceptorCtx.signal = current.signal
+    }
+    return interceptor(interceptorCtx)
   }
 
-  return run(0, {
-    input: ctx.input,
-    context: ctx.context,
-    ...defined({ signal: ctx.signal }),
-  })
+  return run(0, callState(ctx.input, ctx.context, ctx.signal))
 }
