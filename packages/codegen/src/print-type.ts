@@ -1,6 +1,6 @@
 import { pascalCase, quoteKey, quoteString } from './names.js'
 
-export type PrintResult = {
+type PrintResult = {
   ts: string
   aliases: Array<{ name: string; ts: string }>
 }

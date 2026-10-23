@@ -1,7 +1,7 @@
 import type { CatalogProcedure } from '@ts-pf/docs'
 
-export type ProcNode = { kind: 'proc'; proc: CatalogProcedure }
-export type NsNode = { kind: 'ns'; children: Map<string, TreeNode> }
+type ProcNode = { kind: 'proc'; proc: CatalogProcedure }
+type NsNode = { kind: 'ns'; children: Map<string, TreeNode> }
 export type TreeNode = ProcNode | NsNode
 
 export function buildTree(

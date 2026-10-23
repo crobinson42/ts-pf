@@ -17,7 +17,7 @@ export type OpenAPIInfo = {
   }
 }
 
-export type OpenAPIServer = {
+type OpenAPIServer = {
   url: string
   description?: string
 }
@@ -39,7 +39,7 @@ export type OpenAPIOptions = {
   multipart?: boolean
 }
 
-export type OpenAPIMediaType = {
+type OpenAPIMediaType = {
   schema?: JsonSchema
 }
 
@@ -49,7 +49,7 @@ export type OpenAPIRequestBody = {
   content: Record<string, OpenAPIMediaType>
 }
 
-export type OpenAPIResponseHeader = {
+type OpenAPIResponseHeader = {
   schema?: JsonSchema
   required?: boolean
   description?: string
@@ -61,14 +61,14 @@ export type OpenAPIResponse = {
   content?: Record<string, OpenAPIMediaType>
 }
 
-export type OpenAPIParameter = {
+type OpenAPIParameter = {
   name: string
   in: 'header' | 'query' | 'path' | 'cookie'
   required?: boolean
   schema?: JsonSchema
 }
 
-export type OpenAPIRef = {
+type OpenAPIRef = {
   $ref: string
 }
 

@@ -1,6 +1,6 @@
 export const SSE_CONTENT_TYPE = 'text/event-stream'
 
-export type SseEvent = {
+type SseEvent = {
   event: string
   data: string
 }
