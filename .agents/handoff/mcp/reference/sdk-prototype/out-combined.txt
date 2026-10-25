@@ -1,0 +1,61 @@
+
+######## HTTP modern (auto)
+tools/list alice: planet_find, get_demo_query_capabilities, call_demo_query_capability
+tools/list root : planet_find[out], get_demo_query_capabilities, call_demo_query_capability, get_demo_operations_capabilities, call_demo_operations_capability
+valid planet_find      : {"id":1,"name":"Mercury"}
+outputSchema structured: {"id":3,"name":"Earth"}
+invalid args           : Invalid input for planet_find: data/id must be integer
+Expected schema: {"type":"object","properties":{"id":{"type":"integer","minimum":1}},"required":["id"],"additionalProperties":false}
+unknown inner          : Unknown capability "planet_nuke". Valid: planet_rename, planet_delete
+hidden tool (alice)    : THROWN code=-32602: Tool call_demo_operations_capability not found
+  elicitation -> Really run planet_delete? (accept)
+destructive #1         : {"deleted":true}
+
+######## HTTP legacy
+tools/list alice: planet_find, get_demo_query_capabilities, call_demo_query_capability
+tools/list root : planet_find[out], get_demo_query_capabilities, call_demo_query_capability, get_demo_operations_capabilities, call_demo_operations_capability
+valid planet_find      : {"id":1,"name":"Mercury"}
+outputSchema structured: {"id":3,"name":"Earth"}
+invalid args           : Invalid input for planet_find: data/id must be integer
+Expected schema: {"type":"object","properties":{"id":{"type":"integer","minimum":1}},"required":["id"],"additionalProperties":false}
+unknown inner          : Unknown capability "planet_nuke". Valid: planet_rename, planet_delete
+hidden tool (alice)    : THROWN code=-32602: Tool call_demo_operations_capability not found
+destructive #1         : planet_delete is destructive. Ask the user to confirm, then retry with the same arguments plus "confirmed": true.
+destructive retry      : {"deleted":true}
+
+######## stdio modern (auto)
+tools/list alice: planet_find, get_demo_query_capabilities, call_demo_query_capability
+tools/list root : planet_find[out], get_demo_query_capabilities, call_demo_query_capability, get_demo_operations_capabilities, call_demo_operations_capability
+valid planet_find      : {"id":1,"name":"Mercury"}
+outputSchema structured: {"id":3,"name":"Earth"}
+invalid args           : Invalid input for planet_find: data/id must be integer
+Expected schema: {"type":"object","properties":{"id":{"type":"integer","minimum":1}},"required":["id"],"additionalProperties":false}
+unknown inner          : Unknown capability "planet_nuke". Valid: planet_rename, planet_delete
+hidden tool (alice)    : THROWN code=-32602: Tool call_demo_operations_capability not found
+  elicitation -> Really run planet_delete? (accept)
+destructive #1         : {"deleted":true}
+
+######## stdio legacy
+tools/list alice: planet_find, get_demo_query_capabilities, call_demo_query_capability
+tools/list root : planet_find[out], get_demo_query_capabilities, call_demo_query_capability, get_demo_operations_capabilities, call_demo_operations_capability
+valid planet_find      : {"id":1,"name":"Mercury"}
+outputSchema structured: {"id":3,"name":"Earth"}
+invalid args           : Invalid input for planet_find: data/id must be integer
+Expected schema: {"type":"object","properties":{"id":{"type":"integer","minimum":1}},"required":["id"],"additionalProperties":false}
+unknown inner          : Unknown capability "planet_nuke". Valid: planet_rename, planet_delete
+hidden tool (alice)    : THROWN code=-32602: Tool call_demo_operations_capability not found
+destructive #1         : planet_delete is destructive. Ask the user to confirm, then retry with the same arguments plus "confirmed": true.
+destructive retry      : {"deleted":true}
+
+raw tools/list (alice): {"tools":["planet_find","get_demo_query_capabilities","call_demo_query_capability"],"resultType":"complete","ttlMs":30000,"cacheScope":"private","_meta":{"io.modelcontextprotocol/serverInfo":{"name":"demo","version":"1"}}}
+raw tools/call status 200 {"result":{"content":[{"type":"text","text":"{\"id\":1,\"name\":\"Mercury\"}"}],"structuredContent":{"id":1,"name":"Mercury"},"resultType":"complete","_meta":{"
+
+| case | factory (list + registerTool) ms | e2e tools/list ms | e2e tools/call ms |
+|---|---|---|---|
+| (a) 400 flat | p50 0.61 / p95 4.72 | p50 3.01 / p95 8.84 | p50 1.24 / p95 6.23 |
+| (b) 4 hosts / 8 tools | p50 0.02 / p95 0.03 | p50 0.26 / p95 0.48 | p50 0.27 / p95 0.43 |
+
+shared instance sequential: 200:n1 | 200:n2
+  onerror: The factory returned an instance that is still serving another request. Return a new instance for each request.
+  onerror: The factory returned an instance that is still serving another request. Return a new instance for each request.
+shared instance concurrent: 200:n3 | 500:Internal server error | 500:Internal server error

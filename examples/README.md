@@ -1,6 +1,6 @@
 # Examples
 
-Small, smoke-tested apps for the procedure model. Fetch is the default adapter; `message`, `stream`, and `plugins` show other pipes, codecs, and call hooks. Every example runs its client against its handler in-process; `hello` can also listen on a port.
+Small, smoke-tested apps for the procedure model. Fetch is the default adapter; `message`, `stream`, and `plugins` show other pipes, codecs, and call hooks; `mcp` serves the same procedure model as MCP tools. Every example runs its client against its handler in-process; `hello` can also listen on a port.
 
 | Example | What |
 |---|---|
@@ -9,8 +9,9 @@ Small, smoke-tested apps for the procedure model. Fetch is the default adapter; 
 | [`message`](message) | `PortHandler` + `PortLink` over `MessageChannel` |
 | [`stream`](stream) | `StreamCodec` + `stream()` on the HTTP adapter |
 | [`plugins`](plugins) | `CallPlugin` / `CallInterceptor`, retry / cache / dedupe, custom plugins |
+| [`mcp`](mcp) | `@ts-pf/mcp` toolset + tool host, served by the MCP SDK v2 over HTTP and stdio |
 
-Suggested order: `hello` → `plugins` → `stream` → `message` → `codegen`. Each README has the same three sections: "What it shows", "Run", "What the smoke test asserts".
+Suggested order: `hello` → `plugins` → `stream` → `message` → `codegen` → `mcp`. Each README has the same three sections: "What it shows", "Run", "What the smoke test asserts".
 
 The in-process pattern every smoke test uses is written up in [`docs/testing.md`](../docs/testing.md) (guide index: [`docs/README.md`](../docs/README.md)).
 

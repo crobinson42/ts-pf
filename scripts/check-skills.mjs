@@ -243,7 +243,8 @@ for (const name of published) {
     continue
   }
   for (const symbol of symbols) {
-    const mentioned = new RegExp(`(?<![\\w$])${symbol}(?![\\w$])`).test(readme)
+    const escaped = symbol.replace(/\$/g, '\\$')
+    const mentioned = new RegExp(`(?<![\\w$])${escaped}(?![\\w$])`).test(readme)
     if (!mentioned) {
       errors.push(
         `${name}: README.md does not mention ${symbol} (listed in SKILL API)`,

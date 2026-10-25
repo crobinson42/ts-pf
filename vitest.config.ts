@@ -10,6 +10,7 @@ export default defineConfig({
       'packages/*/vitest.config.ts',
       'examples/codegen/vitest.config.ts',
       'examples/hello/vitest.config.ts',
+      'examples/mcp/vitest.config.ts',
       'examples/message/vitest.config.ts',
       'examples/plugins/vitest.config.ts',
       'examples/stream/vitest.config.ts',

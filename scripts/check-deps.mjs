@@ -42,6 +42,7 @@ const PROD = {
   message: ['protocol'],
   'message-server': ['message', 'server', 'protocol'],
   'message-client': ['message', 'client', 'protocol'],
+  mcp: ['contract', 'docs', 'server', 'protocol'],
 }
 
 // Dev-only exceptions: devDependencies and tests/ only, never prod.
@@ -61,6 +62,7 @@ const DEV = {
   codegen: ['client', 'stream'],
   swr: ['client', 'server', 'stream'],
   'mvc-kit': ['client', 'server', 'protocol'],
+  mcp: ['client'],
 }
 
 // Named "never" rules, so the message says which rule was broken. `prod`

@@ -14,4 +14,4 @@ ts-pf is pre-1.0. Only the latest published `0.x` version of each `@ts-pf/*` pac
 
 In scope: code published under `@ts-pf/*`, and the wire behaviour documented in [`packages/protocol/PROTOCOL.md`](packages/protocol/PROTOCOL.md).
 
-Out of scope: the `examples/*` workspaces (private, smoke-tested, not hardened), userland servers the README points to for hosting `FetchHandler` (`@hono/node-server`, `srvx`, Bun, Deno, Workers), and vulnerabilities in third-party schema libraries or peer dependencies (`zod`, `typebox`, `swr`, `mvc-kit`, `astro`), which should go to those projects.
+Out of scope: the `examples/*` workspaces (private, smoke-tested, not hardened), userland servers the README points to for hosting `FetchHandler` (`@hono/node-server`, `srvx`, Bun, Deno, Workers), and vulnerabilities in third-party schema libraries or peer dependencies (`zod`, `typebox`, `swr`, `mvc-kit`, `astro`, `@modelcontextprotocol/server`), which should go to those projects.

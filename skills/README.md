@@ -26,5 +26,6 @@ Hub `ts-pf-app` on `@ts-pf/contract` is the capability catalog. `npx skills expe
 | `ts-pf-swr` | `packages/swr/skills/ts-pf-swr/` | `createSwr` |
 | `ts-pf-mvc-kit` | `packages/mvc-kit/skills/ts-pf-mvc-kit/` | `bindClient` / `issuesToFieldErrors` |
 | `ts-pf-astro` | `packages/astro/skills/ts-pf-astro/` | `createAstroHandler` / `createAstroLocalClient` / `createAstroClient` |
+| `ts-pf-mcp` | `packages/mcp/skills/ts-pf-mcp/` | `createToolkit` / `all` / `bindTools` / `createMcpFactory` (MCP tools) |
 
 Library (unpublished) skill: [`.agents/skills/ts-pf/`](../.agents/skills/ts-pf/).
