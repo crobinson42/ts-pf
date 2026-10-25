@@ -42,6 +42,8 @@ describe('all()', () => {
       'user_search',
     ])
     expect(names(all(tk, { tags: ['people'] }))).toEqual(['user_search'])
+    // an empty list filters nothing, matching the types
+    expect(names(all(tk, { tags: [] }))).toEqual(names(all(tk)))
     expect(
       names(all(tk, { exclude: [tk.user, tk.admin.flags, tk.legacy.report] })),
     ).toEqual(['team_find', 'admin_purge', 'internal_reindex'])

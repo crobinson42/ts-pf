@@ -35,6 +35,32 @@ jobs:
       - run: npm run check:exports
       - run: npm run check:snippets
 
+  # @ts-pf/mcp's `./sdk` peer floor (`@modelcontextprotocol/server >=2.3.0`).
+  # The lockfile resolves the latest 2.x; this job swaps in the floor (server
+  # and client each pin core to their own version, so all three move) and reruns
+  # the mcp package and example. Their dev ranges start at the floor, so one hoisted copy serves both
+  # (two copies break `createMcpHandler`'s `instanceof McpServer` check).
+  mcp-sdk-floor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      MCP_SDK_FLOOR: 2.3.0
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: >-
+          npm install --no-save
+          @modelcontextprotocol/server@$MCP_SDK_FLOOR
+          @modelcontextprotocol/client@$MCP_SDK_FLOOR
+          @modelcontextprotocol/core@$MCP_SDK_FLOOR
+      - run: npx turbo run build --filter=@ts-pf/mcp...
+      - run: npm run type-check -w @ts-pf/mcp -w @ts-pf/example-mcp
+      - run: npx vitest run --project @ts-pf/mcp --project @ts-pf/example-mcp
+
   # PRs that change a published packages/* package must include a .changeset/*.md
   # (.agents/rules.md). `changeset status` exits non-zero when a package changed
   # since the base branch without a changeset covering it. The Version packages PR

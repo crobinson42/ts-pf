@@ -17,6 +17,7 @@ import type {
   Out,
 } from './infer.js'
 import type { Effect } from './meta.js'
+import { checkScopes } from './scopes.js'
 import type { McpCallInfo } from './types.js'
 
 /** Type-only view of the required `'~tool'` brand. At runtime the key holds a `ToolSpec`. */
@@ -37,6 +38,13 @@ export type MapperOpts<T, Ctx> = {
   /** A typed client on the same executor, for joins across procedures. */
   call: ContractClient<T>
 }
+
+/**
+ * Per-caller listing hint: `false` leaves the tool out of this caller's
+ * `tools/list`, and a call to it answers like an unknown tool. A hint, not
+ * security: procedure middleware still enforces access.
+ */
+export type Visibility = (info: McpCallInfo) => MaybePromise<boolean>
 
 // Runtime shapes of user callbacks; the typed builder signatures are checked at the call site.
 export type InjectFn = (o: { context: unknown; info: McpCallInfo }) => unknown
@@ -61,6 +69,9 @@ export interface ToolSpec {
   readonly output?: { schema?: AnySchema; map: Mapper }
   readonly errors: Readonly<Record<string, ErrorText>>
   readonly examples: readonly unknown[]
+  readonly visible?: Visibility
+  /** OAuth scopes the caller must hold; with `./sdk` and a verified token, a missing one is a `403 insufficient_scope` step-up over HTTP. */
+  readonly scopes?: readonly string[]
   /** `$tool` composites run this instead of a procedure. */
   readonly run?: (o: RuntimeOpts & { input: unknown }) => unknown
 }
@@ -152,6 +163,10 @@ export interface ToolBuilder<
   ): ToolBuilder<T, P, Ctx, Path, S>
   /** Appended to the description; returned by hosts at `detail: 'full'`. */
   examples(list: readonly S['model'][]): ToolBuilder<T, P, Ctx, Path, S>
+  /** Show the tool only to callers for whom `when(info)` is true. A hint; middleware still enforces. */
+  visible(when: Visibility): ToolBuilder<T, P, Ctx, Path, S>
+  /** OAuth scopes the caller must hold. With `./sdk` and a verified token, a missing one is a `403 insufficient_scope` step-up over HTTP before the call runs. Throws on a string that is not an OAuth scope token. */
+  scopes(scopes: readonly string[]): ToolBuilder<T, P, Ctx, Path, S>
 }
 
 /** Immutable builder: each method returns a new builder over a copied spec. */
@@ -174,6 +189,9 @@ export function createToolBuilder(spec: ToolSpec): unknown {
     errors: (errors: Record<string, ErrorText>) =>
       next({ errors: { ...spec.errors, ...errors } }),
     examples: (examples: readonly unknown[]) => next({ examples }),
+    visible: (visible: Visibility) => next({ visible }),
+    scopes: (scopes: readonly string[]) =>
+      next({ scopes: checkScopes(scopes, '.scopes()') }),
   }
 }
 

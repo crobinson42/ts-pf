@@ -1,6 +1,7 @@
 import {
   McpServer,
   type McpServerFactory,
+  type ScopeChallengeHandler,
   type StandardSchemaWithJSON,
 } from '@modelcontextprotocol/server'
 import type { JsonSchema } from '@ts-pf/docs'
@@ -15,6 +16,7 @@ import { appExecutor } from './executor.js'
 import type { MaybePromise } from './infer.js'
 import { toolName } from './names.js'
 import { DEFAULT_MAX_RESULT_CHARS } from './result.js'
+import { stepUpScopes } from './scopes.js'
 import { procedureSpec, type ToolSpec } from './tool.js'
 import { isHidden } from './tool-meta.js'
 import type { McpCallInfo, McpTools } from './types.js'
@@ -47,6 +49,30 @@ function passthrough(schema: JsonSchema): StandardSchemaWithJSON {
       validate: (value: unknown) => ({ value }),
       jsonSchema: { input: () => schema, output: () => schema },
     },
+  }
+}
+
+/**
+ * `403 insufficient_scope` before the call runs when the verified token lacks
+ * a scope the tool needs (HTTP only; the SDK skips it on stdio). No token, no
+ * challenge: that is the authentication gate's job.
+ */
+function scopeChallenge(
+  scopesFor: NonNullable<McpTools['scopesFor']>,
+  name: string,
+  base: McpCallInfo,
+): ScopeChallengeHandler {
+  return async ({ request, authInfo }) => {
+    if (!authInfo) return undefined
+    const args = (request.params as { arguments?: unknown } | undefined)
+      ?.arguments
+    const required = await scopesFor(name, args, { ...base, authInfo })
+    const stepUp = stepUpScopes(required, authInfo.scopes)
+    if (!stepUp) return undefined
+    return {
+      scopes: stepUp.scopes as [string, ...string[]],
+      errorDescription: `Requires scope ${stepUp.missing.join(', ')}`,
+    }
   }
 }
 
@@ -132,6 +158,9 @@ export function createMcpFactory(
           annotations: tool.annotations,
           inputSchema: passthrough(tool.inputSchema),
           outputSchema: tool.outputSchema && passthrough(tool.outputSchema),
+          scopeChallenge:
+            tools.scopesFor &&
+            scopeChallenge(tools.scopesFor.bind(tools), tool.name, base),
         }),
         (args, ctx) =>
           tools.call(

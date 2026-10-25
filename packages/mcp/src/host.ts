@@ -17,10 +17,21 @@ import type {
   McpToolResult,
 } from './types.js'
 
-/** A listed MCP tool and how to run it. */
-export type ToolEntry = {
+/** What one caller sees of an MCP tool, and how to run it for them. */
+export type ToolView = {
   readonly definition: McpToolDefinition
   invoke(args: unknown, info: McpCallInfo): Promise<McpToolResult>
+}
+
+/** A listed MCP tool. */
+export type ToolEntry = {
+  readonly name: string
+  /** True when a `visible` predicate can change this entry per caller. */
+  readonly dynamic: boolean
+  /** The caller's view; `undefined` when the tool is hidden from them. */
+  resolve(info: McpCallInfo): Promise<ToolView | undefined>
+  /** Scopes a call with `args` needs; for a dispatch tool, the inner tool's if this caller may see it. */
+  scopes(args: unknown, info: McpCallInfo): Promise<readonly string[]>
 }
 
 type Invoke = (
@@ -137,44 +148,44 @@ function describeInner(t: Inner, detail: Detail): Record<string, unknown> {
   return out
 }
 
-function bucketEntries(
-  key: string,
-  bucket: HostBucket | undefined,
-  host: HostSpec,
-  inner: readonly Inner[],
-  invoke: Invoke,
-  maxChars: number,
-): ToolEntry[] {
-  const scope = hostScope(key, bucket)
-  const getName = discoverToolName(scope)
-  const callName = dispatchToolName(scope)
-  const names = inner.map((t) => t.tool.name)
-  const byName = new Map(inner.map((t) => [t.tool.name, t]))
-  const cats = [
+/** Built once per bucket; per-caller views filter it. */
+type Bucket = {
+  scope: string
+  kind: string
+  host: HostSpec
+  inner: readonly Inner[]
+  byName: ReadonlyMap<string, Inner>
+  index: ReturnType<typeof createSearchIndex>
+  invoke: Invoke
+  maxChars: number
+}
+
+function sortedCategories(inner: readonly Inner[]): string[] {
+  return [
     ...new Set(inner.flatMap((t) => (t.category ? [t.category] : []))),
   ].sort()
-  const index = createSearchIndex(
-    inner.map((t) => ({
-      id: t.tool.name,
-      text: [
-        t.tool.name,
-        t.description,
-        ...tagsOf(t.tool.spec),
-        ...aliasesOf(t.tool.spec),
-        t.category ?? '',
-      ].join(' '),
-    })),
-  )
-  const kind = bucket === 'query' ? 'read-only ' : ''
+}
+
+/** The `get_*` / `call_*` pair as one caller sees it: `inner` is what they may use. */
+function bucketViews(b: Bucket, inner: readonly Inner[]): [ToolView, ToolView] {
+  const getName = discoverToolName(b.scope)
+  const callName = dispatchToolName(b.scope)
+  const names = inner.map((t) => t.tool.name)
+  const allowed = new Map(inner.map((t) => [t.tool.name, t]))
+  const cats = sortedCategories(inner)
+  const count =
+    inner.length === 1
+      ? `this ${b.kind}capability`
+      : `these ${inner.length} ${b.kind}capabilities`
   const catalog =
     inner.length <= LIST_NAMES_MAX || cats.length === 0
       ? `Capabilities: ${names.join(', ')}.`
       : `Categories: ${cats.join(', ')}.`
 
-  const discover: ToolEntry = {
+  const discover: ToolView = {
     definition: {
       name: getName,
-      description: `${host.description}\nSearch these ${inner.length} ${kind}capabilities, then run one with ${callName}. ${catalog}`,
+      description: `${b.host.description}\nSearch ${count}, then run one with ${callName}. ${catalog}`,
       inputSchema: {
         type: 'object',
         properties: {
@@ -205,40 +216,40 @@ function bucketEntries(
     async invoke(args) {
       const parsed = readDiscoverArgs(args)
       if (typeof parsed === 'string') {
-        return invalidDiscover(getName, parsed, maxChars)
+        return invalidDiscover(getName, parsed, b.maxChars)
       }
       let matches = parsed.names
-        ? parsed.names.flatMap((name) => byName.get(name) ?? [])
+        ? parsed.names.flatMap((name) => allowed.get(name) ?? [])
         : [...inner]
       if (parsed.category !== undefined) {
         matches = matches.filter((t) => t.category === parsed.category)
       }
       if (parsed.query) {
-        const allowed = new Set(matches)
-        matches = index
+        const kept = new Set(matches)
+        matches = b.index
           .search(parsed.query)
-          .flatMap((name) => byName.get(name) ?? [])
-          .filter((t) => allowed.has(t))
+          .flatMap((name) => allowed.get(name) ?? [])
+          .filter((t) => kept.has(t))
       }
       if (!parsed.names)
         matches = matches.slice(0, parsed.limit ?? DEFAULT_LIMIT)
       const detail = parsed.detail ?? 'summary'
       const result: Record<string, unknown> = {
-        scope,
+        scope: b.scope,
         total: inner.length,
         categories: cats,
         tools: matches.map((t) => describeInner(t, detail)),
       }
-      const unknown = parsed.names?.filter((name) => !byName.has(name)) ?? []
+      const unknown = parsed.names?.filter((name) => !allowed.has(name)) ?? []
       if (unknown.length > 0) result.unknown = unknown
-      return successResult(result, maxChars, false)
+      return successResult(result, b.maxChars, false)
     },
   }
 
-  const dispatch: ToolEntry = {
+  const dispatch: ToolView = {
     definition: {
       name: callName,
-      description: `Run one ${kind}${scope} capability by name. Find names and input schemas with ${getName}.`,
+      description: `Run one ${b.kind}${b.scope} capability by name. Find names and input schemas with ${getName}.`,
       inputSchema: {
         type: 'object',
         properties: {
@@ -259,17 +270,84 @@ function bucketEntries(
     },
     async invoke(args, info) {
       const name = (args as { name?: unknown } | undefined)?.name
-      const target = typeof name === 'string' ? byName.get(name) : undefined
+      const target = typeof name === 'string' ? allowed.get(name) : undefined
       if (!target) {
         return errorResult(
           `Unknown capability ${JSON.stringify(name)}. Valid: ${names.join(', ')}`,
-          maxChars,
+          b.maxChars,
         )
       }
-      return invoke(target.tool, (args as { input?: unknown }).input, info)
+      return b.invoke(target.tool, (args as { input?: unknown }).input, info)
     },
   }
   return [discover, dispatch]
+}
+
+/**
+ * The inner tools one caller may use, or `undefined` when the host is hidden
+ * from them or none is visible. Cached per `info`, so the `get_*` and `call_*`
+ * entries of one listing run each predicate once.
+ */
+function visibleInner(
+  host: HostSpec,
+  inner: readonly Inner[],
+): (info: McpCallInfo) => Promise<readonly Inner[] | undefined> {
+  const seen = new WeakMap<McpCallInfo, Promise<readonly Inner[] | undefined>>()
+  const filtered = inner.some((t) => t.tool.spec.visible)
+  const compute = async (info: McpCallInfo) => {
+    if (host.visible && !(await host.visible(info))) return undefined
+    if (!filtered) return inner
+    const shown = await Promise.all(
+      inner.map((t) => t.tool.spec.visible?.(info) ?? true),
+    )
+    const list = inner.filter((_, i) => shown[i])
+    return list.length > 0 ? list : undefined
+  }
+  return (info) => {
+    let result = seen.get(info)
+    if (!result) {
+      result = compute(info)
+      seen.set(info, result)
+    }
+    return result
+  }
+}
+
+function bucketEntries(b: Bucket): ToolEntry[] {
+  const full = bucketViews(b, b.inner)
+  const dynamic =
+    Boolean(b.host.visible) || b.inner.some((t) => t.tool.spec.visible)
+  const visible = visibleInner(b.host, b.inner)
+  const resolve =
+    (index: 0 | 1) =>
+    async (info: McpCallInfo): Promise<ToolView | undefined> => {
+      if (!dynamic) return full[index]
+      const inner = await visible(info)
+      if (!inner) return undefined
+      return inner === b.inner ? full[index] : bucketViews(b, inner)[index]
+    }
+  const [discover, dispatch] = full
+  return [
+    {
+      name: discover.definition.name,
+      dynamic,
+      resolve: resolve(0),
+      scopes: async () => [],
+    },
+    {
+      name: dispatch.definition.name,
+      dynamic,
+      resolve: resolve(1),
+      // A hidden inner tool answers "Unknown capability", never a step-up.
+      scopes: async (args, info) => {
+        const name = (args as { name?: unknown } | undefined)?.name
+        const target = typeof name === 'string' ? b.byName.get(name) : undefined
+        if (!target?.tool.spec.scopes) return []
+        const inner = dynamic ? await visible(info) : b.inner
+        return inner?.includes(target) ? target.tool.spec.scopes : []
+      },
+    },
+  ]
 }
 
 /** The `get_*_capabilities` / `call_*_capability` pairs of one host; empty buckets list nothing. */
@@ -297,6 +375,26 @@ export function hostEntries(
   return buckets
     .filter(([, list]) => list.length > 0)
     .flatMap(([bucket, list]) =>
-      bucketEntries(key, bucket, host, list, invoke, maxChars),
+      bucketEntries({
+        scope: hostScope(key, bucket),
+        kind: bucket === 'query' ? 'read-only ' : '',
+        host,
+        inner: list,
+        byName: new Map(list.map((t) => [t.tool.name, t])),
+        index: createSearchIndex(
+          list.map((t) => ({
+            id: t.tool.name,
+            text: [
+              t.tool.name,
+              t.description,
+              ...tagsOf(t.tool.spec),
+              ...aliasesOf(t.tool.spec),
+              t.category ?? '',
+            ].join(' '),
+          })),
+        ),
+        invoke,
+        maxChars,
+      }),
     )
 }

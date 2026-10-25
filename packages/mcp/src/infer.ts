@@ -28,9 +28,11 @@ export type Err<P> = InferContractProcedure<P>['errors'] extends infer E extends
   ? E
   : {}
 
-/** Every procedure path of a contract, dot-joined. */
+/** Every procedure path of a contract, dot-joined; a literal `docs({ hidden: true })` is left out. */
 export type ProcPaths<T, P extends string = ''> = {
   [K in Keys<T>]: IsContractProcedure<T[K]> extends true
-    ? `${P}${K}`
+    ? Meta<T[K]> extends { docs: { hidden: true } }
+      ? never
+      : `${P}${K}`
     : ProcPaths<T[K], `${P}${K}.`>
 }[Keys<T>]

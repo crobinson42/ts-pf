@@ -1,9 +1,15 @@
 // Checked by `tsc --noEmit` (type-check); not run by Vitest.
 import { type ContractClient, procedure, router } from '@ts-pf/contract'
+import { docs } from '@ts-pf/docs'
 import { createImplementer, type ImplementedProcedure } from '@ts-pf/server'
 import { describe, expectTypeOf, it } from 'vitest'
 import { z } from 'zod'
-import { all, bindTools, createToolkit } from '../src/index.js'
+import {
+  all,
+  bindTools,
+  createToolkit,
+  type McpCallInfo,
+} from '../src/index.js'
 import { mcp } from '../src/meta.js'
 import { createMcpFactory } from '../src/sdk.js'
 import { app, type Ctx, contract } from './fixture.js'
@@ -114,6 +120,72 @@ describe('ToolBuilder', () => {
   })
 })
 
+describe('.visible() / .scopes()', () => {
+  it('keep the builder type, so the tool still names and binds', () => {
+    const when = (info: McpCallInfo) => info.authInfo !== undefined
+    const find = tk.user.find.visible(when).scopes(['users:read'])
+    expectTypeOf(find).toEqualTypeOf<typeof tk.user.find>()
+    // @ts-expect-error a predicate gets McpCallInfo, not the context
+    tk.user.find.visible((info: { tenantId: string }) => info.tenantId === '')
+    // @ts-expect-error scopes are strings
+    tk.user.find.scopes([1])
+    const ts = tk.$toolset({
+      tools: [
+        all(tk.team, { visible: when, scopes: ['teams:read'] }),
+        { user_find: find },
+      ],
+      hosts: {
+        admin: tk.$host({
+          description: 'Admin.',
+          tools: all(tk.admin),
+          visible: async () => true,
+        }),
+      },
+    })
+    bindTools(ts, { app, context: ctx })
+  })
+})
+
+describe('all() tags and hidden (type level)', () => {
+  const widened: string[] = ['people']
+  const c = router({
+    a: procedure.meta({ ...docs({ tags: ['people', 'x'] }) }),
+    b: procedure.meta(docs({ tags: ['billing'] })),
+    none: procedure.meta(docs({ description: 'untagged' })),
+    wide: procedure.meta(docs({ tags: widened })),
+    gone: procedure.meta(docs({ tags: ['people'], hidden: true })),
+  })
+  const t = createToolkit(c)
+
+  it('keeps a literal tag match, drops a mismatch and untagged', () => {
+    const people = all(t, { tags: ['people'] })
+    expectTypeOf<keyof typeof people>().toEqualTypeOf<'a' | 'wide'>()
+  })
+
+  it('keeps widened string[] tags (unknown at the type level)', () => {
+    const billing = all(t, { tags: ['billing'] })
+    expectTypeOf<keyof typeof billing>().toEqualTypeOf<'b' | 'wide'>()
+  })
+
+  it('drops literal hidden: true with or without a filter', () => {
+    const every = all(t)
+    expectTypeOf<keyof typeof every>().toEqualTypeOf<
+      'a' | 'b' | 'none' | 'wide'
+    >()
+  })
+
+  it('a widened filter keeps everything not hidden', () => {
+    const any = all(t, { tags: widened })
+    expectTypeOf<keyof typeof any>().toEqualTypeOf<
+      'a' | 'b' | 'none' | 'wide'
+    >()
+  })
+
+  it('$coverage treats literal hidden as decided', () => {
+    t.$coverage({ toolsets: [t.$toolset({ tools: all(t) })] })
+  })
+})
+
 describe('all()', () => {
   it('filters by effect; unclassified counts as write', () => {
     const reads = all(tk.user, { effect: 'read' })
@@ -121,9 +193,8 @@ describe('all()', () => {
       'user_find' | 'user_search'
     >()
     const writes = all(tk.user, { effect: 'write' })
-    expectTypeOf<keyof typeof writes>().toEqualTypeOf<
-      'user_ping' | 'user_secret'
-    >()
+    // user_secret is docs({ hidden: true }): dropped at the type level too
+    expectTypeOf<keyof typeof writes>().toEqualTypeOf<'user_ping'>()
     const rw = all(tk.user, { effect: ['read', 'destructive'] })
     expectTypeOf<keyof typeof rw>().toEqualTypeOf<
       'user_find' | 'user_search' | 'user_remove'
@@ -291,6 +362,11 @@ describe('bindTools / createMcpFactory', () => {
     bindTools(ts, { client })
     const loose = createToolkit(contract)
     bindTools(loose.$toolset({ tools: all(loose.user) }), { client })
+    // only optional keys: context may be omitted
+    const optional = createToolkit(contract).$context<{ tenantId?: string }>()
+    bindTools(optional.$toolset({ tools: all(optional.user) }), { client })
+    // @ts-expect-error wrong context shape on the client form
+    bindTools(ts, { client, context: () => ({ tenantId: 1 }) })
   })
 
   it('requires context for a branded app only', () => {

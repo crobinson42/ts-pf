@@ -7,7 +7,7 @@ description: Use when exposing a ts-pf contract as MCP tools for LLM clients —
 
 A typed projection of a ts-pf contract into MCP tools. The contract defines the tools; an executor (`{ app, context }` in-process through `runProcedure`, or `{ client }`) runs them; `@modelcontextprotocol/server` v2 serves them.
 
-Install: `npm i @ts-pf/mcp @modelcontextprotocol/server` (peer **>=2.4.0 <3**, needed for `./sdk` only). The app already has `@ts-pf/contract` and `@ts-pf/server`; add `@ts-pf/docs` to import `docs()` in contract files.
+Install: `npm i @ts-pf/mcp @modelcontextprotocol/server` (peer **>=2.3.0 <3**, needed for `./sdk` only; keep a single copy in the app). The app already has `@ts-pf/contract` and `@ts-pf/server`; add `@ts-pf/docs` to import `docs()` in contract files.
 
 Link for agents: `npx skills experimental_sync -y`
 
@@ -60,12 +60,15 @@ export const factory = createMcpFactory(tools, { name: 'planets', version: '1.0.
 - `.inject({ tenantId: ({ context }) => context.tenantId })` removes the key from the model's schema and fills it per call (also forced safe defaults: `.inject({ includePii: () => false })`). Injected values win over anything the model sends. `all(node, { inject })` applies a key only where the input has it; a typo or a conflicting field type is a compile error naming the path.
 - `.input(schema, map)` replaces the model input; it is exclusive with `.inject` (inject inside the map).
 - `.output(map)` reshapes; `.output(schema, map)` also advertises `outputSchema`, returns `structuredContent`, and checks the result (a mismatch is `INTERNAL`). Mapper `call` is a typed client on the same executor, for joins. Literal unions in a mapper return need `as const`.
+- `all(node, { tags: ['billing'] })` and `docs({ hidden: true })` filter in the types when the contract writes them as literals; a widened `string[]` keeps the tool in the type (runtime `$coverage` still checks).
 - `.errors({ CODE: ({ data }) => 'next step' })` for declared codes only. `VALIDATION` returns the issues plus the model-facing schema. Unknown throws are `INTERNAL: Internal server error` (via `toWireError`) and logged with `console.error` unless `onError` is set.
 - More than about 15 tools in a group: `tk.$host({ description, tools: all(tk.admin) })`. `split: 'effect'` (default) gives `get_admin_query_capabilities` / `call_admin_query_capability` (read) and `get_admin_operations_capabilities` / `call_admin_operations_capability` (write + destructive); `split: false` gives `get_admin_capabilities` / `call_admin_capability`. Pin hot tools flat beside the host. Whole-server discovery is one host over `all(tk)`.
-- `tk.$coverage({ toolsets, exclude })` is a compile error (and a runtime throw) naming every procedure no toolset exposes and no `exclude` names. Hosts count; `$tool` composites do not; `docs({ hidden: true })` counts as decided at runtime.
+- `tk.$coverage({ toolsets, exclude })` is a compile error (and a runtime throw) naming every procedure no toolset exposes and no `exclude` names. Hosts count; `$tool` composites do not; `docs({ hidden: true })` counts as decided at runtime (and in types when written literally).
 - `audit(toolsets)` in CI: missing descriptions (error), unclassified tools, schema roots (unions, recursion, non-object), more than 15 tools, names over 60 characters.
 - Identity comes from `info.authInfo` (HTTP: your verified token passed to `createMcpHandler(factory).fetch(req, { authInfo })`). stdio never sets it: `serveStdio((ctx) => factory({ ...ctx, authInfo }))`, with `serveStdio` from `@modelcontextprotocol/server/stdio`. Enforce roles in procedure middleware; annotations and `docs({ hidden: true })` are hints, not security.
-- OAuth over HTTP: check the token in the SDK at the HTTP edge, so a missing or bad token is a `401` challenge and the client can start sign-in. Map claims to the app's context in `context`. A gateway calling upstream as the user uses `client: (info) => createClient(…)`. Full verifier and metadata setup: the package README, "OAuth".
+- OAuth over HTTP: check the token in the SDK at the HTTP edge, so a missing or bad token is a `401` challenge and the client can start sign-in. Map claims to the app's context in `context`. A gateway calling upstream as the user uses `client: (info) => createClient(…)` (built once per tool call, shared with mapper `call`). Full verifier and metadata setup: the package README, "OAuth".
+- Per-caller lists: `.visible((info) => boolean)` on a tool, `all(node, { visible })`, `$tool({ visible })`, `$host({ visible })`. The predicate gets `McpCallInfo` (not `context`); a hidden tool is left out of `tools/list` and a call to it answers like an unknown tool; host discovery, the `get_*` description, the `call_*` enum and annotations follow the caller's visible set.
+- Scope step-up: `.scopes(['admin'])` (also `all` / `$tool`). Over HTTP a token missing one gets `403 insufficient_scope` (granted ∪ required scopes) before the call runs, and the client re-consents; a host's `call_*` challenges per inner tool (never one hidden from the caller). Toolkit only: `createMcpFactory(app, …)` declares no scopes. A non-OAuth scope string throws a `TypeError` at build time. No token, stdio, and `tools.call()` never challenge, so middleware still enforces. Hide a tool or step up into it, not both.
 
 ```ts
 import { createMcpHandler, getOAuthProtectedResourceMetadataUrl, type OAuthMetadata, type OAuthTokenVerifier, oauthMetadataResponse, requireBearerAuth } from '@modelcontextprotocol/server'
@@ -111,7 +114,7 @@ export async function fetchHandler(request: Request): Promise<Response> {
 - `bindTools` — `{ app, context, interceptors?, onError?, maxResultChars? }` or `{ client, context?, onError?, maxResultChars? }` (`context` required when the toolkit's context type has required keys)
 - `audit` — `(toolsets, { maxTools? = 15, maxNameLength? = 60, missingDescription? = 'error' })` → `{ level, tool, message }[]`
 - `createMcpFactory` (`@ts-pf/mcp/sdk`) — `(app, { name, version, instructions?, listTtlMs?, context, interceptors?, onError?, maxResultChars? })` (`context` optional for an unbranded app) or `(tools, { name, version, instructions?, listTtlMs? })`
-- `McpTools`
+- `McpTools` — `{ list(info?), call(name, args, info?), scopesFor?(name, args, info?) }` (`scopesFor` async)
 - `McpCallInfo` — `{ authInfo?, requestInfo?, signal?, inputResponses?, era?, tool? }`; `tool` is `{ name, path }` of the tool being called (the inner tool for a host call)
 - `McpToolDefinition`
 - `McpToolResult`
@@ -131,4 +134,5 @@ export async function fetchHandler(request: Request): Promise<Response> {
 - Name contract keys starting with `$` (reserved for toolkit root members).
 - Forward `Authorization` / `Cookie` headers into context; use `info.authInfo`.
 - Expect interceptors to see the tool name; they see the procedure path. Copy `info.tool` into your context type in `context: (info) => …` if you trace tools.
-- Switch to hosts automatically by tool count, or add resources / prompts, `.visible()`, `confirm`, `.title()`, `.text()`, or custom host name templates (later versions).
+- Treat `.visible()` or `.scopes()` as access control; procedure middleware is the boundary.
+- Switch to hosts automatically by tool count, or add resources / prompts, `confirm`, `.title()`, `.text()`, or custom host name templates (later versions).
