@@ -4,11 +4,11 @@ import { type BoundTool, bindTool } from './bound-tool.js'
 import { type CallOptions, callTool } from './call.js'
 import type { McpOnError } from './error-text.js'
 import { appExecutor, clientExecutor } from './executor.js'
-import { hostEntries, type ToolEntry } from './host.js'
+import { hostEntries, type ToolEntry, type ToolView } from './host.js'
 import type { MaybePromise } from './infer.js'
 import { DEFAULT_MAX_RESULT_CHARS, errorResult } from './result.js'
 import { type Toolset, type ToolsetSpec, toolsetSpec } from './toolset.js'
-import type { McpCallInfo, McpTools } from './types.js'
+import type { McpCallInfo, McpToolResult, McpTools } from './types.js'
 
 /** Options that act inside `McpTools.call`, for both executors. */
 export type CallPipelineOptions = {
@@ -40,17 +40,36 @@ export type ClientBinding<T, Ctx> = CallPipelineOptions & {
   client: ContractClient<T> | ((info: McpCallInfo) => ContractClient<T>)
 } & ClientContext<Ctx>
 
+/** A flat tool's entry: one fixed view, hidden per caller only by its own `visible`. */
+function flatEntry(
+  tool: BoundTool,
+  invoke: (
+    tool: BoundTool,
+    args: unknown,
+    info: McpCallInfo,
+  ) => Promise<McpToolResult>,
+): ToolEntry {
+  const view: ToolView = {
+    definition: tool.definition,
+    invoke: (args, info) => invoke(tool, args, info),
+  }
+  const { visible, scopes = [] } = tool.spec
+  return {
+    name: tool.name,
+    dynamic: visible !== undefined,
+    resolve: async (info) =>
+      !visible || (await visible(info)) ? view : undefined,
+    scopes: async () => scopes,
+  }
+}
+
 /** Bound tools from runtime specs; definitions, schemas, and search indexes are built once here. */
 export function bindToolset(spec: ToolsetSpec, options: CallOptions): McpTools {
   const entries = new Map<string, ToolEntry>()
   const invoke = (tool: BoundTool, args: unknown, info: McpCallInfo) =>
     callTool(tool, args, info, options)
   for (const [name, toolSpec] of Object.entries(spec.tools)) {
-    const tool = bindTool(name, toolSpec)
-    entries.set(name, {
-      definition: tool.definition,
-      invoke: (args, info) => invoke(tool, args, info),
-    })
+    entries.set(name, flatEntry(bindTool(name, toolSpec), invoke))
   }
   for (const [key, host] of Object.entries(spec.hosts)) {
     const inner = Object.entries(host.tools).map(([name, s]) =>
@@ -63,18 +82,33 @@ export function bindToolset(spec: ToolsetSpec, options: CallOptions): McpTools {
       invoke,
       options.maxResultChars,
     )) {
-      entries.set(entry.definition.name, entry)
+      entries.set(entry.name, entry)
     }
   }
-  const definitions = [...entries.values()].map((entry) => entry.definition)
+  const all = [...entries.values()]
+  // Nothing varies per caller: list the precomputed definitions.
+  const fixed = all.some((entry) => entry.dynamic)
+    ? undefined
+    : Promise.all(all.map((entry) => entry.resolve({}))).then((views) =>
+        views.flatMap((view) => (view ? [view.definition] : [])),
+      )
   return {
-    list: async () => [...definitions],
+    async list(info = {}) {
+      if (fixed) return [...(await fixed)]
+      const views = await Promise.all(all.map((entry) => entry.resolve(info)))
+      return views.flatMap((view) => (view ? [view.definition] : []))
+    },
     async call(name, args, info = {}) {
-      const entry = entries.get(name)
-      if (!entry) {
+      const view = await entries.get(name)?.resolve(info)
+      if (!view) {
         return errorResult(`Unknown tool "${name}"`, options.maxResultChars)
       }
-      return entry.invoke(args, info)
+      return view.invoke(args, info)
+    },
+    async scopesFor(name, args, info = {}) {
+      const entry = entries.get(name)
+      if (!entry || !(await entry.resolve(info))) return []
+      return entry.scopes(args, info)
     },
   }
 }

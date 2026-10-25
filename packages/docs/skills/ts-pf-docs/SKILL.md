@@ -29,7 +29,7 @@ if (url.pathname === '/catalog.json') {
 }
 ```
 
-`docs.hidden: true` omits the procedure unless `filter: () => true`. Unconverted schemas become `{ kind: 'unavailable' }` — they do not fail the catalog.
+`docs.hidden: true` omits the procedure unless `filter: () => true`. `docs()` keeps `tags` and `hidden` as literal types when you write them inline (other fields stay `DocsMeta`), so `@ts-pf/mcp`'s `all({ tags })` and hidden filters work in types too. Unconverted schemas become `{ kind: 'unavailable' }` — they do not fail the catalog.
 
 ## API
 

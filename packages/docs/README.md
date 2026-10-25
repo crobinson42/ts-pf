@@ -27,7 +27,7 @@ export const contract = router({
 })
 ```
 
-`docs.hidden: true` omits the procedure from `catalog()` unless you pass `filter: () => true`.
+`docs.hidden: true` omits the procedure from `catalog()` unless you pass `filter: () => true`. `docs()` keeps `tags` and `hidden` as literal types when you write them inline (other fields stay `DocsMeta`), so `@ts-pf/mcp`'s `all({ tags })` and hidden filters work in types too.
 
 ## Generate a catalog
 

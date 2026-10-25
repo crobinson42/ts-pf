@@ -7,7 +7,7 @@ import {
 import { type CoverageCheck, uncoveredPaths } from './coverage.js'
 import type { DollarGuard, Split } from './names.js'
 import { type AnyNode, createNode, type ToolkitNode } from './node.js'
-import type { AnyTool } from './tool.js'
+import type { AnyTool, Visibility } from './tool.js'
 import {
   type AnyToolset,
   createHost,
@@ -35,6 +35,8 @@ export type Toolkit<T, Ctx> = ToolkitNode<T, T, Ctx, ''> & {
     tools: Tools & NameCheck<Tools, never>
     /** `'effect'` (default): `query` (read) and `operations` (write + destructive). */
     split?: Sp
+    /** Show the host only to callers for whom this is true; inner tools' `.visible()` filters what it offers. */
+    visible?: Visibility
   }): Host<Ctx, PathsOf<Tools>, NoInfer<Sp>>
   /** One MCP server's tools: flat tools (the object key is the name) plus hosts. */
   $toolset<

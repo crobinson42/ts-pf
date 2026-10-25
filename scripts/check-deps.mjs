@@ -62,7 +62,7 @@ const DEV = {
   codegen: ['client', 'stream'],
   swr: ['client', 'server', 'stream'],
   'mvc-kit': ['client', 'server', 'protocol'],
-  mcp: ['client'],
+  mcp: ['client', 'client-http', 'server-http'],
 }
 
 // Named "never" rules, so the message says which rule was broken. `prod`

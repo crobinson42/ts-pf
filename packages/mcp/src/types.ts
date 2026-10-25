@@ -50,6 +50,19 @@ export type McpToolResult = {
 
 /** A bound toolset: list and call tools without a transport (tests, agent frameworks, `./sdk`). */
 export interface McpTools {
+  /** The tools this caller may see (`.visible()` filters per caller). */
   list(info?: McpCallInfo): Promise<McpToolDefinition[]>
+  /** A tool hidden from this caller answers like an unknown tool. */
   call(name: string, args: unknown, info?: McpCallInfo): Promise<McpToolResult>
+  /**
+   * OAuth scopes a call to `name` with `args` needs (`.scopes()`; for a host's
+   * `call_*`, the named inner tool's). Empty for a tool or inner tool hidden
+   * from this caller. With `./sdk` and a verified token, a missing one is a
+   * `403 insufficient_scope` step-up over HTTP. Optional for hand-written tools.
+   */
+  scopesFor?(
+    name: string,
+    args: unknown,
+    info?: McpCallInfo,
+  ): Promise<readonly string[]>
 }

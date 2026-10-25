@@ -1,9 +1,11 @@
 import { walkContract } from '@ts-pf/docs'
+import { defined } from '@ts-pf/protocol'
 import type { DistOmit, FieldOf, KeysOfUnion, Meta } from './infer.js'
 import type { Effect } from './meta.js'
 import { type ToolName, toolName } from './names.js'
 import { type AnyNode, type NodeBrand, type NodeCtx, nodeInfo } from './node.js'
 import { procedureInputKeys } from './schema.js'
+import { checkScopes } from './scopes.js'
 import {
   type AnyTool,
   createToolBuilder,
@@ -12,6 +14,7 @@ import {
   procedureSpec,
   type ToolBuilder,
   toolSpec,
+  type Visibility,
 } from './tool.js'
 import { effectOf, isHidden, tagsOf } from './tool-meta.js'
 import type { McpCallInfo } from './types.js'
@@ -37,6 +40,38 @@ type ToolEffect<Tl> =
       : 'write'
     : 'write'
 
+/** Typed `docs()` meta; `{}` when the procedure has none. */
+type DocsOf<Tl> =
+  Tl extends ToolBuilder<infer _T, infer P, infer _C, infer _Path, infer _S>
+    ? Meta<P> extends { docs: infer D }
+      ? D
+      : string extends keyof Meta<P>
+        ? { tags?: string[] } // index-signature meta: unknown, keep
+        : {}
+    : {}
+
+/**
+ * Mirrors the runtime filter where the types know: a literal `hidden: true` is
+ * dropped; with a tags filter, literal tags must intersect it and no tags is
+ * dropped. Widened `string[]` tags or a widened filter keep the tool.
+ */
+type Visible<Tl, Tg extends string> =
+  DocsOf<Tl> extends infer D
+    ? D extends { hidden: true }
+      ? false
+      : [Tg] extends [never]
+        ? true
+        : string extends Tg
+          ? true
+          : D extends { tags?: infer L extends readonly string[] }
+            ? string extends L[number]
+              ? true
+              : [Extract<L[number], Tg>] extends [never]
+                ? false
+                : true
+            : false
+    : true
+
 type Injected<Tl, IK extends PropertyKey> = [IK] extends [never]
   ? Tl
   : Tl extends ToolBuilder<infer T, infer P, infer C, infer Path, infer S>
@@ -56,8 +91,17 @@ type Injected<Tl, IK extends PropertyKey> = [IK] extends [never]
  * filtering `as` clause here would re-run over every leaf on each `keyof`,
  * which the toolset name checks take several times.
  */
-export type AllTools<N, X, E, IK extends PropertyKey> = {
-  [Tl in Selected<N, X, E> as ToolName<Tl['~tool']['path']>]: Injected<Tl, IK>
+export type AllTools<
+  N,
+  X,
+  E,
+  IK extends PropertyKey,
+  Tg extends string = never,
+> = {
+  [Tl in Selected<N, X, E, Tg> as ToolName<Tl['~tool']['path']>]: Injected<
+    Tl,
+    IK
+  >
 }
 
 type ModelOf<Tl> = Tl extends AnyTool ? Tl['~tool']['model'] : never
@@ -65,13 +109,15 @@ type ModelOf<Tl> = Tl extends AnyTool ? Tl['~tool']['model'] : never
 type InjectCtx<N> = {
   [k: string]: (o: { context: NodeCtx<N>; info: McpCallInfo }) => unknown
 }
-type Selected<N, X, E> =
+type Selected<N, X, E, Tg extends string> =
   LeafTools<N> extends infer Tl
     ? Tl extends AnyTool
       ? Tl['~tool']['path'] extends ExcludedPath<X>
         ? never
         : ToolEffect<Tl> extends E
-          ? Tl
+          ? Visible<Tl, Tg> extends true
+            ? Tl
+            : never
           : never
       : never
     : never
@@ -97,13 +143,25 @@ type AllInjectCheck<Tls, Inj> = {
     : `"${K & string}" is not an input field of any selected procedure`
 }
 
-export type AllOptions<N, X extends readonly unknown[], E, Inj> = {
+export type AllOptions<
+  N,
+  X extends readonly unknown[],
+  E,
+  Inj,
+  Tg extends string = never,
+> = {
   exclude?: X
   effect?: E | readonly E[]
-  /** `docs()` tags; a procedure matches when it has any of them. Filtered at runtime only. */
-  tags?: readonly string[]
+  /** `docs()` tags; a procedure matches when it has any of them. An empty list filters nothing. */
+  tags?: readonly Tg[]
+  /** Per-caller listing hint for every selected tool, as `.visible()`. */
+  visible?: Visibility
+  /** OAuth scopes every selected tool requires, as `.scopes()`. */
+  scopes?: readonly string[]
   /** Each key goes only to tools whose input has it. */
-  inject?: Inj & InjectCtx<N> & AllInjectCheck<Selected<N, X[number], E>, Inj>
+  inject?: Inj &
+    InjectCtx<N> &
+    AllInjectCheck<Selected<N, X[number], E, Tg>, Inj>
 }
 
 type Exclusion = { path: string; subtree: boolean }
@@ -126,17 +184,18 @@ function isExcluded(path: string, exclusions: readonly Exclusion[]): boolean {
 /**
  * Default tools for every procedure under `node`, named by path. Skips
  * `docs({ hidden: true })` procedures, then filters by `exclude`, `effect`,
- * and `tags`, and applies `inject` per tool.
+ * and `tags`, and applies `inject`, `visible`, and `scopes` per tool.
  */
 export function all<
   N extends AnyNode,
   const X extends readonly (AnyTool | AnyNode)[] = [],
   const E extends Effect = Effect,
   Inj extends object = {},
+  const Tg extends string = never,
 >(
   node: N,
-  options?: AllOptions<N, X, E, Inj>,
-): AllTools<N, X[number], E, keyof Inj> {
+  options?: AllOptions<N, X, E, Inj, Tg>,
+): AllTools<N, X[number], E, keyof Inj, Tg> {
   const info = nodeInfo(node)
   if (!info) {
     throw new TypeError('all() takes a toolkit node, e.g. all(tk.user)')
@@ -144,7 +203,11 @@ export function all<
   const exclusions = (options?.exclude ?? []).map(exclusion)
   const effects =
     options?.effect === undefined ? undefined : [options.effect].flat()
-  const tags = options?.tags
+  const tags: readonly string[] | undefined = options?.tags
+  const shared = defined({
+    visible: options?.visible,
+    scopes: options?.scopes && checkScopes(options.scopes, 'all()'),
+  })
   const inject = (options?.inject ?? {}) as Record<string, InjectFn>
   const tools: Record<string, unknown> = {}
   for (const entry of walkContract(info.contract)) {
@@ -152,7 +215,8 @@ export function all<
     const spec = procedureSpec(path, entry.procedure)
     if (isHidden(spec) || isExcluded(path, exclusions)) continue
     if (effects && !effects.includes(effectOf(spec) as E)) continue
-    if (tags && !tagsOf(spec).some((tag) => tags.includes(tag))) continue
+    if (tags?.length && !tagsOf(spec).some((tag) => tags.includes(tag)))
+      continue
     const keys = procedureInputKeys(spec).filter((key) =>
       Object.hasOwn(inject, key),
     )
@@ -162,6 +226,7 @@ export function all<
     }
     tools[name] = createToolBuilder({
       ...spec,
+      ...shared,
       inject: Object.fromEntries(
         keys.map((key) => [key, inject[key] as InjectFn]),
       ),

@@ -11,8 +11,8 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@modelcontextprotocol/client": "^2.4.0",
-    "@modelcontextprotocol/server": "^2.4.0",
+    "@modelcontextprotocol/client": "^2.3.0",
+    "@modelcontextprotocol/server": "^2.3.0",
     "@ts-pf/contract": "0.2.1",
     "@ts-pf/docs": "0.1.8",
     "@ts-pf/mcp": "*",

@@ -112,9 +112,9 @@ An independent judge scored them blind, labelled only A/B/C, checking every clai
 | 17 | Drift detection | Compile errors at each tool, plus `tk.$coverage({ toolsets, exclude })`, which counts host tools | A new procedure fails the build until someone decides | A | Type spike |
 | 18 | Transport | SDK v2 owns it; a fresh `McpServer` per request with passthrough schemas | About 0.6 ms per request at 400 tools; a shared instance fails under concurrency | Prototype | Run |
 | 19 | Resources and prompts | Not in v1; reads stay tools | Cursor shows no resource support; elsewhere they are mostly user-attached | B, C rejected | Reasoning |
-| 20 | Package | One `@ts-pf/mcp` with `./meta` (no deps), root, and `./sdk` (peer SDK `>=2.4.0 <3`) | Contract files import only `./meta`, so no server code reaches client bundles | A | Repo |
+| 20 | Package | One `@ts-pf/mcp` with `./meta` (no deps), root, and `./sdk` (peer SDK `>=2.3.0 <3`) | Contract files import only `./meta`, so no server code reaches client bundles. The floor (widened from 2.4.0 on Oct 25, 2026): every API the adapter uses exists from 2.0.0, `scopeChallenge` from 2.1.0, and `requireBearerAuth({ expectedResource })`, which the OAuth docs use, from 2.3.0 (ignored silently before). CI job `mcp-sdk-floor` runs the package and example on 2.3.0 | A | Repo, Run |
 
-The type cost of the whole design, measured on a 400-procedure fixture, is about +1.0 s check time and +0.7M instantiations over the contract and app alone (2.81 s vs 1.77 s). It covers:
+The type cost of the whole design, measured on a 400-procedure fixture, is about +1.0 s check time and +0.7M instantiations over the contract and app alone (2.81 s vs 1.77 s, spike era). The package's `bench:types` on the same shape, after the v1.1 follow-ups (literal `docs()` tags on every procedure), measures +0.39 s and +0.64M (1.09 s vs 0.70 s). It covers:
 
 - 20 shaped tools
 - `all()` with typed `inject`
@@ -398,6 +398,20 @@ No server caching is needed. Reusing one instance fails as soon as two requests 
 - For a remote gateway, `client` may be a function of `info`, so upstream calls carry the caller's identity: `bindTools(toolset, { client: (info) => clientFor(info.authInfo) })`.
 - Enforcement stays in procedure middleware. Hiding tools and annotations are hints, not security.
 
+**Per-caller lists (v1.1, `.visible()`).**
+
+- `tk.x.y.visible((info) => …)`, `all(node, { visible })`, `$tool({ visible })` and `$host({ visible })`. The predicate gets `McpCallInfo` only (sync or async), never `context`, so listing never runs the context factory.
+- `McpTools.list(info)` evaluates predicates per caller; with none in the toolset it returns the precomputed list. A host's `visible` hides its whole pair(s); inner tools' `visible` filters discovery (`total`, `categories`, results, `unknown`), the `get_*` description (count, names or categories) and its `category` enum, the `call_*` `name` enum, and the dispatch annotations. A bucket with no visible inner tool is not listed.
+- A hidden tool is not registered on that caller's `McpServer` (`-32602`); `McpTools.call` answers `Unknown tool "x"`; a hidden inner tool answers `Unknown capability "x". Valid: <visible names>`. Visibility is a hint: middleware still enforces.
+- `tools/list` cache hints stay `cacheScope: 'private'`; a `listTtlMs` above 0 can serve a stale list after the caller's scopes change (for example after a step-up).
+
+**OAuth scope step-up (v1.1, `.scopes()`).**
+
+- `.scopes(['admin'])`, `all(node, { scopes })`, `$tool({ scopes })`; scope tokens are checked against the OAuth grammar at build time.
+- `McpTools.scopesFor?(name, args, info?)` (async) reports what a call needs (for a host's `call_*`, the named inner tool's; empty for a tool or inner tool hidden from the caller, so a hidden capability is never revealed by a challenge); `./sdk` registers an SDK `scopeChallenge` per tool from it. Over HTTP, when the verified token lacks one, the SDK answers `403 insufficient_scope` before the call runs, with `scope` = granted ∪ required (the MCP authorization spec's recommended set) and `resource_metadata` from `authInfo.resourceMetadataUrl`. No token, no challenge (that is the authentication gate's job). stdio and `McpTools.call` never enforce it; middleware does.
+- Verified with MCP Inspector 2.12 on both eras: 403 → re-consent with `mcp admin` → retry succeeds; an unscoped inner tool on the same `call_*` is not challenged.
+- Hide a tool (`visible`) or step up into it (`scopes`), not both: a hidden tool cannot be stepped up into (a flat one is not registered; a hidden inner tool answers `Unknown capability`).
+
 **Destructive actions, three layers:**
 
 1. `effect: 'destructive'` sets `destructiveHint`, so clients that prompt per tool ask first. Hosts are split by effect, so the operations host carries the hint.
@@ -413,12 +427,12 @@ No server caching is needed. Reusing one instance fails as soon as two requests 
 
 ## Package shape and v1 scope
 
-**One package, three entry points, ten public names. v1 covers everything you asked for; per-caller visibility, confirmations and the extras follow in v1.1 and later.**
+**One package, three entry points, ten public names. v1 covers everything you asked for; per-caller visibility, scope step-up and type-level `tags` / hidden shipped in v1.1; confirmations and the extras follow.**
 
 ```
 @ts-pf/mcp/meta  → no dependencies (mcp() only; safe in contract files)
 @ts-pf/mcp       → contract + docs (toJsonSchema, getDocs) + server (runProcedure, lookupProcedure) + protocol (toWireError)
-@ts-pf/mcp/sdk   → @ts-pf/mcp + peer @modelcontextprotocol/server >=2.4.0 <3
+@ts-pf/mcp/sdk   → @ts-pf/mcp + peer @modelcontextprotocol/server >=2.3.0 <3
 ```
 
 | Export | Entry | Role |
@@ -444,7 +458,9 @@ No server caching is needed. Reusing one instance fails as soon as two requests 
 | `bindTools` for `app` and `client`; `createMcpFactory (app or McpTools)` | In | — |
 | `audit()`: unclassified, missing descriptions, schema roots, more than 15 tools, names over 60 chars (our soft limit for Cursor; the spec allows 128). Coverage lives only in $coverage | In | Token estimates in v1.1 |
 | `maxResultChars` truncation, `onError`, interceptors | In | — |
-| `.visible()` per-caller tool lists | — | v1.1 (the factory already supports it) |
+| `.visible()` per-caller tool lists | v1.1 (done) | — |
+| OAuth scope step-up (`.scopes()` → `403 insufficient_scope`) | v1.1 (done) | — |
+| Type-level `all({ tags })` / literal `docs({ hidden: true })` | v1.1 (done) | — |
 | `confirm: true` via `inputRequired` with fallback | — | v1.1 |
 | `.title()`, `.text()`, custom host name templates | — | v1.1 |
 | Streams (collect + progress), file inputs | — | v2 |
@@ -503,7 +519,7 @@ The repo checklist applies: a `skills/ts-pf-mcp/SKILL.md`, the README `## API` l
 | --- | --- |
 | Recursive schemas and `allOf` / union roots break `$ref` inlining and `inject` key removal | Detect in `schema.ts`; `audit()` names the tool and suggests `.input(schema, map)` |
 | Long type errors on name collisions and bad bindings, because builders carry the contract type | Messages are literal and specific, just long. v1.1 tries a `Register`-style interface and keeps it only if mapper `call` stays typed |
-| `ContractBuilder.meta()` widens nested literals | The `mcp()` helper uses a `const` type parameter. Optionally ask `@ts-pf/contract` to make `.meta()` `const` too |
+| `ContractBuilder.meta()` widens nested literals | The `mcp()` helper uses a `const` type parameter, and `docs()` keeps `tags` / `hidden` literal (other fields stay `DocsMeta`), so `all({ tags })` and hidden filter in types too; `.meta()` needs no change. Widened values (`string[]` tags, `boolean` hidden) keep the tool in the type, and the runtime `$coverage` closes the gap |
 | Confirmations on legacy (2025) connections rely on the model honoring the `confirmed: true` retry | v1.1; middleware still enforces role and scope, and `audit()` flags tools that depend on it |
 | The MCP grouping standard (Progressive Disclosure WG) may define its own shape | All host logic lives behind `$host` in one module, so re-mapping is local |
 

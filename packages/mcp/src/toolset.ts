@@ -1,3 +1,4 @@
+import { defined } from '@ts-pf/protocol'
 import type { KeysOfUnion } from './infer.js'
 import {
   discoverToolName,
@@ -6,7 +7,13 @@ import {
   hostScope,
   type Split,
 } from './names.js'
-import { type AnyTool, isTool, type ToolSpec, toolSpec } from './tool.js'
+import {
+  type AnyTool,
+  isTool,
+  type ToolSpec,
+  toolSpec,
+  type Visibility,
+} from './tool.js'
 
 export type ToolRecord<Ctx = never> = { readonly [name: string]: AnyTool<Ctx> }
 export type ToolsInput<Ctx = never> =
@@ -64,6 +71,8 @@ export type HostSpec = {
   readonly description: string
   readonly tools: Readonly<Record<string, ToolSpec>>
   readonly split: Split
+  /** Hides the whole host; inner tools' own `visible` filters what it offers. */
+  readonly visible?: Visibility
 }
 
 export interface Host<Ctx, Paths extends string, Sp extends Split> {
@@ -150,11 +159,13 @@ export function createHost(def: {
   description: string
   tools: unknown
   split?: Split
+  visible?: Visibility
 }): unknown {
   if (!def.description) {
     throw new TypeError('$host(): description is required')
   }
   const spec: HostSpec = {
+    ...defined({ visible: def.visible }),
     description: def.description,
     tools: collectTools(def.tools, '$host()'),
     split: def.split ?? 'effect',

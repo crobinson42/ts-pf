@@ -69,7 +69,8 @@ function procedureAt(client: unknown, path: string) {
 /**
  * `createClient()` returns a callable proxy, so `typeof` cannot tell it from a
  * per-caller `(info) => client`. A client answers every key with a callable
- * child; a plain factory function has no such key.
+ * child whatever its `Link`; a plain factory function has no such key, and
+ * `createLocalClient()` is a plain object.
  */
 function isClientFactory(
   source: ClientSource<AnyClient>,
@@ -86,8 +87,18 @@ export function clientExecutor(
   source: ClientSource<AnyClient>,
   context: ((info: McpCallInfo) => MaybePromise<unknown>) | undefined,
 ): Executor {
-  const resolve = (info: McpCallInfo): AnyClient =>
-    isClientFactory(source) ? source(info) : source
+  // One client per tool call: `run` and the mappers' `call` share it.
+  const perCall = new WeakMap<McpCallInfo, AnyClient>()
+  const resolve = isClientFactory(source)
+    ? (info: McpCallInfo): AnyClient => {
+        let client = perCall.get(info)
+        if (!client) {
+          client = source(info)
+          perCall.set(info, client)
+        }
+        return client
+      }
+    : (): AnyClient => source
   return {
     context: async (info) => (context ? context(info) : {}),
     run: async (path, input, _ctx, info) =>

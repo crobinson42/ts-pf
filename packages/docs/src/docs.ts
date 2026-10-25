@@ -8,8 +8,21 @@ export interface DocsMeta {
   hidden?: boolean
 }
 
-export function docs(value: DocsMeta): { [DOCS_KEY]: DocsMeta } {
-  return { [DOCS_KEY]: value }
+/** `DocsMeta` with `tags` / `hidden` kept literal when given, so `@ts-pf/mcp` can filter on them in types. */
+type TypedDocs<Tags extends string[], Hidden extends boolean> = Omit<
+  DocsMeta,
+  'tags' | 'hidden'
+> &
+  ([Tags] extends [never] ? {} : { tags: Tags }) &
+  ([Hidden] extends [never] ? {} : { hidden: Hidden })
+
+export function docs<
+  const Tags extends string[] = never,
+  const Hidden extends boolean = never,
+>(
+  value: Omit<DocsMeta, 'tags' | 'hidden'> & { tags?: Tags; hidden?: Hidden },
+): { [DOCS_KEY]: TypedDocs<Tags, Hidden> } {
+  return { [DOCS_KEY]: value as TypedDocs<Tags, Hidden> }
 }
 
 export function getDocs(meta: Record<string, unknown>): DocsMeta | undefined {

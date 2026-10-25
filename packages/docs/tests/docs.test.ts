@@ -1,6 +1,6 @@
 import { procedure } from '@ts-pf/contract'
 import { describe, expect, expectTypeOf, it } from 'vitest'
-import { DOCS_KEY, docs, getDocs } from '../src/docs.js'
+import { DOCS_KEY, type DocsMeta, docs, getDocs } from '../src/docs.js'
 
 describe('docs()', () => {
   it('returns a meta fragment under the docs key', () => {
@@ -39,5 +39,18 @@ describe('docs()', () => {
       hidden: true,
     })
     expectTypeOf(fragment.docs.description).toEqualTypeOf<string | undefined>()
+  })
+
+  it('keeps tags and hidden literal, and leaves them out when not given', () => {
+    const fragment = docs({ description: 'x', tags: ['planet'], hidden: true })
+    expectTypeOf(fragment.docs.tags).toEqualTypeOf<['planet']>()
+    expectTypeOf(fragment.docs.hidden).toEqualTypeOf<true>()
+    expectTypeOf(docs({ summary: 'y' }).docs).not.toHaveProperty('tags')
+    const wide: string[] = ['a']
+    expectTypeOf(docs({ tags: wide }).docs.tags).toEqualTypeOf<string[]>()
+    const meta: DocsMeta = fragment.docs
+    expect(meta.tags).toEqual(['planet'])
+    // @ts-expect-error unknown keys are still rejected
+    docs({ descripton: 'typo' })
   })
 })

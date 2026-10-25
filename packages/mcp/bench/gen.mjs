@@ -5,7 +5,9 @@
 // three split hosts, name checks, $coverage, bindTools, both createMcpFactory
 // forms). Budget: about +1 s check time. Needs `npm run build` first.
 //
-// Usage: npm run bench:types -w @ts-pf/mcp [-- --runs 3]
+// Usage: npm run bench:types -w @ts-pf/mcp [-- --runs 3] [--tagged]
+// Every procedure carries a literal docs() tag; --tagged also marks five
+// procedures hidden and adds an all({ tags }) toolset (the type-level filters).
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
@@ -20,6 +22,7 @@ const runsArg = process.argv.indexOf('--runs')
 const runs = runsArg > 0 ? Number(process.argv[runsArg + 1]) : 3
 const range = (n) => [...Array(n).keys()]
 const effects = ["'read'", "'write'", "'read'", "'destructive'"]
+const TAGGED = process.argv.includes('--tagged')
 
 function contract() {
   const slices = range(SLICES).map((i) => {
@@ -28,7 +31,7 @@ function contract() {
       .input(z.object({ tenantId: z.string(), id${i}: z.string(), n: z.number(), tag: z.enum(['a', 'b']) }))
       .output(z.object({ id: z.string(), name${i}: z.string(), count: z.number() }))
       .errors({ NOT_FOUND: { status: 404, data: z.object({ id: z.string() }) } })
-      .meta({ ...docs({ description: 'Procedure ${j} of slice ${i}.' }), ...mcp({ effect: ${effects[j % 4]} }) }),`,
+      .meta({ ...docs({ description: 'Procedure ${j} of slice ${i}.', tags: ['t${j % 4}']${TAGGED && j === 19 && i < 5 ? ', hidden: true' : ''} }), ...mcp({ effect: ${effects[j % 4]} }) }),`,
     )
     return `  s${i}: {\n${procs.join('\n')}\n  },`
   })
@@ -85,7 +88,7 @@ const tk = createToolkit(contract).$context<Ctx>()
     .map((i) => `shaped_s${i}: t_s${i}`)
     .join(', ')
   src += `export const ts = tk.$toolset({ tools: [flat, { ${named} }], hosts: { s17: h17, s18: h18, s19: h19 } })
-tk.$coverage({ toolsets: [ts] })
+${TAGGED ? "export const tagged = tk.$toolset({ tools: all(tk.s16, { tags: ['t1'], inject: { tenantId: ({ context }) => context.tenantId } }) })\n" : ''}tk.$coverage({ toolsets: [ts${TAGGED ? ', tagged' : ''}] })
 export const factory = createMcpFactory(bindTools(ts, { app, context: () => ({ tenantId: 't' }) }), { name: 'x', version: '1' })
 export const factory2 = createMcpFactory(app, { name: 'x', version: '1', context: () => ({ tenantId: 't' }) })
 `
