@@ -18,6 +18,7 @@
     "@ts-pf/example-codegen-client",
     "@ts-pf/example-codegen-server",
     "@ts-pf/example-hello",
+    "@ts-pf/example-mcp",
     "@ts-pf/example-message",
     "@ts-pf/example-plugins",
     "@ts-pf/example-stream"

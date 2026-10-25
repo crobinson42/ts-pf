@@ -1,6 +1,6 @@
 # Testing
 
-ts-pf apps are tested without a port. Every example in [`examples/`](../examples/README.md) runs its client against its handler in-process, and the two patterns below are all they use. Snippets assume [Vitest](https://vitest.dev) but nothing here depends on it.
+ts-pf apps are tested without a port. Every example in [`examples/`](../examples/README.md) runs its client against its handler in-process, and the two patterns below are all they use (`examples/mcp` is the exception: it drives the MCP SDK client through `createMcpHandler(...).fetch` and an `InMemoryTransport` pair). Snippets assume [Vitest](https://vitest.dev) but nothing here depends on it.
 
 The app under test on this page: the README contract (`planet.list` / `find` / `create`) with an inline auth middleware on `create`.
 

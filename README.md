@@ -43,6 +43,7 @@ The packages are ESM and ship `exports` only, so `tsconfig.json` needs `"moduleR
 | [`@ts-pf/swr`](packages/swr) | Opt-in SWR keys, fetchers, mutators, and matchers |
 | [`@ts-pf/mvc-kit`](packages/mvc-kit) | Opt-in `bindClient` + `issuesToFieldErrors` for mvc-kit Resources |
 | [`@ts-pf/astro`](packages/astro) | Opt-in Astro endpoint (`createAstroHandler`) and page caller (`createAstroLocalClient` / `createAstroClient`) |
+| [`@ts-pf/mcp`](packages/mcp) | Opt-in MCP tools from a contract: toolkit, toolsets, tool hosts, `$coverage`, and an MCP SDK v2 server factory |
 
 Wire spec: [packages/protocol/PROTOCOL.md](packages/protocol/PROTOCOL.md).
 
@@ -482,7 +483,7 @@ oRPC is a dual RPC + OpenAPI platform with many adapters, serializers, and integ
 
 ## Examples
 
-Smoke-tested examples in [`examples/`](examples/): [`hello`](examples/hello) (Fetch; also runs as a server with `npm run dev`), [`codegen`](examples/codegen) (split-repo `emit` / `createClient<Contract>`), [`message`](examples/message) (MessagePort), [`stream`](examples/stream) (`StreamCodec`), [`plugins`](examples/plugins) (`CallPlugin` / `CallInterceptor`). Each exercises its client against its handler in-process; build first (`npm run build`), then see [`examples/README.md`](examples/README.md).
+Smoke-tested examples in [`examples/`](examples/): [`hello`](examples/hello) (Fetch; also runs as a server with `npm run dev`), [`codegen`](examples/codegen) (split-repo `emit` / `createClient<Contract>`), [`message`](examples/message) (MessagePort), [`stream`](examples/stream) (`StreamCodec`), [`plugins`](examples/plugins) (`CallPlugin` / `CallInterceptor`), [`mcp`](examples/mcp) (`@ts-pf/mcp` over the MCP SDK v2). Each exercises its client against its handler in-process; build first (`npm run build`), then see [`examples/README.md`](examples/README.md).
 
 ## Development
 

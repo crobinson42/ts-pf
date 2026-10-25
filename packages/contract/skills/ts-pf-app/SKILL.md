@@ -1,6 +1,6 @@
 ---
 name: ts-pf-app
-description: Use when building an app with ts-pf — picking packages, writing a contract, implementing a server, creating a client, composing feature slices, or choosing Fetch vs file upload vs stream vs SSE vs message vs docs vs OpenAPI vs codegen vs SWR vs mvc-kit vs astro. Triggers: ts-pf, @ts-pf, RPC, createImplementer, FetchHandler, createClient, FetchLink, MultipartCodec, StreamCodec, SseCodec, PortHandler, docs(), catalog(), openapi(), emit(), createSwr, bindClient, createAstroHandler, feature slice.
+description: Use when building an app with ts-pf — picking packages, writing a contract, implementing a server, creating a client, composing feature slices, or choosing Fetch vs file upload vs stream vs SSE vs message vs docs vs OpenAPI vs codegen vs SWR vs mvc-kit vs astro vs mcp (MCP tools for LLM clients). Triggers: ts-pf, @ts-pf, RPC, createImplementer, FetchHandler, createClient, FetchLink, MultipartCodec, StreamCodec, SseCodec, PortHandler, docs(), catalog(), openapi(), emit(), createSwr, bindClient, createAstroHandler, createToolkit, createMcpFactory, MCP, feature slice.
 ---
 
 # ts-pf (app)
@@ -128,8 +128,9 @@ No `mergeRouters`. No `compose()`. No lazy routers.
 | SWR | `@ts-pf/swr` | `ts-pf-swr` |
 | mvc-kit Resources | `@ts-pf/mvc-kit` | `ts-pf-mvc-kit` |
 | Astro endpoint / pages | `@ts-pf/astro` | `ts-pf-astro` |
+| MCP tools for LLM clients | `@ts-pf/mcp` (peer `@modelcontextprotocol/server` for `./sdk`) | `ts-pf-mcp` |
 
-File, stream, SSE, and message are opt-in codecs/transports — default handler/link stay JSON. Docs, OpenAPI, codegen, SWR, mvc-kit, and Astro are other opt-in packages. Snippets below match the package-skill happy path; load `ts-pf-<pkg>` for API lists and Don'ts.
+File, stream, SSE, and message are opt-in codecs/transports — default handler/link stay JSON. Docs, OpenAPI, codegen, SWR, mvc-kit, Astro, and MCP are other opt-in packages. Snippets below match the package-skill happy path; load `ts-pf-<pkg>` for API lists and Don'ts.
 
 ### File / Blob — `@ts-pf/file` → `ts-pf-file`
 
@@ -274,6 +275,16 @@ export const client = createAstroClient<typeof contract>({
 ```
 
 On-demand endpoint (`ALL`, `prerender = false`). Pages call `createAstroLocalClient` in-process. Islands import `@ts-pf/astro/client` or `@ts-pf/astro`, never `@ts-pf/astro/server`.
+
+### MCP — `@ts-pf/mcp` → `ts-pf-mcp`
+
+```ts
+import { createMcpFactory } from '@ts-pf/mcp/sdk'
+
+export const factory = createMcpFactory(app, { name: 'planets', version: '1.0.0' })
+```
+
+Every procedure becomes a tool (`planet.find` → `planet_find`); serve with `createMcpHandler(factory)` from `@modelcontextprotocol/server` or `serveStdio(factory)` from `@modelcontextprotocol/server/stdio` (SDK v2). Shape tools with `createToolkit(contract)` (`.describe` / `.inject` / `.output` / `.errors`), split with `$toolset` / `$host`, and gate drift with `$coverage`. Contract files import only `@ts-pf/mcp/meta` (`mcp({ effect })`).
 
 ## Names
 

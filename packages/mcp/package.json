@@ -1,0 +1,82 @@
+{
+  "name": "@ts-pf/mcp",
+  "version": "0.0.0",
+  "description": "Opt-in typed projection of a ts-pf contract into MCP tools",
+  "keywords": [
+    "ts-pf",
+    "typescript",
+    "rpc",
+    "typesafe",
+    "typed-rpc",
+    "api",
+    "contract-first",
+    "mcp",
+    "model-context-protocol",
+    "llm",
+    "ai",
+    "tools"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/crobinson42/ts-pf.git",
+    "directory": "packages/mcp"
+  },
+  "homepage": "https://github.com/crobinson42/ts-pf/tree/main/packages/mcp#readme",
+  "bugs": {
+    "url": "https://github.com/crobinson42/ts-pf/issues"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./meta": {
+      "types": "./dist/meta.d.ts",
+      "import": "./dist/meta.js"
+    },
+    "./sdk": {
+      "types": "./dist/sdk.d.ts",
+      "import": "./dist/sdk.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "skills"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "type-check": "tsc --noEmit",
+    "lint": "biome check src tests bench/gen.mjs",
+    "bench:types": "node bench/gen.mjs"
+  },
+  "dependencies": {
+    "@ts-pf/contract": "0.2.0",
+    "@ts-pf/docs": "0.1.7",
+    "@ts-pf/protocol": "0.2.0",
+    "@ts-pf/server": "0.4.0"
+  },
+  "peerDependencies": {
+    "@modelcontextprotocol/server": ">=2.4.0 <3"
+  },
+  "peerDependenciesMeta": {
+    "@modelcontextprotocol/server": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "^2.4.0",
+    "@modelcontextprotocol/server": "^2.4.0",
+    "@ts-pf/client": "0.2.0",
+    "zod": "^4.0.0"
+  }
+}

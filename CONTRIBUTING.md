@@ -85,6 +85,7 @@ The checklist for a new published package (`package.json` fields, `LICENSE`, ski
 | `message` | `PortHandler` + `PortLink` over `MessageChannel` |
 | `stream` | `StreamCodec` + `stream()` |
 | `plugins` | `CallPlugin` / `CallInterceptor`, first-party retry / cache / dedupe, local timeout and audit plugins |
+| `mcp` | `@ts-pf/mcp` toolset + tool host, served by the MCP SDK v2 client over HTTP and stdio in both protocol eras |
 
 Only `hello` listens; the others are smoke-tested. Do not add a framework adapter package to make an example simpler.
 
