@@ -155,12 +155,12 @@ packages/mcp/src/
   node.ts             ToolkitNode type + lazy memoized Proxy over a contract node ('~node' info)
   tool.ts             ToolBuilder type (default-param .input, constrained-return .output, literal error stubs, .visible / .scopes), ToolSpec (runtime '~tool'), Visibility, immutable createToolBuilder
   composite.ts        $tool composites (path never at type level, '' at runtime)
-  all.ts              all() + AllTools / typed inject checks (exclude / effect / tags / literal hidden narrow the type); runtime filters hidden / effect / tags / exclude; visible / scopes per tool
+  all.ts              all() + AllTools / typed inject checks (exclude / effect / tags / literal hidden narrow the type); runtime filters hidden / effect / tags / exclude; visible / scopes per tool; inject fails closed (throws on unreadable input keys; open inputs take every key)
   toolset.ts          $toolset / $host runtime + NameCheck / HostsCheck types (the RouterImplCheck trick)
   coverage.ts         CoverageCheck type + uncoveredPaths runtime ($coverage throws too)
   toolkit.ts          Toolkit type + createToolkit (root $ members)
   tool-meta.ts        effect / description / tags / aliases / hidden / annotations from spec + contract meta
-  schema.ts           model-facing JSON Schema (toJsonSchema, $ref inlining, injected-key removal, object root; issues with levels for audit)
+  schema.ts           model-facing JSON Schema (toJsonSchema, $ref inlining, injected-key removal across union / allOf members, object root; procedureInputKeys → { keys, open } or undefined; issues with levels for audit)
   bound-tool.ts       BoundTool: definition + schema computed once per tool
   executor.ts         appExecutor (lookupProcedure + runProcedure; createLocalClient for mapper call) / clientExecutor (static or per-caller client, built once per call; tells a createClient proxy from a factory once)
   call.ts             one call: context → inject / .input map → procedure → .output map + check → result; errors via error-text

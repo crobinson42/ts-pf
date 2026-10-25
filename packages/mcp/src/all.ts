@@ -13,6 +13,7 @@ import {
   isTool,
   procedureSpec,
   type ToolBuilder,
+  type ToolSpec,
   toolSpec,
   type Visibility,
 } from './tool.js'
@@ -158,7 +159,7 @@ export type AllOptions<
   visible?: Visibility
   /** OAuth scopes every selected tool requires, as `.scopes()`. */
   scopes?: readonly string[]
-  /** Each key goes only to tools whose input has it. */
+  /** Each key goes only to tools whose input has it (every key for a record input). */
   inject?: Inj &
     InjectCtx<N> &
     AllInjectCheck<Selected<N, X[number], E, Tg>, Inj>
@@ -179,6 +180,26 @@ function isExcluded(path: string, exclusions: readonly Exclusion[]): boolean {
       path === x.path ||
       (x.subtree && (x.path === '' || path.startsWith(`${x.path}.`))),
   )
+}
+
+/**
+ * The requested `inject` keys this tool's input has. Fails closed: an input
+ * whose keys cannot be read throws rather than leaving a key to the model.
+ */
+function injectedKeys(
+  spec: ToolSpec,
+  requested: readonly string[],
+): readonly string[] {
+  if (requested.length === 0) return requested
+  const input = procedureInputKeys(spec)
+  if (!input) {
+    throw new Error(
+      `all(): cannot read the input keys of "${spec.path}" to apply inject; exclude it and bind it with .input(schema, map) (or .inject())`,
+    )
+  }
+  return input.open
+    ? requested
+    : requested.filter((key) => input.keys.includes(key))
 }
 
 /**
@@ -209,6 +230,7 @@ export function all<
     scopes: options?.scopes && checkScopes(options.scopes, 'all()'),
   })
   const inject = (options?.inject ?? {}) as Record<string, InjectFn>
+  const requested = Object.keys(inject)
   const tools: Record<string, unknown> = {}
   for (const entry of walkContract(info.contract)) {
     const path = [...info.path, ...entry.path].join('.')
@@ -217,9 +239,7 @@ export function all<
     if (effects && !effects.includes(effectOf(spec) as E)) continue
     if (tags?.length && !tagsOf(spec).some((tag) => tags.includes(tag)))
       continue
-    const keys = procedureInputKeys(spec).filter((key) =>
-      Object.hasOwn(inject, key),
-    )
+    const keys = injectedKeys(spec, requested)
     const name = toolName(path)
     if (Object.hasOwn(tools, name)) {
       throw new Error(`all(): duplicate tool name "${name}"`)

@@ -5,6 +5,7 @@ import {
   createImplementer,
   createLocalClient,
 } from '@ts-pf/server'
+import Type from 'typebox'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import {
@@ -304,6 +305,58 @@ describe('bindTools (app)', () => {
     expect(text(await tools.call('x', {}))).toBe('FORBIDDEN: Admins only')
     const admin = { token: 't', clientId: 'c', scopes: ['admin'] }
     expect(text(await tools.call('x', {}, { authInfo: admin }))).toBe('secret')
+  })
+})
+
+describe('all({ inject }) on intersection inputs', () => {
+  const reports = router({
+    report: {
+      list: procedure
+        .input(
+          Type.Intersect([
+            Type.Object({ month: Type.String() }),
+            Type.Object({ tenantId: Type.String() }),
+          ]),
+        )
+        .output(Type.String()),
+    },
+  })
+  const impl = createImplementer(reports).$context<Ctx>()
+  const reportApp = impl.router({
+    report: {
+      list: impl.report.list.handler(({ input }) => input.tenantId),
+    },
+  })
+  const rtk = createToolkit(reports).$context<Ctx>()
+
+  it('hides the key from every allOf member and fills it over the model', async () => {
+    const tools = bindTools(
+      rtk.$toolset({ tools: all(rtk.report, { inject: tenant }) }),
+      { app: reportApp, context: ctx },
+    )
+    const [def] = await tools.list()
+    expect(JSON.stringify(def?.inputSchema)).not.toContain('tenantId')
+    const result = await tools.call('report_list', {
+      month: '2026-10',
+      tenantId: 'victim',
+    })
+    expect(text(result)).toBe('ctx-tenant')
+  })
+
+  it('throws when a selected input has no readable keys', () => {
+    const input = z.object({ tenantId: z.string(), id: z.string() })
+    // validates like Zod, but has no JSON Schema
+    const opaque = {
+      '~standard': { ...input['~standard'], jsonSchema: undefined },
+    } as unknown as z.ZodType<z.infer<typeof input>>
+    const opaqueContract = router({
+      x: { find: procedure.input(opaque).output(z.string()) },
+    })
+    const otk = createToolkit(opaqueContract).$context<Ctx>()
+    expect(() => all(otk.x, { inject: tenant })).toThrow(
+      'all(): cannot read the input keys of "x.find" to apply inject',
+    )
+    expect(Object.keys(all(otk.x))).toEqual(['x_find'])
   })
 })
 

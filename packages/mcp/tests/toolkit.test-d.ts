@@ -2,6 +2,7 @@
 import { type ContractClient, procedure, router } from '@ts-pf/contract'
 import { docs } from '@ts-pf/docs'
 import { createImplementer, type ImplementedProcedure } from '@ts-pf/server'
+import Type from 'typebox'
 import { describe, expectTypeOf, it } from 'vitest'
 import { z } from 'zod'
 import {
@@ -216,6 +217,27 @@ describe('all()', () => {
     injected.user_search.examples([{ q: 'bob' }])
     // @ts-expect-error tenantId already injected by all(): no silent overlap
     injected.user_find.inject({ tenantId: () => 'x' })
+  })
+
+  it('injects into intersection inputs', () => {
+    const reports = router({
+      report: {
+        list: procedure
+          .input(
+            Type.Intersect([
+              Type.Object({ month: Type.String() }),
+              Type.Object({ tenantId: Type.String() }),
+            ]),
+          )
+          .output(Type.String()),
+      },
+    })
+    const injected = all(createToolkit(reports).$context<Ctx>().report, {
+      inject: { tenantId: ({ context }) => context.tenantId },
+    })
+    expectTypeOf<
+      keyof (typeof injected.report_list)['~tool']['model']
+    >().toEqualTypeOf<'month'>()
   })
 
   it('names bad inject keys and conflicting fields', () => {

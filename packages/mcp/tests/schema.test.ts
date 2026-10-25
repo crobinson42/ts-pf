@@ -1,7 +1,12 @@
 import { procedure } from '@ts-pf/contract'
+import Type from 'typebox'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
-import { modelInputSchema, modelOutputSchema } from '../src/schema.js'
+import {
+  modelInputSchema,
+  modelOutputSchema,
+  procedureInputKeys,
+} from '../src/schema.js'
 import { procedureSpec, type ToolSpec } from '../src/tool.js'
 
 const spec = (input: unknown, patch: Partial<ToolSpec> = {}): ToolSpec => ({
@@ -9,6 +14,19 @@ const spec = (input: unknown, patch: Partial<ToolSpec> = {}): ToolSpec => ({
   ...patch,
 })
 const noop = () => undefined
+/** A Standard Schema whose JSON Schema is `json` (or none at all). */
+const standard = (json?: object) => ({
+  '~standard': {
+    version: 1,
+    vendor: 'test',
+    validate: (value: unknown) => ({ value }),
+    ...(json && { jsonSchema: { input: () => json, output: () => json } }),
+  },
+})
+const intersection = Type.Intersect([
+  Type.Object({ id: Type.String() }),
+  Type.Object({ tenantId: Type.String() }),
+])
 
 describe('modelInputSchema', () => {
   it('removes injected keys from properties and required', () => {
@@ -35,6 +53,24 @@ describe('modelInputSchema', () => {
     )
     expect(schema.type).toBe('object')
     expect(JSON.stringify(schema)).not.toContain('tenantId')
+    expect(issues.map((i) => i.level)).toEqual(['warn'])
+  })
+
+  it('removes injected keys from every allOf member', () => {
+    const { schema, issues } = modelInputSchema(
+      spec(intersection, { inject: { tenantId: noop } }),
+    )
+    expect(schema).toEqual({
+      type: 'object',
+      allOf: [
+        {
+          type: 'object',
+          required: ['id'],
+          properties: { id: { type: 'string' } },
+        },
+        { type: 'object', required: [], properties: {} },
+      ],
+    })
     expect(issues.map((i) => i.level)).toEqual(['warn'])
   })
 
@@ -72,6 +108,48 @@ describe('modelInputSchema', () => {
     const { schema, issues } = modelInputSchema(spec(z.string()))
     expect(schema).toEqual({ type: 'object', properties: {} })
     expect(issues[0]?.level).toBe('error')
+  })
+})
+
+describe('procedureInputKeys', () => {
+  it('reads properties of the root and every union / allOf member', () => {
+    expect(procedureInputKeys(procedureSpec('x', procedure))).toEqual({
+      keys: [],
+      open: false,
+    })
+    expect(procedureInputKeys(spec(intersection))).toEqual({
+      keys: ['id', 'tenantId'],
+      open: false,
+    })
+    const nested = Type.Intersect([
+      Type.Object({ id: Type.String() }),
+      Type.Union([
+        Type.Object({ tenantId: Type.String() }),
+        Type.Object({ teamId: Type.String() }),
+      ]),
+    ])
+    expect(procedureInputKeys(spec(nested))?.keys).toEqual([
+      'id',
+      'tenantId',
+      'teamId',
+    ])
+  })
+
+  it('marks a record member open', () => {
+    const input = z
+      .record(z.string(), z.string())
+      .and(z.object({ id: z.string() }))
+    expect(procedureInputKeys(spec(input))).toEqual({
+      keys: ['id'],
+      open: true,
+    })
+  })
+
+  it('cannot read a recursive $ref member or an input with no JSON Schema', () => {
+    expect(
+      procedureInputKeys(spec(standard({ allOf: [{ $ref: '#' }] }))),
+    ).toBeUndefined()
+    expect(procedureInputKeys(spec(standard()))).toBeUndefined()
   })
 })
 

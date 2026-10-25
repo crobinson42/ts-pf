@@ -266,7 +266,7 @@ export const usersMcp   = tk.$toolset({ tools: [all(tk.user, { inject: tenant })
 `all(node, { effect?, tags?, exclude?, inject? })` selects tools, then applies the rest:
 
 - **Selection:** by classification (one effect or an array) and `docs()` tags. Procedures marked `docs({ hidden: true })` are skipped.
-- **`inject`:** each key goes only to tools whose input has it, which covers multi-tenant contracts in one line. It is type-checked against the selected procedures. A typo fails with "`tenantID` is not an input field of any selected procedure". A type conflict names the offending path, e.g. "Injected `tenantId` does not fit field `legacy.report.tenantId`", and the fix is to exclude that procedure.
+- **`inject`:** each key goes only to tools whose input has it, which covers multi-tenant contracts in one line. Keys are read from the root and every union / `allOf` member; a record, loose, or catchall input (or member) takes every key. It fails closed: an input with no readable JSON Schema (or a recursive `$ref` member) makes `all()` throw instead of leaving the key to the model. It is type-checked against the selected procedures. A typo fails with "`tenantID` is not an input field of any selected procedure". A type conflict names the offending path, e.g. "Injected `tenantId` does not fit field `legacy.report.tenantId`", and the fix is to exclude that procedure.
 - **Re-injecting** an injected key on a tool is a type error, so `inject` settings can never silently overlap.
 
 ### Tool hosts: one mechanism for every size
@@ -517,7 +517,7 @@ The repo checklist applies: a `skills/ts-pf-mcp/SKILL.md`, the README `## API` l
 
 | Risk | Mitigation |
 | --- | --- |
-| Recursive schemas and `allOf` / union roots break `$ref` inlining and `inject` key removal | Detect in `schema.ts`; `audit()` names the tool and suggests `.input(schema, map)` |
+| Recursive schemas and `allOf` / union roots break `$ref` inlining and `inject` key removal | `schema.ts` removes injected keys from every union / `allOf` member; `all({ inject })` throws on inputs whose keys it cannot read; `audit()` warns on union / `allOf` roots and recursive schemas and suggests `.input(schema, map)` |
 | Long type errors on name collisions and bad bindings, because builders carry the contract type | Messages are literal and specific, just long. v1.1 tries a `Register`-style interface and keeps it only if mapper `call` stays typed |
 | `ContractBuilder.meta()` widens nested literals | The `mcp()` helper uses a `const` type parameter, and `docs()` keeps `tags` / `hidden` literal (other fields stay `DocsMeta`), so `all({ tags })` and hidden filter in types too; `.meta()` needs no change. Widened values (`string[]` tags, `boolean` hidden) keep the tool in the type, and the runtime `$coverage` closes the gap |
 | Confirmations on legacy (2025) connections rely on the model honoring the `confirmed: true` retry | v1.1; middleware still enforces role and scope, and `audit()` flags tools that depend on it |
