@@ -1,6 +1,6 @@
 ---
 name: ts-pf-docs
-description: Use when building a ts-pf procedure catalog with docs(), catalog(), walkContract, or registerJsonSchemaConverter. Triggers: @ts-pf/docs, catalog(), docs(), walkContract.
+description: "Use when building a ts-pf procedure catalog with docs(), catalog(), walkContract, or registerJsonSchemaConverter. Triggers: @ts-pf/docs, catalog(), docs(), walkContract."
 ---
 
 # @ts-pf/docs

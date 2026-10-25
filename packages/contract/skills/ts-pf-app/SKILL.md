@@ -1,6 +1,6 @@
 ---
 name: ts-pf-app
-description: Use when building an app with ts-pf — picking packages, writing a contract, implementing a server, creating a client, composing feature slices, or choosing Fetch vs file upload vs stream vs SSE vs message vs docs vs OpenAPI vs codegen vs SWR vs mvc-kit vs astro vs mcp (MCP tools for LLM clients). Triggers: ts-pf, @ts-pf, RPC, createImplementer, FetchHandler, createClient, FetchLink, MultipartCodec, StreamCodec, SseCodec, PortHandler, docs(), catalog(), openapi(), emit(), createSwr, bindClient, createAstroHandler, createToolkit, createMcpFactory, MCP, feature slice.
+description: "Use when building an app with ts-pf — picking packages, writing a contract, implementing a server, creating a client, composing feature slices, or choosing Fetch vs file upload vs stream vs SSE vs message vs docs vs OpenAPI vs codegen vs SWR vs mvc-kit vs astro vs mcp (MCP tools for LLM clients). Triggers: ts-pf, @ts-pf, RPC, createImplementer, FetchHandler, createClient, FetchLink, MultipartCodec, StreamCodec, SseCodec, PortHandler, docs(), catalog(), openapi(), emit(), createSwr, bindClient, createAstroHandler, createToolkit, createMcpFactory, MCP, feature slice."
 ---
 
 # ts-pf (app)

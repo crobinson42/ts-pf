@@ -1,6 +1,6 @@
 ---
 name: ts-pf-openapi
-description: Use when projecting a ts-pf catalog() to OpenAPI 3.1 with openapi(). Triggers: @ts-pf/openapi, openapi(), OpenAPI 3.1, POST JSON RPC spec.
+description: "Use when projecting a ts-pf catalog() to OpenAPI 3.1 with openapi(). Triggers: @ts-pf/openapi, openapi(), OpenAPI 3.1, POST JSON RPC spec."
 ---
 
 # @ts-pf/openapi

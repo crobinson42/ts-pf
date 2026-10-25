@@ -1,6 +1,6 @@
 ---
 name: ts-pf-sse
-description: Use when framing ts-pf stream output as text/event-stream with SseCodec. Triggers: @ts-pf/sse, SseCodec, SSE_CONTENT_TYPE.
+description: "Use when framing ts-pf stream output as text/event-stream with SseCodec. Triggers: @ts-pf/sse, SseCodec, SSE_CONTENT_TYPE."
 ---
 
 # @ts-pf/sse

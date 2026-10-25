@@ -1,6 +1,6 @@
 ---
 name: ts-pf-codegen
-description: Use when emitting a split-repo ts-pf Contract .d.ts from catalog() with emit, catalogHash, or ts-pf-codegen. Triggers: @ts-pf/codegen, emit(), catalogHash(), ts-pf-codegen, generated Contract.
+description: "Use when emitting a split-repo ts-pf Contract .d.ts from catalog() with emit, catalogHash, or ts-pf-codegen. Triggers: @ts-pf/codegen, emit(), catalogHash(), ts-pf-codegen, generated Contract."
 ---
 
 # @ts-pf/codegen

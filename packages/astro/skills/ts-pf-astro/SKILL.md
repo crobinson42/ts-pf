@@ -1,6 +1,6 @@
 ---
 name: ts-pf-astro
-description: Use when serving a ts-pf API from an Astro endpoint or calling it in a page or island. Triggers: @ts-pf/astro, createAstroHandler, createAstroLocalClient, createAstroClient, withBase.
+description: "Use when serving a ts-pf API from an Astro endpoint or calling it in a page or island. Triggers: @ts-pf/astro, createAstroHandler, createAstroLocalClient, createAstroClient, withBase."
 ---
 
 # @ts-pf/astro

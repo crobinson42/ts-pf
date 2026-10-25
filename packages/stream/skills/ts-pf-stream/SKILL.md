@@ -1,6 +1,6 @@
 ---
 name: ts-pf-stream
-description: Use when streaming root AsyncIterable over ts-pf with stream() and StreamCodec (JSONL). Triggers: @ts-pf/stream, StreamCodec, stream(), application/jsonl.
+description: "Use when streaming root AsyncIterable over ts-pf with stream() and StreamCodec (JSONL). Triggers: @ts-pf/stream, StreamCodec, stream(), application/jsonl."
 ---
 
 # @ts-pf/stream

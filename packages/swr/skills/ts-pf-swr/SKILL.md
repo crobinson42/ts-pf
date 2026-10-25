@@ -1,6 +1,6 @@
 ---
 name: ts-pf-swr
-description: Use when wiring a ts-pf client to SWR with createSwr keys, fetchers, mutators, matchers, or subscribers. Triggers: @ts-pf/swr, createSwr, useSWR, swr.fetcher.
+description: "Use when wiring a ts-pf client to SWR with createSwr keys, fetchers, mutators, matchers, or subscribers. Triggers: @ts-pf/swr, createSwr, useSWR, swr.fetcher."
 ---
 
 # @ts-pf/swr

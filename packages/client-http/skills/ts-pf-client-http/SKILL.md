@@ -1,6 +1,6 @@
 ---
 name: ts-pf-client-http
-description: Use when calling ts-pf over Fetch with FetchLink or Fetch Interceptors for headers. Triggers: @ts-pf/client-http, FetchLink, Interceptor.
+description: "Use when calling ts-pf over Fetch with FetchLink or Fetch Interceptors for headers. Triggers: @ts-pf/client-http, FetchLink, Interceptor."
 ---
 
 # @ts-pf/client-http

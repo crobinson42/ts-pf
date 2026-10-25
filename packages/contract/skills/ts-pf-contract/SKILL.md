@@ -1,6 +1,6 @@
 ---
 name: ts-pf-contract
-description: Use when defining a ts-pf contract with procedure, router, schemas, typed errors, or InferContract* types. Triggers: @ts-pf/contract, procedure, router, registerSchemaAdapter, ClientError, .errors(), .input(), .output().
+description: "Use when defining a ts-pf contract with procedure, router, schemas, typed errors, or InferContract* types. Triggers: @ts-pf/contract, procedure, router, registerSchemaAdapter, ClientError, .errors(), .input(), .output()."
 ---
 
 # @ts-pf/contract

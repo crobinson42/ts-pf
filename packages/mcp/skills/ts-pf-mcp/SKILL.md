@@ -1,6 +1,6 @@
 ---
 name: ts-pf-mcp
-description: Use when exposing a ts-pf contract as MCP tools for LLM clients — one-call serving, shaping tools for the model, toolsets, tool hosts, coverage, or serving over HTTP / stdio with the MCP SDK v2. Triggers: @ts-pf/mcp, MCP, Model Context Protocol, createToolkit, createMcpFactory, bindTools, all(), $toolset, $host, $coverage, mcp({ effect }), audit().
+description: "Use when exposing a ts-pf contract as MCP tools for LLM clients — one-call serving, shaping tools for the model, toolsets, tool hosts, coverage, or serving over HTTP / stdio with the MCP SDK v2. Triggers: @ts-pf/mcp, MCP, Model Context Protocol, createToolkit, createMcpFactory, bindTools, all(), $toolset, $host, $coverage, mcp({ effect }), audit()."
 ---
 
 # @ts-pf/mcp

@@ -1,6 +1,6 @@
 ---
 name: ts-pf-message-server
-description: Use when serving ts-pf over MessagePort, WebSocket, stdio, or your own Duplex with PortHandler, WsHandler, StdioHandler, or DuplexHandler. Triggers: @ts-pf/message-server, PortHandler, WsHandler, StdioHandler, DuplexHandler.
+description: "Use when serving ts-pf over MessagePort, WebSocket, stdio, or your own Duplex with PortHandler, WsHandler, StdioHandler, or DuplexHandler. Triggers: @ts-pf/message-server, PortHandler, WsHandler, StdioHandler, DuplexHandler."
 ---
 
 # @ts-pf/message-server
