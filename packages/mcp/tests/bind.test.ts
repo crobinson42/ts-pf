@@ -1,4 +1,5 @@
 import { procedure, router } from '@ts-pf/contract'
+import { docs } from '@ts-pf/docs'
 import { PFError } from '@ts-pf/protocol'
 import {
   type CallInterceptor,
@@ -357,6 +358,65 @@ describe('all({ inject }) on intersection inputs', () => {
       'all(): cannot read the input keys of "x.find" to apply inject',
     )
     expect(Object.keys(all(otk.x))).toEqual(['x_find'])
+  })
+})
+
+describe('all({ inject }) with open inputs', () => {
+  const open = router({
+    user: {
+      find: procedure
+        .input(z.object({ tenantId: z.string(), id: z.string() }))
+        .output(z.string()),
+    },
+    kv: {
+      set: procedure.input(z.record(z.string(), z.string())).output(z.string()),
+    },
+  })
+  const impl = createImplementer(open).$context<Ctx>()
+  const openApp = impl.router({
+    user: { find: impl.user.find.handler(({ input }) => input.tenantId) },
+    kv: { set: impl.kv.set.handler(({ input }) => input.tenantId ?? '-') },
+  })
+  const otk = createToolkit(open).$context<Ctx>()
+
+  it('fills the key on a record input too', async () => {
+    const tools = bindTools(
+      otk.$toolset({ tools: all(otk, { inject: tenant }) }),
+      { app: openApp, context: ctx },
+    )
+    const result = await tools.call('kv_set', { tenantId: 'victim' })
+    expect(text(result)).toBe('ctx-tenant')
+  })
+
+  it('throws on a key no selected input declares, even past the types', () => {
+    const typo = { tenantID: tenant.tenantId } as unknown as typeof tenant
+    expect(() => all(otk, { inject: typo })).toThrow(
+      'all(): inject key "tenantID" is not an input field of any selected procedure',
+    )
+    expect(() => all(otk.kv, { inject: tenant as never })).toThrow(
+      'inject key "tenantId"',
+    )
+  })
+
+  it('checks keys before the runtime-only filters (tags, hidden)', () => {
+    const input = z.object({ tenantId: z.string() })
+    const opaque = {
+      '~standard': { ...input['~standard'], jsonSchema: undefined },
+    } as unknown as z.ZodType<z.infer<typeof input>>
+    const mixed = router({
+      user: {
+        find: procedure
+          .input(z.object({ tenantId: z.string(), id: z.string() }))
+          .output(z.string()),
+        internal: procedure
+          .input(opaque)
+          .output(z.string())
+          .meta(docs({ hidden: true })),
+      },
+    })
+    const mtk = createToolkit(mixed).$context<Ctx>()
+    expect(all(mtk, { tags: ['none'], inject: tenant })).toEqual({})
+    expect(Object.keys(all(mtk, { inject: tenant }))).toEqual(['user_find'])
   })
 })
 

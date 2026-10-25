@@ -254,6 +254,64 @@ describe('all()', () => {
       inject: { tenantId: ({ context }) => context.tenantId },
     })
   })
+
+  it('does not let an open input hide a typo', () => {
+    const open = router({
+      user: {
+        find: procedure
+          .input(z.object({ tenantId: z.string(), id: z.string() }))
+          .output(z.string()),
+      },
+      kv: {
+        set: procedure
+          .input(z.record(z.string(), z.string()))
+          .output(z.string()),
+        tagged: procedure
+          .input(z.record(z.templateLiteral([z.string(), '-id']), z.string()))
+          .output(z.string()),
+        scoped: procedure
+          .input(
+            z
+              .record(z.string(), z.string())
+              .and(z.object({ tenantId: z.string() })),
+          )
+          .output(z.string()),
+        count: procedure
+          .input(z.record(z.string(), z.number()))
+          .output(z.string()),
+      },
+    })
+    const otk = createToolkit(open).$context<Ctx>()
+    all(otk, {
+      exclude: [otk.kv.count],
+      // @ts-expect-error "tenantID" is not an input field of any selected procedure
+      inject: { tenantID: ({ context }) => context.tenantId },
+    })
+    all(otk, {
+      exclude: [otk.kv.count],
+      inject: { tenantId: ({ context }) => context.tenantId },
+    })
+    // declared by a record & object member
+    all(otk.kv, {
+      exclude: [otk.kv.count],
+      inject: { tenantId: ({ context }) => context.tenantId },
+    })
+    all(otk.kv, {
+      exclude: [otk.kv.scoped, otk.kv.count],
+      // @ts-expect-error records only: bind the tool with .inject()
+      inject: { tenantId: ({ context }) => context.tenantId },
+    })
+    all(otk.kv, {
+      exclude: [otk.kv.set, otk.kv.scoped, otk.kv.count],
+      // @ts-expect-error a template-literal index signature declares nothing
+      inject: { 'team-id': ({ context }) => context.tenantId },
+    })
+    otk.kv.set.inject({ tenantId: ({ context }) => context.tenantId })
+    all(otk, {
+      // @ts-expect-error Injected "tenantId" does not fit field kv.count.tenantId
+      inject: { tenantId: ({ context }) => context.tenantId },
+    })
+  })
 })
 
 describe('$host / $toolset names', () => {

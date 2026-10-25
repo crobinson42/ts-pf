@@ -150,12 +150,12 @@ packages/mcp/src/
   index.ts            root: createToolkit, all, bindTools, audit, the four Mcp* types, type-only builder / toolset types
   sdk.ts              createMcpFactory (./sdk): per-request McpServer, passthrough StandardSchemaWithJSON, cacheHints, scopeChallenge from McpTools.scopesFor; app form walks implemented leaves (~pf.contract) into tool specs
   types.ts            McpCallInfo (tool?: { name, path }), McpToolDefinition, McpToolResult, McpTools
-  infer.ts            type helpers (KeysOfUnion, DistOmit, In/Out/Meta/Err, ProcPaths)
+  infer.ts            type helpers (KeysOfUnion, DeclaredKeysOfUnion, DistOmit, In/Out/Meta/Err, ProcPaths)
   names.ts            ToolName / toolName, HostToolNames, host scope + get_/call_ names, DollarGuard ($-key error)
   node.ts             ToolkitNode type + lazy memoized Proxy over a contract node ('~node' info)
   tool.ts             ToolBuilder type (default-param .input, constrained-return .output, literal error stubs, .visible / .scopes), ToolSpec (runtime '~tool'), Visibility, immutable createToolBuilder
   composite.ts        $tool composites (path never at type level, '' at runtime)
-  all.ts              all() + AllTools / typed inject checks (exclude / effect / tags / literal hidden narrow the type); runtime filters hidden / effect / tags / exclude; visible / scopes per tool; inject fails closed (throws on unreadable input keys; open inputs take every key)
+  all.ts              all() + AllTools / typed inject checks (exclude / effect / tags / literal hidden narrow the type); runtime filters hidden / effect / tags / exclude; visible / scopes per tool; inject fails closed (throws on unreadable input keys and on keys no selected input declares, the runtime twin of the DeclaredKeysOfUnion type check, collected before the hidden / tags filters so it is never stricter than the types; open inputs take every key)
   toolset.ts          $toolset / $host runtime + NameCheck / HostsCheck types (the RouterImplCheck trick)
   coverage.ts         CoverageCheck type + uncoveredPaths runtime ($coverage throws too)
   toolkit.ts          Toolkit type + createToolkit (root $ members)
