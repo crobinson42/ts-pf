@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/mcp",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Opt-in typed projection of a ts-pf contract into MCP tools",
   "keywords": [
     "ts-pf",
@@ -60,10 +60,10 @@
     "bench:types": "node bench/gen.mjs"
   },
   "dependencies": {
-    "@ts-pf/contract": "0.2.0",
-    "@ts-pf/docs": "0.1.7",
+    "@ts-pf/contract": "0.2.1",
+    "@ts-pf/docs": "0.1.8",
     "@ts-pf/protocol": "0.2.0",
-    "@ts-pf/server": "0.4.0"
+    "@ts-pf/server": "0.4.1"
   },
   "peerDependencies": {
     "@modelcontextprotocol/server": ">=2.4.0 <3"
@@ -76,7 +76,7 @@
   "devDependencies": {
     "@modelcontextprotocol/client": "^2.4.0",
     "@modelcontextprotocol/server": "^2.4.0",
-    "@ts-pf/client": "0.2.0",
+    "@ts-pf/client": "0.2.1",
     "zod": "^4.0.0"
   }
 }

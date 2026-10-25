@@ -1,5 +1,12 @@
 # @ts-pf/mvc-kit
 
+## 0.1.7
+
+### Patch Changes
+
+- Updated dependencies [[`a2b4bdc`](https://github.com/crobinson42/ts-pf/commit/a2b4bdcbf7a51eae2e8ad919dcb5f92abebcb3ea)]:
+  - @ts-pf/contract@0.2.1
+
 ## 0.1.6
 
 ### Patch Changes
