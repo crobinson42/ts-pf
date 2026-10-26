@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/astro",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Opt-in Astro endpoint and in-process page caller for ts-pf",
   "keywords": [
     "ts-pf",
@@ -55,12 +55,12 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/client": "0.2.1",
-    "@ts-pf/client-http": "0.2.1",
-    "@ts-pf/contract": "0.2.1",
-    "@ts-pf/protocol": "0.2.0",
-    "@ts-pf/server": "0.4.1",
-    "@ts-pf/server-http": "0.3.1"
+    "@ts-pf/client": "0.2.2",
+    "@ts-pf/client-http": "0.2.2",
+    "@ts-pf/contract": "0.2.2",
+    "@ts-pf/protocol": "0.2.1",
+    "@ts-pf/server": "0.4.2",
+    "@ts-pf/server-http": "0.3.2"
   },
   "peerDependencies": {
     "astro": ">=4.9.0"

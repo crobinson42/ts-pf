@@ -1,5 +1,16 @@
 # @ts-pf/client
 
+## 0.2.2
+
+### Patch Changes
+
+- [#24](https://github.com/crobinson42/ts-pf/pull/24) [`491a8c1`](https://github.com/crobinson42/ts-pf/commit/491a8c1146309caf305c8bc62c874e3a7aba3a05) Thanks [@crobinson42](https://github.com/crobinson42)! - Faster calls: `createClient` now caches each nested proxy instead of rebuilding the path on every property access. Visible effects: `client.planet === client.planet` is now `true`, and a client keeps every property name it has been asked for, so accessing many dynamic keys holds memory for the life of the client.
+
+- [#26](https://github.com/crobinson42/ts-pf/pull/26) [`0189e86`](https://github.com/crobinson42/ts-pf/commit/0189e865c581dc962cbe2f77d7bf3e5423178a01) Thanks [@crobinson42](https://github.com/crobinson42)! - Quote consumer skill `description` front matter so `npx skills experimental_sync` can install the skills. An unquoted `Triggers:` is invalid YAML, and the installer skipped every published skill.
+- Updated dependencies [[`0189e86`](https://github.com/crobinson42/ts-pf/commit/0189e865c581dc962cbe2f77d7bf3e5423178a01)]:
+  - @ts-pf/contract@0.2.2
+  - @ts-pf/protocol@0.2.1
+
 ## 0.2.1
 
 ### Patch Changes

@@ -1,5 +1,18 @@
 # @ts-pf/mcp
 
+## 0.2.1
+
+### Patch Changes
+
+- [#27](https://github.com/crobinson42/ts-pf/pull/27) [`2cab8d4`](https://github.com/crobinson42/ts-pf/commit/2cab8d4ae9969ba61d043dc27c1cc926bfbbe8a2) Thanks [@crobinson42](https://github.com/crobinson42)! - `all(node, { inject })` reads keys from intersection / `allOf` inputs (TypeBox `Type.Intersect`, Zod record intersections) and record, loose, and catchall inputs, and injected keys are removed from every `allOf` member of the model schema, so the model cannot set them. `all()` throws when `inject` is set and a selected procedure's input has no readable JSON Schema. An `inject` key must be a declared field of some selected input: a record input no longer makes a typo like `tenantID` compile (which left `tenantId` to the model on every other tool), and `all()` throws on such a key at runtime too. For an input that is only a record, use `.inject()` on that tool. `audit()` no longer reports an error for an injected key on an `allOf` root; the key is removed, and the union / `allOf` root warning still applies.
+
+- [#26](https://github.com/crobinson42/ts-pf/pull/26) [`0189e86`](https://github.com/crobinson42/ts-pf/commit/0189e865c581dc962cbe2f77d7bf3e5423178a01) Thanks [@crobinson42](https://github.com/crobinson42)! - Quote consumer skill `description` front matter so `npx skills experimental_sync` can install the skills. An unquoted `Triggers:` is invalid YAML, and the installer skipped every published skill.
+- Updated dependencies [[`491a8c1`](https://github.com/crobinson42/ts-pf/commit/491a8c1146309caf305c8bc62c874e3a7aba3a05), [`0189e86`](https://github.com/crobinson42/ts-pf/commit/0189e865c581dc962cbe2f77d7bf3e5423178a01)]:
+  - @ts-pf/server@0.4.2
+  - @ts-pf/contract@0.2.2
+  - @ts-pf/docs@0.1.10
+  - @ts-pf/protocol@0.2.1
+
 ## 0.2.0
 
 ### Minor Changes
