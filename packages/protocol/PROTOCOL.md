@@ -40,7 +40,7 @@ x-ts-pf-protocol: 1
 
 Procedure path is the nested router keys joined by `/`. Example: `planet.find` → `/rpc/planet/find` when the prefix is `/rpc`.
 
-v1 accepts **POST only**. Other methods return HTTP 405 with `error.code: "METHOD_NOT_ALLOWED"`.
+v1 accepts **POST only**. Other methods return HTTP 405 with `error.code: "METHOD_NOT_ALLOWED"`. A deployment may add a GET bridge in front of the handler (`GET {prefix}/{procedure.path}?input=<JSON>` rewritten to this POST); that is outside the v1 wire, and v1 clients and servers do not depend on it.
 
 Servers read the request header `x-ts-pf-protocol`. Absent → accept (plain HTTP clients). Present and equal to `1` (after trimming surrounding whitespace) → accept. Any other value → HTTP 400 with `error.code: "BAD_REQUEST"` and `message: "Unsupported protocol version"`; the response still carries `x-ts-pf-protocol: 1`. The check runs after the method check and before the body is read.
 

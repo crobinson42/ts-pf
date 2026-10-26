@@ -11,6 +11,7 @@ import {
 import { FetchLink } from '@ts-pf/client-http'
 import type { ContractClient } from '@ts-pf/contract'
 import type { contract } from './contract.js'
+import { getInterceptor } from './get-link.js'
 import { readKey } from './read-key.js'
 import { TimeoutPlugin } from './timeout-plugin.js'
 
@@ -44,7 +45,11 @@ export function createPlanetClient(
   } = {},
 ): ContractClient<typeof contract> {
   return createClient(
-    new FetchLink({ url: 'http://127.0.0.1/rpc', fetch: fetchImpl }),
+    new FetchLink({
+      url: 'http://127.0.0.1/rpc',
+      fetch: fetchImpl,
+      interceptors: [getInterceptor(['/rpc/planet/find'])],
+    }),
     {
       plugins: options.plugins ?? defaultPlugins(),
       interceptors: options.interceptors ?? defaultInterceptors(),

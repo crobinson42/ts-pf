@@ -117,6 +117,7 @@ No `mergeRouters`. No `compose()`. No lazy routers.
 | Contract / errors | `@ts-pf/contract` / `@ts-pf/protocol` | `ts-pf-contract` / `ts-pf-protocol` |
 | Implement / call | `@ts-pf/server` / `@ts-pf/client` | `ts-pf-server` / `ts-pf-client` |
 | HTTP Fetch | `@ts-pf/server-http` + `@ts-pf/client-http` | `ts-pf-server-http` / `ts-pf-client-http` |
+| CDN-cacheable GET reads / public REST facade | userland on `@ts-pf/server-http` + `@ts-pf/client-http` (no extra package) | `ts-pf-server-http` ("Cacheable reads and public REST") / `ts-pf-client-http` |
 | Codec helpers | `@ts-pf/http` | `ts-pf-http` |
 | File / Blob attachments | `@ts-pf/file` | `ts-pf-file` |
 | Root `AsyncIterable` (JSONL) | `@ts-pf/stream` | `ts-pf-stream` |

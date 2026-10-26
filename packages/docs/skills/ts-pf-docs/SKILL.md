@@ -47,4 +47,4 @@ if (url.pathname === '/catalog.json') {
 - `.docs()` on the contract builder.
 - Serve the catalog from `FetchHandler` (`GET /rpc/...` answers `405 METHOD_NOT_ALLOWED`; the RPC prefix serves procedures only).
 - Walk an implemented `app` — pass `contract`.
-- REST `method` / `path` / path params.
+- REST `method` / `path` / path params in `docs()` meta. (The separate `http` meta key belongs to the userland GET bridge; `catalog()` copies it into `meta` untouched.)

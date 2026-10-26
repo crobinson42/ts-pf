@@ -8,6 +8,7 @@ import {
 import { CORSPlugin, FetchHandler } from '@ts-pf/server-http'
 import { type AppContext, app } from './app.js'
 import { audit } from './audit-plugin.js'
+import { GetBridgePlugin } from './get-bridge.js'
 import { readKey } from './read-key.js'
 
 export const serverLog: string[] = []
@@ -34,8 +35,10 @@ const interceptors = applyPlugins(
   ],
 )
 
+const prefix = '/rpc'
+
 export const handler = new FetchHandler(app, {
-  plugins: [new CORSPlugin({ origin: '*' })],
+  plugins: [new CORSPlugin({ origin: '*' }), new GetBridgePlugin(app, prefix)],
   interceptors,
 })
 
@@ -44,7 +47,7 @@ const context: AppContext = { requestId: 'app' }
 export default {
   async fetch(req: Request) {
     const result = await handler.handle(req, {
-      prefix: '/rpc',
+      prefix,
       context,
     })
     if (!result.matched) {

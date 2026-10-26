@@ -52,5 +52,5 @@ On a unary failure the rejected `PFError.status` is the HTTP response status (de
 
 ## Don't
 
-- Retry / cache / dedupe here (`RetryPlugin` / `DedupePlugin` / `CachePlugin` on `createClient`).
+- Retry / cache / dedupe here (`RetryPlugin` / `DedupePlugin` / `CachePlugin` on `createClient`). Rewriting the method is fine: the userland GET bridge's client half (`getInterceptor`, `examples/plugins/src/get-link.ts`; see `ts-pf-server-http` "Cacheable reads") is a Fetch `Interceptor`.
 - `isLocalFailure` inside Fetch interceptors.

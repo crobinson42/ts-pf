@@ -167,7 +167,8 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 - `onStall` is observability only: it runs after the outcome is decided, its throws are swallowed, and the default logs `aborted` only (never `paused`, which is normal flow control). Do not route a stall through `onError`.
 - Do not re-export `createPortDuplex` / `createWsDuplex` / `createStdioDuplex` from `@ts-pf/message-server` or `@ts-pf/message-client`.
 - Do not add a published Node HTTP upgrade helper or `child_process.spawn` adapter; user owns listen/upgrade/spawn/Worker bootstrap.
-- Do not serve REST or OpenAPI from `FetchHandler`. Do not add GET/PUT/path params to `@ts-pf/openapi` documents. Scalar/Swagger stay userland.
+- Do not serve REST or OpenAPI from `FetchHandler`. `openapi()` never emits GET/PUT/path params; a userland GET bridge adds its `get` operations to the returned document. Scalar/Swagger stay userland.
+- `FetchHandler` and `FetchLink` stay POST-only; cacheable GET reads are the userland bridge in `examples/plugins` (`GetBridgePlugin` + `getInterceptor`). The contract meta key `http` (`{ method?: 'GET' | 'POST'; cacheControl?: string }`) is reserved for it and for the deferred first-party binding (DECISIONS "Cacheable GET reads"); do not give `http` another shape.
 - Do not serve `catalog.json` from `FetchHandler`. No `createClientFromCatalog` in v1.
 - Do not reconstruct HTTP status from `error.code` on message transports.
 - `@ts-pf/astro/server` is not imported by client islands. `@ts-pf/astro/client` does not import `@ts-pf/server`.
@@ -175,7 +176,7 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 
 ## Examples
 
-Live in `examples/`: `hello` (Fetch), `codegen` (split-repo `emit` / `createClient<Contract>`), `message` (MessagePort), `stream` (`StreamCodec`), `plugins` (`CallPlugin` / `CallInterceptor`), `mcp` (`@ts-pf/mcp` over the MCP SDK v2, HTTP and stdio, both protocol eras). They are private workspace packages, not published. New examples: `private: true` and append the package name to `.changeset/config.json` `ignore`.
+Live in `examples/`: `hello` (Fetch), `codegen` (split-repo `emit` / `createClient<Contract>`), `message` (MessagePort), `stream` (`StreamCodec`), `plugins` (`CallPlugin` / `CallInterceptor`; userland GET bridge: `HandlerPlugin` + Fetch `Interceptor`), `mcp` (`@ts-pf/mcp` over the MCP SDK v2, HTTP and stdio, both protocol eras). They are private workspace packages, not published. New examples: `private: true` and append the package name to `.changeset/config.json` `ignore`.
 
 - Implemented routers are named `app` (not `router` — that name is the contract helper).
 - Example `client.ts` must not import `@ts-pf/server`.

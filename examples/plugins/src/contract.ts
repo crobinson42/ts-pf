@@ -6,7 +6,9 @@ export const contract = router({
     list: procedure.output(
       z.array(z.object({ id: z.number(), name: z.string() })),
     ),
+    // Side-effect free, same for every caller: safe to serve as a cached GET.
     find: procedure
+      .meta({ http: { method: 'GET', cacheControl: 'public, max-age=60' } })
       .input(z.object({ id: z.number() }))
       .output(z.object({ id: z.number(), name: z.string() }))
       .errors({

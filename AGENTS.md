@@ -9,3 +9,5 @@ Consumer usage skills live in `packages/<pkg>/skills/ts-pf-<pkg>/SKILL.md` (hub 
 > **Note:** Always use a subagent after implementing a change to review and evaluate `.agents/**` and `packages/*/skills/**` files for correctness, completeness, and consistency. The subagent should also check for any missing or outdated documentation.
 
 Focus on clean code and clear architecture. Avoid unnecessary complexity and ensure that the code is easy to understand and maintain.
+
+**Remember**: Code quality is not negotiable. Clear, maintainable code enables rapid development and confident refactoring.

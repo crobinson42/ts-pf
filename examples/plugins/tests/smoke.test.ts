@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { app, runtime } from '../src/app.js'
 import { audit } from '../src/audit-plugin.js'
 import { clientLog, createPlanetClient } from '../src/client.js'
+import { GetBridgePlugin } from '../src/get-bridge.js'
+import { GET_MAX_URL, getInterceptor } from '../src/get-link.js'
 import { readKey } from '../src/read-key.js'
 import worker, { serverLog } from '../src/server.js'
 import { TimeoutPlugin } from '../src/timeout-plugin.js'
@@ -189,6 +191,127 @@ describe('plugins', () => {
     expect(response.headers.get('access-control-allow-origin')).toBe('*')
     expect(runtime.hits.find).toBe(0)
     expect(audit.entries).toEqual([])
+  })
+
+  it('sends opted-in reads as cacheable GETs and writes as POSTs', async () => {
+    const sent: {
+      method: string
+      url: string
+      protocol: string | null
+      cacheControl: string | null
+    }[] = []
+    const recording: typeof fetch = async (input, init) => {
+      const req = input instanceof Request ? input : new Request(input, init)
+      const response = await fetchImpl(req)
+      sent.push({
+        method: req.method,
+        url: req.url,
+        protocol: req.headers.get('x-ts-pf-protocol'),
+        cacheControl: response.headers.get('cache-control'),
+      })
+      return response
+    }
+    const client = createPlanetClient(recording, { plugins: [] })
+    expect(await client.planet.find({ id: 1 })).toEqual({
+      id: 1,
+      name: 'Earth',
+    })
+    await client.planet.create({ name: 'Venus' })
+    await asResult(client.planet.find({ id: 99 }))
+    expect(sent).toEqual([
+      {
+        method: 'GET',
+        url: `http://127.0.0.1/rpc/planet/find?input=${encodeURIComponent('{"id":1}')}`,
+        protocol: null,
+        cacheControl: 'public, max-age=60',
+      },
+      {
+        method: 'POST',
+        url: 'http://127.0.0.1/rpc/planet/create',
+        protocol: '1',
+        cacheControl: null,
+      },
+      {
+        method: 'GET',
+        url: `http://127.0.0.1/rpc/planet/find?input=${encodeURIComponent('{"id":99}')}`,
+        protocol: null,
+        cacheControl: 'no-store',
+      },
+    ])
+  })
+
+  it('refuses GET for procedures that did not opt in', async () => {
+    const response = await worker.fetch(
+      new Request(
+        `http://127.0.0.1/rpc/planet/create?input=${encodeURIComponent('{"name":"Pluto"}')}`,
+      ),
+    )
+    expect(response.status).toBe(405)
+    expect(runtime.hits.create).toBe(0)
+  })
+
+  it('answers a malformed ?input with BAD_REQUEST', async () => {
+    const response = await worker.fetch(
+      new Request('http://127.0.0.1/rpc/planet/find?input=%7B'),
+    )
+    expect(response.status).toBe(400)
+    expect(await response.json()).toMatchObject({
+      ok: false,
+      error: { code: 'BAD_REQUEST' },
+    })
+    expect(response.headers.get('cache-control')).toBe('no-store')
+  })
+
+  it('lets a per-call Cache-Control win and never stores Set-Cookie', () => {
+    const bridge = new GetBridgePlugin(app, '/rpc')
+    const cacheControl = (headers: HeadersInit) => {
+      const request = bridge.onRequest({
+        request: new Request('http://127.0.0.1/rpc/planet/find?input=%7B%7D'),
+      })
+      if (!request) {
+        throw new Error('expected the bridge to rewrite the GET')
+      }
+      const response = bridge.onResponse({
+        request,
+        response: new Response('{}', { headers }),
+      })
+      return (response ?? new Response(null, { headers })).headers.get(
+        'cache-control',
+      )
+    }
+    expect(cacheControl({})).toBe('public, max-age=60')
+    expect(cacheControl({ 'cache-control': 'private, max-age=5' })).toBe(
+      'private, max-age=5',
+    )
+    expect(cacheControl({ 'set-cookie': 'session=1' })).toBe('no-store')
+  })
+
+  it('keeps long inputs and unlisted paths on POST', async () => {
+    const interceptor = getInterceptor(['/rpc/planet/find'])
+    const sent: string[] = []
+    const next = async (request?: Request) => {
+      sent.push(
+        request ? `${request.method} ${new URL(request.url).search}` : 'POST',
+      )
+      return new Response(null)
+    }
+    const post = (path: string, input: unknown) =>
+      new Request(`http://127.0.0.1/rpc/${path}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ input }),
+      })
+    await interceptor({ request: post('planet/find', { b: 1, a: 2 }), next })
+    await interceptor({
+      request: post('planet/find', { id: 1, pad: 'x'.repeat(GET_MAX_URL) }),
+      next,
+    })
+    await interceptor({ request: post('planet/create', { name: 'x' }), next })
+    expect(sent).toEqual([
+      `GET ?input=${encodeURIComponent('{"a":2,"b":1}')}`,
+      'POST',
+      'POST',
+    ])
   })
 
   it('runs the same CallPlugin list on createLocalClient', async () => {
