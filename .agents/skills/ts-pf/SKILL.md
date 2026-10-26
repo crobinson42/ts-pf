@@ -28,6 +28,7 @@ scripts/check-skills.mjs
 scripts/check-deps.mjs                   @ts-pf/* DAG allow-list (mirrors rules.md "Packages"); package.json + src/tests imports; cycles
 scripts/check-exports.mjs
 scripts/check-snippets.mjs                tsc over fenced ```ts in README/SKILL/example docs against dist (flags: `no-check`, `bundler`)
+scripts/bench.mjs                        `npm run bench`: ops/s for local / Fetch / MessagePort unary, declared error, and 2000-item streams (relative numbers; run before and after hot-path changes, see CONTRIBUTING "Benchmarks")
 skills/README.md                         consumer skill index (not published)
 packages/*/skills/ts-pf-<pkg>/SKILL.md   consumer usage (hub catalog ts-pf-app on contract)
 packages/{contract,server,client}/tests/*.test-d.ts   type tests (expectTypeOf + @ts-expect-error); Vitest typecheck + tsc --noEmit
@@ -47,7 +48,7 @@ packages/protocol/src/
   envelope.ts         RpcRequest/Response, PROTOCOL_MAJOR (1 as const) → PROTOCOL_VERSION ('1'), PFResultPromise
   wire-error.ts       toWireError (PFError → toJSON; unknown throw → fixed INTERNAL "Internal server error", no leak) — the only copy of that mapping
   is-async-iterable.ts isAsyncIterable (object or function with a Symbol.asyncIterator function; ReadableStream is NOT excluded — wire sites compose a local isItemStream)
-  defined.ts          defined(obj) / Defined<T> — copy without undefined-valued keys, typed optional; `{ ...required, ...defined({ signal }) }` replaces `...(x ? { x } : {})` at option boundaries (server runtime / call-interceptor / events / error-factory, client events)
+  defined.ts          defined(obj) / Defined<T> — copy without undefined-valued keys, typed optional; `{ ...required, ...defined({ signal }) }` replaces `...(x ? { x } : {})` at cold option boundaries (astro client construction). Per-call hot paths (server runtime / call-interceptor / events / error-factory, client events / call-interceptor) do not call it: they build the object with its required keys and assign each optional key only when present (same `exactOptionalPropertyTypes` outcome, no per-call copy; `npm run bench` guards it)
 packages/http/src/
   rpc.ts              PROTOCOL_HEADER, RpcCodec, RpcEncodedBody, RpcBodySource; RpcEncodedText + EnvelopeTextCodec (the `inner` role of the wrapping codecs: an RpcCodec whose encoded bodies are strings)
   codec.ts            JSONCodec implements EnvelopeTextCodec (envelope object with keys but no `input` → BAD_REQUEST; wrapping codecs inherit it)
@@ -275,7 +276,7 @@ Compose is nested objects. `router({ planet: planetContract })` nests slice cont
 1. Method check, then protocol version, then lookup procedure. Non-POST → `METHOD_NOT_ALLOWED` (Fetch; no call interceptors). Request `x-ts-pf-protocol` present and not `PROTOCOL_VERSION` (trimmed) → `BAD_REQUEST` `Unsupported protocol version`, the message handshake's string (Fetch; no call interceptors; absent is accepted). Miss → `NOT_FOUND` (no call interceptors). All three answer before the body is read.
 2. Decode body (`RpcCodec`; JSONCodec is JSON, MultipartCodec may be multipart, StreamCodec may be JSONL, SseCodec may be JSONL input / SSE output). Runs only for a known procedure.
 3. Context factory, then `HandlerPlugin.onContext` — replace context (header bags)
-4. CallInterceptor onion around `runProcedure` (`FetchHandler({ interceptors, validation })`, `HandlerOptions.interceptors` / `HandlerOptions.validation`, `createLocalClient` `{ interceptors, plugins, validation }`). `[0]` outermost. `next()` may be called more than once, concurrently; `runProcedure` builds the chain below inside a per-`next()` `execute(state)` closure, so each run owns its `input` / `context` / `signal` (do not hoist them back to `runProcedure` scope). Inside `next()`:
+4. CallInterceptor onion around `runProcedure` (`FetchHandler({ interceptors, validation })`, `HandlerOptions.interceptors` / `HandlerOptions.validation`, `createLocalClient` `{ interceptors, plugins, validation }`). `[0]` outermost. `next()` may be called more than once, concurrently; `runProcedure` gives each `next()` its own `Execution` state object (built by its `execute(state)` thunk; the steps below are module-level functions over that object, not closures), so each run owns its `input` / `context` / `signal` (do not hoist them back to `runProcedure` scope or into shared closure variables). Inside `next()`:
    - `.use()` middleware — `input` is unvalidated
    - Input schema when `validation.input !== false` (default on; `VALIDATION` on fail). Stream input items follow this flag
    - `.useAfter()` middleware — typed `input` when the input check ran; raw value when it was skipped

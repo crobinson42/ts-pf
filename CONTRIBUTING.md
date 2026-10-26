@@ -51,6 +51,10 @@ npm run lint && npm run lint:root && npm run check:skills && npm run check:deps 
 
 CI runs the same chain on Node 22 and 24, plus `changeset status` on pull requests and `mcp-sdk-floor` (the `@ts-pf/mcp` package and example on the lowest supported `@modelcontextprotocol/server`).
 
+## Benchmarks
+
+`npm run bench` (`scripts/bench.mjs`, after `npm run build`) times the call pipeline end to end on one small contract: the in-process `createLocalClient` unary and declared-error paths, `FetchHandler` + `FetchLink` through an in-memory fetch stub (unary, declared error, a 2000-item JSONL stream), and `PortHandler` + `PortLink` over a `MessageChannel` (unary, stream). It prints ops/s from the median of five timed rounds per row. The numbers are relative, not targets: they move with the machine, the Node version, and `zod`, so compare runs on the same machine only. Run it before and after a change to `runProcedure`, the interceptor chains, the client proxies, or `FetchHandler.handle`, with three runs each, and put the before/after medians in the PR; a `node --cpu-prof` of the same loops is the way to see which frame moved.
+
 ## Making a change
 
 1. **Find the owner.** The "Owns" table in `.agents/rules.md` and the file map in the internal skill say which package a change belongs in. A new pipe (another transport) is a `Duplex` adapter bound with `DuplexHandler` / `DuplexLink` from the message packages, or a new adapter package that calls `runProcedure` / implements `Link`; a new paradigm (REST, GraphQL) is a projection like `@ts-pf/openapi`. Neither touches `createImplementer`, middleware, or `createClient`.

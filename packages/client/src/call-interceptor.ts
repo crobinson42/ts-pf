@@ -36,17 +36,20 @@ export function runCallInterceptors(
     if (!interceptor) {
       return send(currentInput, currentSignal)
     }
-    return interceptor({
+    const ctx: Parameters<CallInterceptor>[0] = {
       path: interceptorPath,
       input: currentInput,
-      ...(currentSignal ? { signal: currentSignal } : {}),
       next: (opts) => {
         const nextInput = opts && 'input' in opts ? opts.input : currentInput
         const nextSignal =
           opts && 'signal' in opts ? opts.signal : currentSignal
         return run(index + 1, nextInput, nextSignal)
       },
-    })
+    }
+    if (currentSignal) {
+      ctx.signal = currentSignal
+    }
+    return interceptor(ctx)
   }
   return run(0, input, signal)
 }
