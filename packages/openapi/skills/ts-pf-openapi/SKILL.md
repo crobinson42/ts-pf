@@ -29,6 +29,43 @@ Every path is `POST {prefix}/{router keys}`. Serve JSON in userland (`GET /opena
 
 Typed split-repo clients: `ts-pf-codegen`, not OpenAPI-TS.
 
+## Documenting a GET bridge or REST facade
+
+`openapi()` stays POST only. If you serve the userland GET bridge (`ts-pf-server-http`, "Cacheable reads"), add the `get` operations to the returned document yourself. Each opted-in catalog entry carries its contract meta, and the GET reuses the POST's responses:
+
+```ts
+import { catalog } from '@ts-pf/docs'
+import { openapi } from '@ts-pf/openapi'
+import { contract } from './contract.js'
+
+const cat = catalog(contract, { prefix: '/rpc' })
+const spec = openapi(cat, { info: { title: 'Planet API', version: '1.0.0' } })
+
+for (const proc of cat.procedures) {
+  const http = proc.meta.http as { method?: string } | undefined
+  const item = proc.href === undefined ? undefined : spec.paths[proc.href]
+  if (http?.method !== 'GET' || !item?.post) continue
+  // `content` (a JSON-encoded parameter) is OpenAPI 3.1, wider than `PathItem`'s type.
+  Object.assign(item, {
+    get: {
+      operationId: `${item.post.operationId}Get`,
+      parameters: [{
+        name: 'input',
+        in: 'query',
+        content: {
+          'application/json': {
+            schema: proc.input?.kind === 'json' ? proc.input.jsonSchema : {},
+          },
+        },
+      }],
+      responses: item.post.responses,
+    },
+  })
+}
+```
+
+A REST facade has its own paths and bodies, so it documents them by hand (or with your REST framework's generator). Reuse the schemas from `catalog()` entries instead of redeclaring them.
+
 ## API
 
 - `openapi`
@@ -41,6 +78,6 @@ Typed split-repo clients: `ts-pf-codegen`, not OpenAPI-TS.
 
 ## Don't
 
-- GET/PUT/path params or flattened REST bodies.
+- GET/PUT/path params or flattened REST bodies from `openapi()` itself. Post-process the document in userland.
 - Serve the spec from `FetchHandler`.
 - Message transports (not HTTP) in this document.

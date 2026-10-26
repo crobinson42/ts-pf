@@ -22,7 +22,7 @@ examples/
   codegen/            split-repo emit(catalog) → createClient<Contract>; scripts/generate.mjs refreshes catalog.json + contract.d.ts
   message/            PortHandler + PortLink over MessageChannel
   stream/             StreamCodec + stream()
-  plugins/            CallPlugin / CallInterceptor; first-party retry/cache/dedupe; local TimeoutPlugin / AuditPlugin; CORSPlugin is HTTP-only
+  plugins/            CallPlugin / CallInterceptor; first-party retry/cache/dedupe; local TimeoutPlugin / AuditPlugin; CORSPlugin is HTTP-only; userland GetBridgePlugin + getInterceptor (cacheable GET reads)
   mcp/                @ts-pf/mcp: toolkit + toolset + split host + $coverage + bindTools + createMcpFactory; smoke test drives the v2 Client over HTTP (createMcpHandler) and stdio (serveStdio + InMemoryTransport), versionNegotiation auto and legacy
 scripts/check-skills.mjs
 scripts/check-deps.mjs                   @ts-pf/* DAG allow-list (mirrors rules.md "Packages"); package.json + src/tests imports; cycles
@@ -349,7 +349,7 @@ New **published** packages: `version` `0.0.0`, `license: "MIT"`, a `LICENSE` cop
 - Awaiting `runProcedure` inside `MessageSession`; context factory on `onFrame`
 - Credit / ack frames for message backpressure (v2); a second backpressure option bag; awaiting a synchronous `send` (no `drained`) in the unary or `onHello` path; a `Duplex.send` promise that does not settle on close; reporting a drain timeout through `onError` or a new error code; dropping frames in a receive queue
 - Reconstructing HTTP status from `error.code` on message transports
-- `OpenAPIHandler` / GET/PUT/path params; serving the spec from `FetchHandler`
+- `OpenAPIHandler` / GET/PUT/path params emitted by `openapi()` (a userland GET bridge post-processes the document); serving the spec from `FetchHandler`; GET handling inside `FetchHandler` / `FetchLink` before the deferred revision 1.2
 - `createClientFromCatalog` in v1
 - A catch-all plugin manager; ClientContext bags. Keep interface `HandlerPlugin`; class names stay `CORSPlugin` / `RetryPlugin` / `DedupePlugin`, never oRPC `*HandlerPlugin`. `CallPlugin` ≠ `HandlerPlugin`; `FetchHandler.plugins` is HTTP-only.
 - Adding retry to FetchLink; using `isLocalFailure` inside Fetch interceptors

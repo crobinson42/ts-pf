@@ -66,6 +66,52 @@ Errors thrown after a streamed response has started (`StreamCodec` / `SseCodec` 
 
 A JSON envelope object with keys but no `input` key (`{"id":1}` instead of `{"input":{"id":1}}`) is `400 BAD_REQUEST` `Request body must be {"input": ...}`, whichever codec carries it (plain JSON, the multipart `rpc` part, or a JSONL input line). `{}` and `{"input":null}` still mean no input.
 
+## Cacheable reads and public REST (userland)
+
+The wire is POST only, so a CDN or browser cannot cache a call by URL. When a read needs HTTP caching, bridge it in userland: `HandlerPlugin.onRequest` runs before the method check, so it can turn `GET {prefix}/{path}?input=<JSON>` into the POST `FetchHandler` serves. Opt in per procedure in the contract, and only for procedures with no side effects:
+
+```ts no-check
+find: procedure
+  .meta({ http: { method: 'GET', cacheControl: 'public, max-age=60' } })
+  .input(z.object({ id: z.number() }))
+
+new FetchHandler(app, {
+  plugins: [
+    new CORSPlugin({ origin }),
+    new GetBridgePlugin(app, '/rpc'), // last, so no later onRequest re-wraps its request
+  ],
+})
+```
+
+`GetBridgePlugin` (`examples/plugins/src/get-bridge.ts`, smoke-tested): `lookupProcedure(app, path)` → contract meta `http.method === 'GET'` → `new Request(url, { method: 'POST', headers, body: JSON.stringify({ input: JSON.parse(q) }), signal })`; `onResponse` sets the meta `Cache-Control` on success unless the call already set one, and `no-store` on failures and on any response with `Set-Cookie`. A GET to a procedure that did not opt in falls through to `405 METHOD_NOT_ALLOWED`. The client half is a Fetch `Interceptor` on `FetchLink` that resends the JSON POST for listed paths as a GET with sorted keys and keeps POST above ~8 KB of URL (`examples/plugins/src/get-link.ts`). The GET drops `x-ts-pf-protocol` (absent is accepted) so a cross-origin read stays a simple request.
+
+- `public` only for data that is the same for every caller. A shared-cache hit never reaches the server, so auth middleware does not run for later callers. Per-user reads use `private` (browser cache only). A per-call `Cache-Control` / `Vary` from `ResponseHeadersPlugin` (`context.resHeaders`) wins over the meta default.
+- A GET runs from a plain link, cookies included: never opt in a procedure that writes.
+- GET is CORS-safelisted, so `CORSPlugin` needs no `allowMethods` change. Your own headers (`Authorization`, custom) still make it preflight, and browsers cache a preflight per URL, so each distinct `?input=` preflights once.
+- The wire and the `http` meta key are what a future first-party binding would use, so the bridge can be dropped without touching contracts or URLs.
+
+A public REST API for third parties is a userland router next to `FetchHandler`, calling the same `app` through `createLocalClient` so middleware, validation, and typed errors run:
+
+```ts
+import { httpStatus } from '@ts-pf/http'
+import { isPFError } from '@ts-pf/protocol'
+import { createLocalClient } from '@ts-pf/server'
+
+// GET /v1/planets/:id, routed by your server before handler.handle()
+export async function getPlanet(id: string): Promise<Response> {
+  const api = createLocalClient(app, { context })
+  try {
+    return Response.json(await api.planet.find({ id: Number(id) }))
+  } catch (error) {
+    if (!isPFError(error)) throw error
+    return Response.json(
+      { code: error.code, message: error.message },
+      { status: httpStatus(error) },
+    )
+  }
+}
+```
+
 ## API
 
 - `FetchHandler`, `FetchHandlerOnError`, `HandleResult`, `HandlerPlugin`
@@ -79,6 +125,7 @@ A JSON envelope object with keys but no `input` key (`{"id":1}` instead of `{"in
 
 ## Don't
 
-- Serve REST, OpenAPI, or `catalog.json` from `FetchHandler`.
+- Serve REST, OpenAPI, or `catalog.json` from `FetchHandler`. REST routes are userland, beside it.
+- Bridge GET for a procedure with side effects, or mark per-user data `public`.
 - Port `HandlerPlugin` onto WS / stdio / MessagePort.
 - Put file size caps here — those are `MultipartCodec` options.
