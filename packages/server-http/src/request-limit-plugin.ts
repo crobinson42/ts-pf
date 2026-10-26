@@ -35,7 +35,12 @@ export class RequestLimitPlugin implements HandlerPlugin {
         },
       }),
     )
-    return new Request(request, {
+    // Built from the URL, not `new Request(request, init)`: userland Node
+    // bridges (srvx) hand over Request-shaped objects that undici cannot clone.
+    return new Request(request.url, {
+      method: request.method,
+      headers: request.headers,
+      signal: request.signal,
       body: limited,
       duplex: 'half',
     } as RequestInit & { duplex: 'half' })

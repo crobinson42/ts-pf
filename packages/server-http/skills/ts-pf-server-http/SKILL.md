@@ -40,6 +40,10 @@ return result.response
 
 `plugins` is HTTP-only (`HandlerPlugin`). RPC call interceptors go on `{ interceptors }` from `@ts-pf/server`. `validation` is the same `ProcedureValidation` as `runProcedure`: input checks default on, output and stream output items run only with `{ validation: { output: true } }`. Set it on the constructor, not on `handle()`. `CORSPlugin` answers `OPTIONS` preflight.
 
+`RequestLimitPlugin` rewraps any request with a body (to count its bytes), so the context factory, plugin hooks, and `onError` see a plain `Request`; bodyless requests keep your host's object. Read host extras such as srvx's `request.ip` / `request.runtime` from the request your host passed, typed as srvx's `ServerRequest`: `context: (req) => ({ req, ip: request.ip })`.
+
+A custom `HandlerPlugin` that returns a new request builds it with `new Request(request.url, { method, headers, signal, body, duplex: 'half' })` (cast the init as `RequestInit & { duplex: 'half' }` under DOM types), not `new Request(request, init)`, which throws on srvx's Node request.
+
 ## Errors
 
 Unknown throws become `500 INTERNAL` with no stack on the wire. By default `FetchHandler` logs them with `console.error` (the original thrown value, tagged `[ts-pf/server-http]` with the procedure path). It also logs `INTERNAL` `PFError`s — an output schema failure under `validation.output`, invalid declared error `data`, or an explicit `INTERNAL` throw — naming those causes. Declared errors and every other protocol code (`VALIDATION`, `NOT_FOUND`, `BAD_REQUEST`, `METHOD_NOT_ALLOWED`, `PAYLOAD_TOO_LARGE`) are expected and are not logged.

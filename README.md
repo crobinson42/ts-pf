@@ -196,6 +196,25 @@ import { rpc } from './rpc.js'
 serve({ fetch: rpc, port: 3000 })
 ```
 
+Host extras such as srvx's `request.ip` live only on the request srvx passes in. `RequestLimitPlugin` rewraps any request with a body, so the context factory's `req` is a plain `Request` without them. Type the entry point with srvx's `ServerRequest` and close over the outer request:
+
+```ts
+import { type ServerRequest, serve } from 'srvx'
+import { handler } from './server.js'
+
+serve({
+  port: 3000,
+  async fetch(request: ServerRequest) {
+    const result = await handler.handle(request, {
+      prefix: '/rpc',
+      context: (req) => ({ db, req, ip: request.ip }),
+    })
+    if (!result.matched) return new Response('Not Found', { status: 404 })
+    return result.response
+  },
+})
+```
+
 Inside a Hono app, mount it as a route and let `c.notFound()` handle the miss:
 
 ```ts

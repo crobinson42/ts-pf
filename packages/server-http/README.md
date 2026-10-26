@@ -18,7 +18,7 @@ const handler = new FetchHandler(app, {
 const result = await handler.handle(request, { prefix: '/rpc', context: { db } })
 ```
 
-Options: `codec`, `plugins`, `interceptors`, `validation`, and `onError(error, { request, path, context })` (type `FetchHandlerOnError`). Without `onError`, unknown throws and `INTERNAL` errors are logged with `console.error`; passing it replaces that logging. Mid-stream errors are in-band codec items and reach neither. A JSON envelope object with keys but no `input` key is `400 BAD_REQUEST` from the codec; `{}` and `{"input":null}` still mean no input. A request `x-ts-pf-protocol` header that is present and not `1` is `400 BAD_REQUEST` `Unsupported protocol version` before the body is read; a missing header is accepted.
+Options: `codec`, `plugins`, `interceptors`, `validation`, and `onError(error, { request, path, context })` (type `FetchHandlerOnError`). Without `onError`, unknown throws and `INTERNAL` errors are logged with `console.error`; passing it replaces that logging. Mid-stream errors are in-band codec items and reach neither. A JSON envelope object with keys but no `input` key is `400 BAD_REQUEST` from the codec; `{}` and `{"input":null}` still mean no input. A request `x-ts-pf-protocol` header that is present and not `1` is `400 BAD_REQUEST` `Unsupported protocol version` before the body is read; a missing header is accepted. `RequestLimitPlugin` rewraps any request with a body, so the context factory and plugin hooks see a plain `Request`; read host extras (srvx `request.ip`) from the request your host passed.
 
 Do not import this package from `@ts-pf/client-http`.
 
