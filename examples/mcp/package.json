@@ -13,11 +13,11 @@
   "dependencies": {
     "@modelcontextprotocol/client": "^2.3.0",
     "@modelcontextprotocol/server": "^2.3.0",
-    "@ts-pf/contract": "0.2.2",
-    "@ts-pf/docs": "0.1.10",
+    "@ts-pf/contract": "0.2.3",
+    "@ts-pf/docs": "0.1.11",
     "@ts-pf/mcp": "*",
-    "@ts-pf/protocol": "0.2.1",
-    "@ts-pf/server": "0.4.2",
+    "@ts-pf/protocol": "0.2.2",
+    "@ts-pf/server": "0.4.3",
     "zod": "^4.0.0"
   }
 }

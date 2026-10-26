@@ -15,10 +15,10 @@
     "lint": "biome check src"
   },
   "dependencies": {
-    "@ts-pf/contract": "0.2.2",
-    "@ts-pf/docs": "0.1.10",
-    "@ts-pf/server": "0.4.2",
-    "@ts-pf/server-http": "0.3.3",
+    "@ts-pf/contract": "0.2.3",
+    "@ts-pf/docs": "0.1.11",
+    "@ts-pf/server": "0.4.3",
+    "@ts-pf/server-http": "0.3.4",
     "zod": "^4.0.0"
   }
 }

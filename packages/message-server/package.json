@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/message-server",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Opt-in PortHandler, WsHandler, and StdioHandler",
   "keywords": [
     "ts-pf",
@@ -54,12 +54,12 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/message": "0.2.1",
-    "@ts-pf/protocol": "0.2.1",
-    "@ts-pf/server": "0.4.2"
+    "@ts-pf/message": "0.2.2",
+    "@ts-pf/protocol": "0.2.2",
+    "@ts-pf/server": "0.4.3"
   },
   "devDependencies": {
-    "@ts-pf/contract": "0.2.2",
+    "@ts-pf/contract": "0.2.3",
     "@types/node": "^22.15.0",
     "zod": "^4.0.0"
   }
