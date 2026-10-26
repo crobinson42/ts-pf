@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/server-http",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Fetch Request/Response handler and HTTP HandlerPlugins",
   "keywords": [
     "ts-pf",
@@ -50,12 +50,12 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/http": "0.2.1",
-    "@ts-pf/protocol": "0.2.1",
-    "@ts-pf/server": "0.4.2"
+    "@ts-pf/http": "0.2.2",
+    "@ts-pf/protocol": "0.2.2",
+    "@ts-pf/server": "0.4.3"
   },
   "devDependencies": {
-    "@ts-pf/contract": "0.2.2",
+    "@ts-pf/contract": "0.2.3",
     "zod": "^4.0.0"
   }
 }
