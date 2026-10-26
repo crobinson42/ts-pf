@@ -55,6 +55,11 @@ describe('createClient', () => {
     })
   })
 
+  it('returns the same proxy for the same path', () => {
+    expect(client.planet).toBe(client.planet)
+    expect(client.planet.find).toBe(client.planet.find)
+  })
+
   it('calls a no-input procedure', async () => {
     expect(await client.planet.list()).toEqual([{ id: 1, name: 'Earth' }])
   })

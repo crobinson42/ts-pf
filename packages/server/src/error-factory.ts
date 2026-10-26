@@ -3,8 +3,9 @@ import { isPFError, PFError, type PFErrorInit } from '@ts-pf/protocol'
 import type { ErrorFactory } from './middleware.js'
 
 // A factory depends only on its error map, so each map gets one, shared by
-// every call of the procedures that declare it. Weak: a contract that is
-// garbage-collected takes its factory with it.
+// every call of the procedures that declare it, and frozen so no handler can
+// change what another call sees. Weak: a contract that is garbage-collected
+// takes its factory with it.
 const factories = new WeakMap<ErrorMap, ErrorFactory<ErrorMap>>()
 
 export function createErrorFactory(map: ErrorMap): ErrorFactory<ErrorMap> {
@@ -27,6 +28,7 @@ export function createErrorFactory(map: ErrorMap): ErrorFactory<ErrorMap> {
       throw new PFError(init)
     }) as ErrorFactory[string]
   }
+  Object.freeze(factory)
   factories.set(map, factory)
   return factory
 }
