@@ -1,6 +1,6 @@
 ---
 name: ts-pf-server-http
-description: Use when serving ts-pf over Fetch with FetchHandler, CORSPlugin, RequestLimitPlugin, or request/response header plugins. Triggers: @ts-pf/server-http, FetchHandler, HandlerPlugin, CORSPlugin.
+description: "Use when serving ts-pf over Fetch with FetchHandler, CORSPlugin, RequestLimitPlugin, or request/response header plugins. Triggers: @ts-pf/server-http, FetchHandler, HandlerPlugin, CORSPlugin."
 ---
 
 # @ts-pf/server-http

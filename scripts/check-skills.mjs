@@ -49,13 +49,42 @@ const HUB_REL = 'packages/contract/skills/ts-pf-app/SKILL.md'
 const NEGATED = /\b(?:no|not|never)\s+`?(?:[\w*]+`?\s*\/\s*`?)*$/i
 const DONT_HEADING = /^#+\s*(?:don'?t|anti-patterns?)\b/i
 
+// npx skills experimental_sync parses front matter as YAML. An unquoted
+// description that contains `Triggers:` is a nested mapping and the skill
+// is skipped. Descriptions that contain `:` must be a quoted scalar.
+function unquoteYamlScalar(raw) {
+  const value = raw.trim()
+  if (value.length >= 2 && value.startsWith('"') && value.endsWith('"')) {
+    try {
+      const parsed = JSON.parse(value)
+      return typeof parsed === 'string' ? parsed : null
+    } catch {
+      return null
+    }
+  }
+  if (value.length >= 2 && value.startsWith("'") && value.endsWith("'")) {
+    return value.slice(1, -1).replaceAll("''", "'")
+  }
+  return null
+}
+
 function parseFrontmatter(text) {
   const match = text.match(/^---\r?\n([\s\S]*?)\r?\n---/)
   if (!match) return null
   const block = match[1]
   const name = block.match(/^name:\s*(.+)$/m)?.[1]?.trim()
-  const description = block.match(/^description:\s*(.+)$/m)?.[1]?.trim()
-  return { name, description, hasDescription: Boolean(description) }
+  const rawDescription = block.match(/^description:\s*(.+)$/m)?.[1]?.trim()
+  const quoted = rawDescription ? unquoteYamlScalar(rawDescription) : null
+  const description = quoted ?? rawDescription
+  const descriptionNeedsQuotes = Boolean(
+    rawDescription && quoted === null && /:/.test(rawDescription),
+  )
+  return {
+    name,
+    description,
+    hasDescription: Boolean(description),
+    descriptionNeedsQuotes,
+  }
 }
 
 async function checkSkill(pkgDir, skillName) {
@@ -77,6 +106,11 @@ async function checkSkill(pkgDir, skillName) {
   }
   if (!frontmatter.hasDescription) {
     errors.push(`${rel}: missing description`)
+  }
+  if (frontmatter.descriptionNeedsQuotes) {
+    errors.push(
+      `${rel}: description contains ":" and must be a quoted YAML scalar (npx skills experimental_sync)`,
+    )
   }
 }
 

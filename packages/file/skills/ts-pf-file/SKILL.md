@@ -1,6 +1,6 @@
 ---
 name: ts-pf-file
-description: Use when sending File or Blob attachments over ts-pf HTTP with MultipartCodec. Triggers: @ts-pf/file, MultipartCodec, multipart/form-data.
+description: "Use when sending File or Blob attachments over ts-pf HTTP with MultipartCodec. Triggers: @ts-pf/file, MultipartCodec, multipart/form-data."
 ---
 
 # @ts-pf/file

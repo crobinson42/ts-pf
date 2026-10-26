@@ -1,6 +1,6 @@
 ---
 name: ts-pf-http
-description: Use when writing or configuring a ts-pf HTTP codec — JSONCodec, RpcCodec, EnvelopeTextCodec, PROTOCOL_HEADER, joinProcedurePath, httpStatus. Triggers: @ts-pf/http, JSONCodec, RpcCodec, EnvelopeTextCodec, PROTOCOL_HTTP_STATUS.
+description: "Use when writing or configuring a ts-pf HTTP codec — JSONCodec, RpcCodec, EnvelopeTextCodec, PROTOCOL_HEADER, joinProcedurePath, httpStatus. Triggers: @ts-pf/http, JSONCodec, RpcCodec, EnvelopeTextCodec, PROTOCOL_HTTP_STATUS."
 ---
 
 # @ts-pf/http

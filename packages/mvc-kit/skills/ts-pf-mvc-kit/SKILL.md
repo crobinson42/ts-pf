@@ -1,6 +1,6 @@
 ---
 name: ts-pf-mvc-kit
-description: Use when binding a ts-pf client to mvc-kit Resources with bindClient or issuesToFieldErrors. Triggers: @ts-pf/mvc-kit, bindClient, DisposeSignalHost, issuesToFieldErrors.
+description: "Use when binding a ts-pf client to mvc-kit Resources with bindClient or issuesToFieldErrors. Triggers: @ts-pf/mvc-kit, bindClient, DisposeSignalHost, issuesToFieldErrors."
 ---
 
 # @ts-pf/mvc-kit

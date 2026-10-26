@@ -1,6 +1,6 @@
 ---
 name: ts-pf-message-client
-description: Use when calling ts-pf over MessagePort, WebSocket, stdio, or your own Duplex with PortLink, WsLink, StdioLink, or DuplexLink. Triggers: @ts-pf/message-client, PortLink, WsLink, StdioLink, DuplexLink.
+description: "Use when calling ts-pf over MessagePort, WebSocket, stdio, or your own Duplex with PortLink, WsLink, StdioLink, or DuplexLink. Triggers: @ts-pf/message-client, PortLink, WsLink, StdioLink, DuplexLink."
 ---
 
 # @ts-pf/message-client

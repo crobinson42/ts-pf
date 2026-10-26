@@ -1,6 +1,6 @@
 ---
 name: ts-pf-client
-description: Use when calling a ts-pf contract with createClient, asResult, isLocalFailure, intercept, RetryPlugin, DedupePlugin, or CachePlugin. Triggers: @ts-pf/client, createClient, Link, asResult, CallPlugin.
+description: "Use when calling a ts-pf contract with createClient, asResult, isLocalFailure, intercept, RetryPlugin, DedupePlugin, or CachePlugin. Triggers: @ts-pf/client, createClient, Link, asResult, CallPlugin."
 ---
 
 # @ts-pf/client

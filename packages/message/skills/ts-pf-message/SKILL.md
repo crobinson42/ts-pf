@@ -1,6 +1,6 @@
 ---
 name: ts-pf-message
-description: Use when framing ts-pf over JSON text frames with MessageSession, Duplex, createPortDuplex, createWsDuplex, or createPushQueue, or configuring message backpressure. Triggers: @ts-pf/message, MessageSession, encodeFrame, decodeFrame, createStdioDuplex, createMemoryDuplex, createPushQueue, BackpressureOptions, onStall.
+description: "Use when framing ts-pf over JSON text frames with MessageSession, Duplex, createPortDuplex, createWsDuplex, or createPushQueue, or configuring message backpressure. Triggers: @ts-pf/message, MessageSession, encodeFrame, decodeFrame, createStdioDuplex, createMemoryDuplex, createPushQueue, BackpressureOptions, onStall."
 ---
 
 # @ts-pf/message
