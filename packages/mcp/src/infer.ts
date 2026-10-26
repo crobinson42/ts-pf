@@ -10,6 +10,10 @@ export type MaybePromise<T> = T | Promise<T>
 export type Keys<T> = Exclude<keyof T & string, '~pf'>
 
 export type KeysOfUnion<T> = T extends unknown ? keyof T : never
+/** `KeysOfUnion` without index signatures (`string`, `` `${string}-id` ``): only keys a member names. */
+export type DeclaredKeysOfUnion<T> = T extends unknown
+  ? keyof { [K in keyof T as {} extends Record<K, 1> ? never : K]: 0 }
+  : never
 export type FieldOf<T, K extends PropertyKey> = T extends unknown
   ? K extends keyof T
     ? T[K]

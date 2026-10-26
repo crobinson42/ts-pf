@@ -12,9 +12,14 @@ function isObject(value: unknown): value is JsonSchema {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function branchesOf(schema: JsonSchema): JsonSchema[] | undefined {
-  const branches = schema.anyOf ?? schema.oneOf
-  return Array.isArray(branches) ? branches.filter(isObject) : undefined
+const combinators = ['anyOf', 'oneOf', 'allOf'] as const
+
+/** Union / `allOf` members: each one can contribute top-level keys. */
+function membersOf(schema: JsonSchema): JsonSchema[] {
+  return combinators.flatMap((which) => {
+    const members = schema[which]
+    return Array.isArray(members) ? members.filter(isObject) : []
+  })
 }
 
 /**
@@ -86,38 +91,47 @@ function convert(schema: unknown, io: 'input' | 'output'): ModelSchema {
   return result
 }
 
-/** Top-level keys a model may send: object properties, or the union of a union root's branches. */
-export function inputKeys(schema: JsonSchema): string[] {
-  const branches = branchesOf(schema)
-  if (branches) return [...new Set(branches.flatMap(inputKeys))]
-  return isObject(schema.properties) ? Object.keys(schema.properties) : []
+/** Top-level keys of an input; `open` when it also takes any other key (a record or catchall). */
+export type InputKeys = { keys: string[]; open: boolean }
+
+/**
+ * Object properties plus those of every union / `allOf` member. `undefined`
+ * when a member is a `$ref` left by recursion: its keys cannot be read.
+ */
+function inputKeys(schema: JsonSchema): InputKeys | undefined {
+  if (typeof schema.$ref === 'string') return undefined
+  const keys = new Set(
+    isObject(schema.properties) ? Object.keys(schema.properties) : [],
+  )
+  let open =
+    isObject(schema.additionalProperties) ||
+    schema.additionalProperties === true ||
+    isObject(schema.patternProperties)
+  for (const member of membersOf(schema)) {
+    const inner = inputKeys(member)
+    if (!inner) return undefined
+    for (const key of inner.keys) keys.add(key)
+    open ||= inner.open
+  }
+  return { keys: [...keys], open }
 }
 
-function withoutKeys(
-  schema: JsonSchema,
-  keys: readonly string[],
-  issues: SchemaIssue[],
-): JsonSchema {
-  const branches = branchesOf(schema)
-  if (branches) {
-    const which = schema.anyOf ? 'anyOf' : 'oneOf'
-    return {
-      ...schema,
-      [which]: branches.map((b) => withoutKeys(b, keys, issues)),
+/** Removes `keys` from the properties and `required` of the root and every union / `allOf` member. */
+function withoutKeys(schema: JsonSchema, keys: readonly string[]): JsonSchema {
+  const out: JsonSchema = { ...schema }
+  for (const which of combinators) {
+    const members = schema[which]
+    if (Array.isArray(members)) {
+      out[which] = members.map((m: unknown) =>
+        isObject(m) ? withoutKeys(m, keys) : m,
+      )
     }
   }
-  if (!isObject(schema.properties)) {
-    if (Array.isArray(schema.allOf)) {
-      issues.push({
-        level: 'error',
-        message: `allOf root: injected ${keys.join(', ')} cannot be removed; use .input(schema, map)`,
-      })
-    }
-    return schema
+  if (isObject(schema.properties)) {
+    const properties = { ...schema.properties } as Record<string, unknown>
+    for (const key of keys) delete properties[key]
+    out.properties = properties
   }
-  const properties = { ...schema.properties } as Record<string, unknown>
-  for (const key of keys) delete properties[key]
-  const out: JsonSchema = { ...schema, properties }
   if (Array.isArray(schema.required)) {
     out.required = schema.required.filter(
       (key: unknown) => !keys.includes(key as string),
@@ -129,7 +143,7 @@ function withoutKeys(
 /** MCP tool arguments are always an object, so the advertised root is `type: 'object'`. */
 function objectRoot(schema: JsonSchema, issues: SchemaIssue[]): JsonSchema {
   if (schema.type === 'object') return schema
-  if (branchesOf(schema) || Array.isArray(schema.allOf)) {
+  if (membersOf(schema).length > 0) {
     issues.push({
       level: 'warn',
       message:
@@ -152,16 +166,20 @@ export function modelInputSchema(spec: ToolSpec): ModelSchema {
   const issues = [...base.issues]
   const injected = Object.keys(spec.inject)
   const schema =
-    injected.length > 0
-      ? withoutKeys(base.schema, injected, issues)
-      : base.schema
+    injected.length > 0 ? withoutKeys(base.schema, injected) : base.schema
   return { schema: objectRoot(schema, issues), issues }
 }
 
-/** Input keys of a procedure, for `all({ inject })` (each key goes only to tools that have it). */
-export function procedureInputKeys(spec: ToolSpec): string[] {
+/**
+ * Input keys of a procedure, for `all({ inject })` (each key goes only to
+ * tools that have it). `undefined` when the input has no readable JSON Schema.
+ */
+export function procedureInputKeys(spec: ToolSpec): InputKeys | undefined {
   const source = spec.procedure?.['~pf'].input
-  return source === undefined ? [] : inputKeys(convert(source, 'input').schema)
+  if (source === undefined) return { keys: [], open: false }
+  const { schema, issues } = convert(source, 'input')
+  // the only error `convert` reports is a failed conversion
+  return issues.some((i) => i.level === 'error') ? undefined : inputKeys(schema)
 }
 
 /** The advertised `outputSchema`: only for `.output(schema, map)` with an object root. */

@@ -1,10 +1,16 @@
 import { walkContract } from '@ts-pf/docs'
 import { defined } from '@ts-pf/protocol'
-import type { DistOmit, FieldOf, KeysOfUnion, Meta } from './infer.js'
+import type {
+  DeclaredKeysOfUnion,
+  DistOmit,
+  FieldOf,
+  KeysOfUnion,
+  Meta,
+} from './infer.js'
 import type { Effect } from './meta.js'
 import { type ToolName, toolName } from './names.js'
 import { type AnyNode, type NodeBrand, type NodeCtx, nodeInfo } from './node.js'
-import { procedureInputKeys } from './schema.js'
+import { type InputKeys, procedureInputKeys } from './schema.js'
 import { checkScopes } from './scopes.js'
 import {
   type AnyTool,
@@ -13,6 +19,7 @@ import {
   isTool,
   procedureSpec,
   type ToolBuilder,
+  type ToolSpec,
   toolSpec,
   type Visibility,
 } from './tool.js'
@@ -128,9 +135,13 @@ type ConflictPaths<Tl, K extends PropertyKey, V> = Tl extends AnyTool
       : `${Tl['~tool']['path']}.${K & string}`
     : never
   : never
-/** Per key: not an input field anywhere → message; value does not fit some field → message naming it. */
+/**
+ * Per key: not a declared input field anywhere → message (a record input does
+ * not count, so it cannot hide a typo); value does not fit some field → message
+ * naming it.
+ */
 type AllInjectCheck<Tls, Inj> = {
-  [K in keyof Inj]: K extends KeysOfUnion<ModelOf<Tls>>
+  [K in keyof Inj]: K extends DeclaredKeysOfUnion<ModelOf<Tls>>
     ? ConflictPaths<
         Tls,
         K,
@@ -158,7 +169,10 @@ export type AllOptions<
   visible?: Visibility
   /** OAuth scopes every selected tool requires, as `.scopes()`. */
   scopes?: readonly string[]
-  /** Each key goes only to tools whose input has it. */
+  /**
+   * Each key goes only to tools whose input has it (every key for a record
+   * input), and must be a declared field of some selected input.
+   */
   inject?: Inj &
     InjectCtx<N> &
     AllInjectCheck<Selected<N, X[number], E, Tg>, Inj>
@@ -182,9 +196,40 @@ function isExcluded(path: string, exclusions: readonly Exclusion[]): boolean {
 }
 
 /**
- * Default tools for every procedure under `node`, named by path. Skips
- * `docs({ hidden: true })` procedures, then filters by `exclude`, `effect`,
- * and `tags`, and applies `inject`, `visible`, and `scopes` per tool.
+ * The requested `inject` keys this tool's input has. Fails closed: an input
+ * whose keys cannot be read throws rather than leaving a key to the model.
+ */
+function injectedKeys(
+  spec: ToolSpec,
+  input: InputKeys | undefined,
+  requested: readonly string[],
+): readonly string[] {
+  if (requested.length === 0) return requested
+  if (!input) {
+    throw new Error(
+      `all(): cannot read the input keys of "${spec.path}" to apply inject; exclude it and bind it with .input(schema, map) (or .inject())`,
+    )
+  }
+  return input.open
+    ? requested
+    : requested.filter((key) => input.keys.includes(key))
+}
+
+/** The runtime twin of `AllInjectCheck`: a key no selected input declares is a typo. */
+function checkDeclared(requested: readonly string[], declared: Set<string>) {
+  const unknown = requested.find((key) => !declared.has(key))
+  if (unknown !== undefined) {
+    throw new Error(
+      `all(): inject key "${unknown}" is not an input field of any selected procedure`,
+    )
+  }
+}
+
+/**
+ * Default tools for every procedure under `node`, named by path. Filters by
+ * `exclude` and `effect` (collecting declared `inject` keys), then skips
+ * `docs({ hidden: true })` procedures, filters by `tags`, and applies
+ * `inject`, `visible`, and `scopes` per tool.
  */
 export function all<
   N extends AnyNode,
@@ -209,17 +254,22 @@ export function all<
     scopes: options?.scopes && checkScopes(options.scopes, 'all()'),
   })
   const inject = (options?.inject ?? {}) as Record<string, InjectFn>
+  const requested = Object.keys(inject)
+  // collected before the hidden / tags filters, which the types apply only
+  // to literals, so this check is never stricter than `AllInjectCheck`
+  const declared = new Set<string>()
   const tools: Record<string, unknown> = {}
   for (const entry of walkContract(info.contract)) {
     const path = [...info.path, ...entry.path].join('.')
     const spec = procedureSpec(path, entry.procedure)
-    if (isHidden(spec) || isExcluded(path, exclusions)) continue
+    if (isExcluded(path, exclusions)) continue
     if (effects && !effects.includes(effectOf(spec) as E)) continue
+    const input = requested.length > 0 ? procedureInputKeys(spec) : undefined
+    for (const key of input?.keys ?? []) declared.add(key)
+    if (isHidden(spec)) continue
     if (tags?.length && !tagsOf(spec).some((tag) => tags.includes(tag)))
       continue
-    const keys = procedureInputKeys(spec).filter((key) =>
-      Object.hasOwn(inject, key),
-    )
+    const keys = injectedKeys(spec, input, requested)
     const name = toolName(path)
     if (Object.hasOwn(tools, name)) {
       throw new Error(`all(): duplicate tool name "${name}"`)
@@ -232,5 +282,6 @@ export function all<
       ),
     })
   }
+  checkDeclared(requested, declared)
   return tools as never
 }
