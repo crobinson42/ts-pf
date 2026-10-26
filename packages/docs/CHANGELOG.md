@@ -1,5 +1,11 @@
 # @ts-pf/docs
 
+## 0.1.9
+
+### Patch Changes
+
+- [#22](https://github.com/crobinson42/ts-pf/pull/22) [`c47e72c`](https://github.com/crobinson42/ts-pf/commit/c47e72c54411099bd21b5c7e2ade943cf162086b) Thanks [@crobinson42](https://github.com/crobinson42)! - `docs()` keeps `tags` and `hidden` as literal types in its return type (other fields stay `DocsMeta`), so `@ts-pf/mcp` can filter on them in types. Runtime output is unchanged.
+
 ## 0.1.8
 
 ### Patch Changes

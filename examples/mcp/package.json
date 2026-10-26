@@ -14,7 +14,7 @@
     "@modelcontextprotocol/client": "^2.3.0",
     "@modelcontextprotocol/server": "^2.3.0",
     "@ts-pf/contract": "0.2.1",
-    "@ts-pf/docs": "0.1.8",
+    "@ts-pf/docs": "0.1.9",
     "@ts-pf/mcp": "*",
     "@ts-pf/protocol": "0.2.0",
     "@ts-pf/server": "0.4.1",

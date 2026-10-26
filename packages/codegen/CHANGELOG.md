@@ -1,5 +1,12 @@
 # @ts-pf/codegen
 
+## 0.1.10
+
+### Patch Changes
+
+- Updated dependencies [[`c47e72c`](https://github.com/crobinson42/ts-pf/commit/c47e72c54411099bd21b5c7e2ade943cf162086b)]:
+  - @ts-pf/docs@0.1.9
+
 ## 0.1.9
 
 ### Patch Changes

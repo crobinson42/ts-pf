@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@ts-pf/client": "0.2.1",
-    "@ts-pf/codegen": "0.1.9",
+    "@ts-pf/codegen": "0.1.10",
     "@ts-pf/example-codegen-client": "*",
     "@ts-pf/example-codegen-server": "*"
   }
