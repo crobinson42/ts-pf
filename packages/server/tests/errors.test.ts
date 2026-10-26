@@ -190,4 +190,23 @@ describe('declared error data', () => {
       status: 410,
     })
   })
+
+  it('shares one frozen errors factory across calls', async () => {
+    const c = router({
+      find: procedure.errors({ NOT_FOUND: { status: 404 } }),
+    })
+    const impl = createImplementer(c)
+    const seen: unknown[] = []
+    const app = impl.router({
+      find: impl.find.handler(async ({ errors }) => {
+        seen.push(errors)
+        return null
+      }),
+    })
+    const client = createLocalClient(app, { context: {} })
+    await client.find()
+    await client.find()
+    expect(seen[0]).toBe(seen[1])
+    expect(Object.isFrozen(seen[0])).toBe(true)
+  })
 })

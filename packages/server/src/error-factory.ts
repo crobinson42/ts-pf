@@ -1,18 +1,35 @@
 import { type ErrorMap, validateSchema } from '@ts-pf/contract'
-import { defined, isPFError, PFError } from '@ts-pf/protocol'
+import { isPFError, PFError, type PFErrorInit } from '@ts-pf/protocol'
 import type { ErrorFactory } from './middleware.js'
 
+// A factory depends only on its error map, so each map gets one, shared by
+// every call of the procedures that declare it, and frozen so no handler can
+// change what another call sees. Weak: a contract that is garbage-collected
+// takes its factory with it.
+const factories = new WeakMap<ErrorMap, ErrorFactory<ErrorMap>>()
+
 export function createErrorFactory(map: ErrorMap): ErrorFactory<ErrorMap> {
+  const cached = factories.get(map)
+  if (cached) {
+    return cached
+  }
   const factory: ErrorFactory<ErrorMap> = {}
   for (const [code, def] of Object.entries(map)) {
+    const message = def.message ?? code
+    const status = def.status
     factory[code] = ((data?: unknown) => {
-      throw new PFError({
-        code,
-        message: def.message ?? code,
-        ...defined({ status: def.status, data }),
-      })
+      const init: PFErrorInit = { code, message }
+      if (status !== undefined) {
+        init.status = status
+      }
+      if (data !== undefined) {
+        init.data = data
+      }
+      throw new PFError(init)
     }) as ErrorFactory[string]
   }
+  Object.freeze(factory)
+  factories.set(map, factory)
   return factory
 }
 
@@ -37,9 +54,12 @@ export async function finalizeDeclaredError(
       cause: error,
     })
   }
-  throw new PFError({
-    code: error.code,
-    message: error.message,
-    ...defined({ status: error.status, data: result.value }),
-  })
+  const init: PFErrorInit = { code: error.code, message: error.message }
+  if (error.status !== undefined) {
+    init.status = error.status
+  }
+  if (result.value !== undefined) {
+    init.data = result.value
+  }
+  throw new PFError(init)
 }
