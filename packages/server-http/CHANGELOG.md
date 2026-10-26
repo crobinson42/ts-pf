@@ -1,5 +1,11 @@
 # @ts-pf/server-http
 
+## 0.3.3
+
+### Patch Changes
+
+- [#29](https://github.com/crobinson42/ts-pf/pull/29) [`692515f`](https://github.com/crobinson42/ts-pf/commit/692515ff3e5179aca8df903cbc5e2eaae693a454) Thanks [@crobinson42](https://github.com/crobinson42)! - `RequestLimitPlugin` builds its wrapped request from the URL plus `method`, `headers`, and `signal` instead of `new Request(request, init)`, so it works behind srvx on Node, whose request passes `instanceof Request` but cannot be cloned by undici (every call with a body answered `500 INTERNAL` with `Cannot read private member #state`). No srvx `patchGlobalRequest()` (`srvx/node`) is needed.
+
 ## 0.3.2
 
 ### Patch Changes

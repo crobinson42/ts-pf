@@ -18,7 +18,7 @@
     "@ts-pf/contract": "0.2.2",
     "@ts-pf/docs": "0.1.10",
     "@ts-pf/server": "0.4.2",
-    "@ts-pf/server-http": "0.3.2",
+    "@ts-pf/server-http": "0.3.3",
     "zod": "^4.0.0"
   }
 }

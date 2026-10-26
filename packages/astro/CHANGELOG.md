@@ -1,5 +1,12 @@
 # @ts-pf/astro
 
+## 0.2.3
+
+### Patch Changes
+
+- Updated dependencies [[`692515f`](https://github.com/crobinson42/ts-pf/commit/692515ff3e5179aca8df903cbc5e2eaae693a454)]:
+  - @ts-pf/server-http@0.3.3
+
 ## 0.2.2
 
 ### Patch Changes
