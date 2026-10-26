@@ -51,6 +51,9 @@ const contract = router({
 type UpstreamCtx = { caller: string }
 const callers: string[] = []
 const aborted: string[] = []
+// Resolved when the `slow` handler starts, so a test can abort a request the
+// upstream is actually running instead of racing it with a timer.
+let slowStarted: () => void = () => {}
 const impl = createImplementer(contract).$context<UpstreamCtx>()
 const upstream = impl.router({
   note: {
@@ -70,6 +73,7 @@ const upstream = impl.router({
             aborted.push('slow')
             reject(new Error('aborted upstream'))
           })
+          slowStarted()
         }),
     ),
     boom: impl.note.boom.handler(() => {
@@ -94,6 +98,10 @@ const upstreamFetch: typeof fetch = (input, init) => {
         : new Response('not found', { status: 404 }),
     )
   return new Promise((resolve, reject) => {
+    if (request.signal.aborted) {
+      reject(request.signal.reason)
+      return
+    }
     request.signal.addEventListener('abort', () =>
       reject(request.signal.reason),
     )
@@ -203,6 +211,9 @@ describe('bindTools({ client }) over HTTP', () => {
   })
 
   it('aborts the upstream request when the MCP call is cancelled', async () => {
+    const started = new Promise<void>((resolve) => {
+      slowStarted = resolve
+    })
     const controller = new AbortController()
     const pending = tools.call(
       'note_slow',
@@ -212,7 +223,8 @@ describe('bindTools({ client }) over HTTP', () => {
         signal: controller.signal,
       },
     )
-    setTimeout(() => controller.abort(), 10)
+    await started
+    controller.abort()
     const result = await pending
     expect(text(result)).toBe('INTERNAL: Request aborted')
     await vi.waitFor(() => expect(aborted).toEqual(['slow']))
