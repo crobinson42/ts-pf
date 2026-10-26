@@ -64,7 +64,7 @@ new PortHandler(app).bind(port, { context: () => ({ db }) })
 const caller = createLocalClient(app, { context: { db } })
 ```
 
-Only a tree produced by `impl.router()` carries the brand; a plain object of handlers infers `unknown`. The HTTP `Request` is not part of the context type unless you put it there: a context factory on `handle()` receives it, so keep transport-specific values (headers, the request) in the factory and give handlers transport-neutral context where you can. If handlers do need the request, declare `req: Request` on `AppCtx` and accept that message transports then need their own implementer (see the root README's message snippet).
+Only a tree produced by `impl.router()` carries the brand; a plain object of handlers infers `unknown`. The HTTP `Request` is not part of the context type unless you put it there: a context factory on `handle()` receives it (after any `HandlerPlugin.onRequest` wrap, so host extras like srvx's `request.ip` are read from the request your host passed), so keep transport-specific values (headers, the request) in the factory and give handlers transport-neutral context where you can. If handlers do need the request, declare `req: Request` on `AppCtx` and accept that message transports then need their own implementer (see the root README's message snippet).
 
 ## Middleware: `.use()` and `.useAfter()`
 

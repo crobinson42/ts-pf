@@ -70,7 +70,7 @@ packages/server-http/src/
   handler.ts          FetchHandler (TCtx inferred from app's context brand, ImplementedRouter<unknown, TCtx>; anti-buffering headers on ReadableStream bodies; httpStatus on errors; `interceptors` around runProcedure; `validation` forwarded into it; `onError` option / `FetchHandlerOnError` or default console.error for unknown / INTERNAL)
   plugins.ts          HandlerPlugin
   cors-plugin.ts      CORSPlugin / CORSPluginOptions
-  request-limit-plugin.ts RequestLimitPlugin / RequestLimitPluginOptions
+  request-limit-plugin.ts RequestLimitPlugin / RequestLimitPluginOptions (content-length precheck; rewraps a body from request.url, never new Request(request, init))
   request-headers-plugin.ts RequestHeadersPlugin / RequestHeadersPluginContext
   response-headers-plugin.ts ResponseHeadersPlugin / ResponseHeadersPluginContext
 packages/client/src/
@@ -272,7 +272,7 @@ Compose is nested objects. `router({ planet: planetContract })` nests slice cont
 
 ## Call pipeline
 
-0. `HandlerPlugin.onRequest` — optional `Request` wrap or `Response` short-circuit (CORS preflight). Prefix miss skips plugins.
+0. `HandlerPlugin.onRequest` — optional `Request` wrap or `Response` short-circuit (CORS preflight). A wrap builds `new Request(request.url, { method, headers, signal, body, duplex: 'half' })`, never `new Request(request, init)` (userland bridges such as srvx pass Request-shaped objects undici cannot clone); every later step sees the wrapped request. Prefix miss skips plugins.
 1. Method check, then protocol version, then lookup procedure. Non-POST → `METHOD_NOT_ALLOWED` (Fetch; no call interceptors). Request `x-ts-pf-protocol` present and not `PROTOCOL_VERSION` (trimmed) → `BAD_REQUEST` `Unsupported protocol version`, the message handshake's string (Fetch; no call interceptors; absent is accepted). Miss → `NOT_FOUND` (no call interceptors). All three answer before the body is read.
 2. Decode body (`RpcCodec`; JSONCodec is JSON, MultipartCodec may be multipart, StreamCodec may be JSONL, SseCodec may be JSONL input / SSE output). Runs only for a known procedure.
 3. Context factory, then `HandlerPlugin.onContext` — replace context (header bags)
@@ -310,7 +310,7 @@ Runtime `validateSchema`: user `registerSchemaAdapter` (first `accept` match) �
 | Want | Do |
 |---|---|
 | Another validator | `registerSchemaAdapter` or `packages/contract/src/adapters/<vendor>.ts` |
-| CORS / headers / request limits | `CORSPlugin` / `RequestHeadersPlugin` / `ResponseHeadersPlugin` / `RequestLimitPlugin` on `FetchHandler`. New plugin = new file implementing `HandlerPlugin` in `@ts-pf/server-http`. File size limits are `MultipartCodec` options, not a plugin. Do not add `order`/`before`/`after`. |
+| CORS / headers / request limits | `CORSPlugin` / `RequestHeadersPlugin` / `ResponseHeadersPlugin` / `RequestLimitPlugin` on `FetchHandler`. New plugin = new file implementing `HandlerPlugin` in `@ts-pf/server-http`; one that rewraps the request keeps a test with a non-undici `instanceof Request` object (see `request-limit-plugin.test.ts`). File size limits are `MultipartCodec` options, not a plugin. Do not add `order`/`before`/`after`. |
 | Extra HTTP body encodings | new `RpcCodec` (or wrap `JSONCodec`) in/near `@ts-pf/http`. Encode is `{ contentType, body }`, not a raw string. |
 | File/Blob | `@ts-pf/file` `MultipartCodec` on `FetchHandler` / `FetchLink` `{ codec }`. |
 | AsyncIterable streams | `@ts-pf/stream` `StreamCodec` + `stream()` on `.input()` / `.output()`. Root only. JSONL envelopes. Nested streams and File/Blob in items are `BAD_REQUEST`. |

@@ -193,7 +193,12 @@ type Db = {
     create(input: { name: string }): Promise<Planet>
   }
 }
-type AppCtx = { db: Db; req?: Request; user?: User | undefined }
+type AppCtx = {
+  db: Db
+  req?: Request
+  user?: User | undefined
+  ip?: string | undefined
+}
 declare const db: Db
 declare function auth(input: unknown): Promise<User | null>
 declare const logger: { error(...args: unknown[]): void }
@@ -250,8 +255,9 @@ declare module '@hono/node-server' {
   }): unknown
 }
 declare module 'srvx' {
+  export type ServerRequest = Request & { ip?: string; runtime?: unknown }
   export function serve(opts: {
-    fetch: (req: Request) => Response | Promise<Response>
+    fetch: (req: ServerRequest) => Response | Promise<Response>
     port?: number
   }): unknown
 }

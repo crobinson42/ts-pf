@@ -186,4 +186,104 @@ describe('RequestLimitPlugin', () => {
     expect(result.response.status).toBe(413)
     expect(result.response.headers.get('access-control-allow-origin')).toBe('*')
   })
+
+  describe('with a Request-shaped object undici cannot clone (srvx on Node)', () => {
+    // Passes `instanceof Request` without being an undici Request, like srvx's
+    // lazy Node request: `new Request(it, init)` throws on its private state.
+    function foreignRequest(native: Request): Request {
+      return Object.create(Request.prototype, {
+        url: { value: native.url },
+        method: { value: native.method },
+        headers: { value: native.headers },
+        body: { get: () => native.body },
+        signal: { value: native.signal },
+      }) as Request
+    }
+
+    function findRequest(init: RequestInit & { duplex?: 'half' }): Request {
+      return foreignRequest(
+        new Request('http://localhost/rpc/planet/find', {
+          method: 'POST',
+          ...init,
+          headers: { 'content-type': 'application/json', ...init.headers },
+        }),
+      )
+    }
+
+    it('is not cloneable by new Request(request, init)', () => {
+      expect(() => new Request(findRequest({ body: '{}' }), {})).toThrow(
+        TypeError,
+      )
+    })
+
+    it('allows a body under the limit', async () => {
+      const handler = new FetchHandler(app, {
+        plugins: [new RequestLimitPlugin({ maxBodySize: 1024 })],
+      })
+      const result = await handler.handle(
+        findRequest({ body: JSON.stringify({ input: { id: 1 } }) }),
+        { prefix: '/rpc', context: {} },
+      )
+      if (!result.matched) {
+        throw new Error('expected match')
+      }
+      expect(result.response.status).toBe(200)
+      expect(await result.response.json()).toEqual({
+        ok: true,
+        output: { id: 1, name: 'Earth' },
+      })
+    })
+
+    it('rejects a streamed body over the limit', async () => {
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('{"input":{"id":1}}'))
+          controller.close()
+        },
+      })
+      const handler = new FetchHandler(app, {
+        plugins: [new RequestLimitPlugin({ maxBodySize: 5 })],
+      })
+      const result = await handler.handle(
+        findRequest({ body, duplex: 'half' }),
+        { prefix: '/rpc', context: {} },
+      )
+      if (!result.matched) {
+        throw new Error('expected match')
+      }
+      expect(result.response.status).toBe(413)
+      expect(await result.response.json()).toMatchObject({
+        ok: false,
+        error: { code: 'PAYLOAD_TOO_LARGE' },
+      })
+    })
+
+    it('keeps method, headers, and signal on the wrapped request', async () => {
+      const controller = new AbortController()
+      let seen: Request | undefined
+      const handler = new FetchHandler(app, {
+        plugins: [new RequestLimitPlugin({ maxBodySize: 1024 })],
+      })
+      await handler.handle(
+        findRequest({
+          body: JSON.stringify({ input: { id: 1 } }),
+          headers: { 'x-trace': 'abc' },
+          signal: controller.signal,
+        }),
+        {
+          prefix: '/rpc',
+          context: (req) => {
+            seen = req
+            return {}
+          },
+        },
+      )
+      expect(seen?.url).toBe('http://localhost/rpc/planet/find')
+      expect(seen?.method).toBe('POST')
+      expect(seen?.headers.get('x-trace')).toBe('abc')
+      expect(seen?.signal.aborted).toBe(false)
+      controller.abort()
+      expect(seen?.signal.aborted).toBe(true)
+    })
+  })
 })
