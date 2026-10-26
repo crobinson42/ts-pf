@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/astro",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Opt-in Astro endpoint and in-process page caller for ts-pf",
   "keywords": [
     "ts-pf",
@@ -60,7 +60,7 @@
     "@ts-pf/contract": "0.2.2",
     "@ts-pf/protocol": "0.2.1",
     "@ts-pf/server": "0.4.2",
-    "@ts-pf/server-http": "0.3.2"
+    "@ts-pf/server-http": "0.3.3"
   },
   "peerDependencies": {
     "astro": ">=4.9.0"
