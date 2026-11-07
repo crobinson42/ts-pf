@@ -1,12 +1,19 @@
 import { execFile } from 'node:child_process'
-import { mkdtemp, readFile, symlink, writeFile } from 'node:fs/promises'
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  symlink,
+  unlink,
+  writeFile,
+} from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
-import { catalogHash, emit } from '@ts-pf/codegen'
+import { catalogHash, emit, emitFiles } from '@ts-pf/codegen'
 import { describe, expect, it } from 'vitest'
-import { type CliIo, runCli } from '../src/cli.js'
+import { type CliIo, readOutDir, runCli } from '../src/cli.js'
 import { planetCatalog } from './planet-catalog.js'
 
 function memoryIo(opts: {
@@ -39,6 +46,19 @@ function memoryIo(opts: {
     writeFile: async (path, content) => {
       files.set(path, content)
     },
+    readDir: async (dir) => {
+      const prefix = dir.endsWith('/') ? dir : `${dir}/`
+      const found: string[] = []
+      for (const key of files.keys()) {
+        if (key.startsWith(prefix)) {
+          found.push(key.slice(prefix.length))
+        }
+      }
+      return found
+    },
+    removeFile: async (path) => {
+      files.delete(path)
+    },
     fetch: opts.fetch ?? fetch,
   }
   return {
@@ -65,6 +85,7 @@ describe('ts-pf-codegen CLI', () => {
     expect(code).toBe(0)
     expect(box.stdout).toMatch(/^Usage: ts-pf-codegen/)
     expect(box.stdout).toMatch(/--help/)
+    expect(box.stdout).toMatch(/--out-dir/)
     expect(box.stderr).toBe('')
   })
 
@@ -212,6 +233,110 @@ describe('ts-pf-codegen CLI', () => {
     ])
     expect(stdout).toMatch(/^Usage: ts-pf-codegen/)
     expect(stderr).toBe('')
+  })
+
+  it('emit --out-dir writes the split files and deletes a stale .d.ts', async () => {
+    const files = new Map<string, string>([
+      ['catalog.json', raw],
+      ['generated/old.d.ts', 'stale\n'],
+    ])
+    const box = memoryIo({ files })
+    const code = await runCli(
+      ['emit', 'catalog.json', '--out-dir', 'generated'],
+      box.io,
+    )
+    expect(code).toBe(0)
+    expect(files.has('generated/old.d.ts')).toBe(false)
+    for (const file of emitFiles(spec)) {
+      expect(files.get(`generated/${file.path}`)).toBe(file.contents)
+    }
+  })
+
+  it('emit refuses -o together with --out-dir', async () => {
+    const files = new Map<string, string>([['catalog.json', raw]])
+    const box = memoryIo({ files })
+    const code = await runCli(
+      ['emit', 'catalog.json', '-o', 'contract.d.ts', '--out-dir', 'generated'],
+      box.io,
+    )
+    expect(code).toBe(1)
+    expect(box.stderr).toMatch(/not both/)
+    expect(files.has('contract.d.ts')).toBe(false)
+  })
+
+  it('emit --out-dir refuses a non-d.ts file and writes nothing', async () => {
+    const files = new Map<string, string>([
+      ['catalog.json', raw],
+      ['generated/notes.txt', 'keep\n'],
+    ])
+    const box = memoryIo({ files })
+    const code = await runCli(
+      ['emit', 'catalog.json', '--out-dir', 'generated'],
+      box.io,
+    )
+    expect(code).toBe(1)
+    expect(box.stderr).toMatch(/non-d\.ts file: notes\.txt/)
+    expect(files.get('generated/notes.txt')).toBe('keep\n')
+    expect(files.has('generated/contract.d.ts')).toBe(false)
+  })
+
+  it('pull --out-dir writes files and a lock', async () => {
+    const files = new Map<string, string>()
+    const box = memoryIo({
+      files,
+      fetch: async () => new Response(raw, { status: 200 }),
+    })
+    const code = await runCli(
+      [
+        'pull',
+        'https://api.example.com/catalog.json',
+        '--out-dir',
+        'generated',
+        '--lock',
+        'catalog.lock.json',
+      ],
+      box.io,
+    )
+    expect(code).toBe(0)
+    expect(files.get('generated/contract.d.ts')).toBe(
+      emitFiles(spec)[0]?.contents,
+    )
+    expect(JSON.parse(files.get('catalog.lock.json') ?? '{}')).toEqual({
+      url: 'https://api.example.com/catalog.json',
+      catalogVersion: 1,
+      catalogHash: catalogHash(spec),
+    })
+  })
+
+  it('emit --out-dir writes a real directory and deletes a stale .d.ts', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'ts-pf-codegen-dir-'))
+    const catalogPath = join(dir, 'catalog.json')
+    const outDir = join(dir, 'generated')
+    await writeFile(catalogPath, raw)
+    await mkdir(outDir)
+    await writeFile(join(outDir, 'old.d.ts'), 'stale\n')
+    const box = memoryIo({})
+    const realIo: CliIo = {
+      ...box.io,
+      readFile: (path) => readFile(path, 'utf8'),
+      writeFile: async (path, content) => {
+        await mkdir(dirname(path), { recursive: true })
+        await writeFile(path, content)
+      },
+      readDir: readOutDir,
+      removeFile: (path) => unlink(path),
+    }
+    const code = await runCli(
+      ['emit', catalogPath, '--out-dir', outDir],
+      realIo,
+    )
+    expect(code).toBe(0)
+    const sort = (paths: string[]) =>
+      paths.sort((a, b) => a.localeCompare(b, 'en'))
+    expect(sort(await readOutDir(outDir))).toEqual(
+      sort(emitFiles(spec).map((file) => file.path)),
+    )
+    await expect(readFile(join(outDir, 'old.d.ts'), 'utf8')).rejects.toThrow()
   })
 
   it('emits through the symlinked bin', async () => {

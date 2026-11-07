@@ -1,6 +1,6 @@
 ---
 name: ts-pf
-description: Use when implementing, reviewing, refactoring, or extending the ts-pf library — @ts-pf/contract, protocol, server, client, http, server-http, client-http, file, stream, sse, docs, openapi, codegen, message, message-server, message-client, swr, mvc-kit, astro, or mcp; procedure/router builders; FetchHandler; createClient; schema adapters; middleware; JSON RPC; MultipartCodec; StreamCodec; SseCodec; catalog()/docs(); openapi(); emit()/catalogHash(); PortHandler/WsHandler/StdioHandler/DuplexHandler; PortLink/WsLink/StdioLink/DuplexLink; createSwr; bindClient; createAstroHandler; createToolkit/bindTools/createMcpFactory (MCP); CallInterceptor; CallPlugin; intercept(); RetryPlugin; DedupePlugin; CachePlugin; Fetch vs call interceptors.
+description: Use when implementing, reviewing, refactoring, or extending the ts-pf library — @ts-pf/contract, protocol, server, client, http, server-http, client-http, file, stream, sse, docs, openapi, codegen, message, message-server, message-client, swr, mvc-kit, astro, or mcp; procedure/router builders; FetchHandler; createClient; schema adapters; middleware; JSON RPC; MultipartCodec; StreamCodec; SseCodec; catalog()/docs(); openapi(); emit()/emitFiles()/catalogHash(); PortHandler/WsHandler/StdioHandler/DuplexHandler; PortLink/WsLink/StdioLink/DuplexLink; createSwr; bindClient; createAstroHandler; createToolkit/bindTools/createMcpFactory (MCP); CallInterceptor; CallPlugin; intercept(); RetryPlugin; DedupePlugin; CachePlugin; Fetch vs call interceptors.
 metadata:
   internal: true
 ---
@@ -107,8 +107,9 @@ packages/docs/src/
 packages/openapi/src/
   index.ts            openapi, OpenAPIOptions, OpenAPIDocument
 packages/codegen/src/
-  index.ts            emit, catalogHash, EmitOptions
-  cli.ts              emit / pull / hash (not exported from ".")
+  index.ts            emit, emitFiles, catalogHash, EmitOptions, EmitFile
+  files.ts            emitFiles — flat group + procedure .d.ts; entry contract.d.ts; _phantom.d.ts only if some error has data; catalogHash on the entry only
+  cli.ts              emit / pull / hash; --out-dir (not exported from ".")
   jsdoc.ts            JSDoc from catalog docs() (internal; not exported)
 packages/message/src/
   index.ts            frames, MessageSession, Duplex, encodeFrame, decodeFrame, createMemoryDuplex, createPortDuplex, createWsDuplex, WebSocketLike, createPushQueue / PushQueue / PushQueueOptions, BackpressureOptions / StallInfo / Backpressure / resolveBackpressure / DrainWaiter / DrainOutcome
@@ -317,7 +318,7 @@ Runtime `validateSchema`: user `registerSchemaAdapter` (first `accept` match) �
 | SSE output | `@ts-pf/sse` `SseCodec` on `FetchHandler` / `FetchLink`. Same `stream()` contracts. |
 | API docs / procedure catalog | `@ts-pf/docs` `docs()` + `catalog()`. |
 | OpenAPI 3.1 document | `@ts-pf/openapi` `openapi(catalog(contract), { info })`. POST JSON RPC only. |
-| Split-repo typed client | `@ts-pf/codegen` `emit(catalog)` (JSDoc from `docs()`; other `.meta()` stays on catalog JSON). |
+| Split-repo typed client | `@ts-pf/codegen` `emit(catalog)` (one `.d.ts`). Large contracts: `emitFiles(catalog)` (one file per group and procedure; entry composes them; `_phantom.d.ts` only if some error has data). JSDoc from `docs()`; other `.meta()` stays on catalog JSON. |
 | Message transports (WS / stdio / MessagePort) | use existing `@ts-pf/message` / `message-server` / `message-client`. Do not fold into `FetchHandler`. Do not invent `TransportHandler`. Stdio is `./stdio` only. Slow peers: `HandlerOptions.backpressure` / `LinkOptions.backpressure` (`BackpressureOptions`, on by default); never a new frame. |
 | A new **pipe** (WebTransport, Chrome port, Electron IPC, Unix socket) | write a `Duplex` (`send` / `onMessage` / `onClose` / `close`, JSON text), then `new DuplexHandler(app).bind(duplex, opts)` / `new DuplexLink({ duplex })`. Handshake, multiplexing, cancel, and slow-peer protection are already there — never copy `attachRouter` / `ClientCall`. Backpressure comes from the duplex: return a promise from `send` while the pipe is above its write mark (WebTransport `writer.ready`, a Node `drain`; it must settle on close) and implement `pause` / `resume` when the pipe can stop receiving; return `void` and omit them when it cannot (Electron IPC, Chrome `runtime.Port`). Only a pipe that cannot carry the message frames is a new adapter package that calls `runProcedure` / implements `Link`. Never touch `createImplementer`, middleware, or `createClient`. |
 | A new **paradigm** (gRPC, GraphQL, REST) | projection like `@ts-pf/openapi`, not an adapter of `runProcedure`. Exception: a paradigm whose calls should run the real procedure (MCP tools) is a projection **plus** an executor — `@ts-pf/mcp` projects the contract into tool definitions and calls `lookupProcedure` + `runProcedure` in-process (or a typed client remotely), while its own SDK owns the wire. It reuses no ts-pf wire handler. |

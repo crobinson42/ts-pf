@@ -54,16 +54,42 @@ Runtime policy (cache vs write, auth, …) stays on the catalog. Ship `catalog.j
 
 The generated file uses `import type { ContractProcedure } from '@ts-pf/contract'`. This package does not import contract at runtime.
 
+## `emitFiles`
+
+For a large catalog, `emitFiles` prints the same `Contract` as one entry file plus a file per group and procedure. `createClient<Contract>` is unchanged. `emit()` stays the one-file default.
+
+```ts
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { catalog } from '@ts-pf/docs'
+import { emitFiles } from '@ts-pf/codegen'
+
+const spec = catalog(contract, { prefix: '/rpc' })
+for (const file of emitFiles(spec)) {
+  const path = join('src/generated', file.path)
+  mkdirSync(dirname(path), { recursive: true })
+  writeFileSync(path, file.contents)
+}
+```
+
+```ts
+import type { Contract } from './src/generated/contract.js'
+```
+
+`contract.d.ts` is the entry (`export type Contract`). A group file is an index (`planet.d.ts` exports `Planet` and points each member at a file). A procedure file is the spec (`planet.find.d.ts` exports `PlanetFind`, `PlanetFindInput`, `PlanetFindOutput`, and `PlanetFindErrors` when the procedure declares errors). `_phantom.d.ts` is added only when some error has `data`. Open the group to see the scope. Open one procedure file for that endpoint. The catalog hash is on the entry only.
+
+Paths are flat. A segment outside `[A-Za-z0-9_]` is UTF-8 percent-encoded, so a key `planet.find` and a path `planet` / `find` do not share a filename. The output directory is owned by codegen: `--out-dir` deletes stale `.d.ts` files and refuses to run if any other file is already there.
+
 ## CLI
 
 ```
-ts-pf-codegen emit <catalog.json|-> [-o contract.d.ts] [--name Contract] [--fail-on-unavailable]
-ts-pf-codegen pull <url> [-o contract.d.ts] [--lock catalog.lock.json]
+ts-pf-codegen emit <catalog.json|-> [-o contract.d.ts | --out-dir <dir>] [--name Contract] [--fail-on-unavailable]
+ts-pf-codegen pull <url> [-o contract.d.ts | --out-dir <dir>] [--lock catalog.lock.json]
 ts-pf-codegen hash <catalog.json|->
 ts-pf-codegen --help
 ```
 
-`emit` and `hash` read stdin when the path is `-`. Omit `-o` to write the `.d.ts` to stdout. `--help` / `-h` print usage and exit 0; no command prints usage to stderr and exits 1. Run it as `npx ts-pf-codegen …` or from an npm script — the bin resolves through the `node_modules/.bin` symlink.
+`emit` and `hash` read stdin when the path is `-`. Omit `-o` and `--out-dir` to write the single `.d.ts` to stdout. `-o` and `--out-dir` together is an error. `--help` / `-h` print usage and exit 0; no command prints usage to stderr and exits 1. Run it as `npx ts-pf-codegen …` or from an npm script — the bin resolves through the `node_modules/.bin` symlink.
 
 Commit `contract.d.ts`, or CI-run `ts-pf-codegen pull` and pin `catalog.lock.json`:
 
@@ -88,6 +114,12 @@ if (url.pathname === '/catalog.json') {
 }
 const result = await handler.handle(req, { prefix: '/rpc', context })
 ```
+
+## API
+
+- `emit`, `emitFiles`, `catalogHash`
+- `EmitOptions`, `EmitFile`
+- CLI `ts-pf-codegen` (not exported from `"."`)
 
 ## Not in this package
 
