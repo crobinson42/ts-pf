@@ -1,5 +1,11 @@
 # @ts-pf/codegen
 
+## 0.2.0
+
+### Minor Changes
+
+- [#36](https://github.com/crobinson42/ts-pf/pull/36) [`8189a8f`](https://github.com/crobinson42/ts-pf/commit/8189a8fa591b1e92e9cc4d72a160865e7a36c261) Thanks [@crobinson42](https://github.com/crobinson42)! - Add `emitFiles()` and `ts-pf-codegen --out-dir` so a large catalog can be printed as one entry `.d.ts` plus a file per group and procedure, instead of a single inlined `Contract`. `_phantom.d.ts` is included only when some error has data.
+
 ## 0.1.12
 
 ### Patch Changes
