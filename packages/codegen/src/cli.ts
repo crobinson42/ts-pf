@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { realpathSync } from 'node:fs'
-import { readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, unlink, writeFile } from 'node:fs/promises'
+import { dirname, join, relative, sep } from 'node:path'
 import {
   stderr as nodeStderr,
   stdin as nodeStdin,
@@ -9,6 +10,7 @@ import {
 import { fileURLToPath } from 'node:url'
 import type { ProcedureCatalog } from '@ts-pf/docs'
 import { emit } from './emit.js'
+import { type EmitFile, emitFiles } from './files.js'
 import { catalogHash } from './hash.js'
 
 export type CliIo = {
@@ -17,13 +19,16 @@ export type CliIo = {
   stderr: { write: (chunk: string) => void }
   readFile: (path: string) => Promise<string>
   writeFile: (path: string, content: string) => Promise<void>
+  /** Recursive file paths relative to `dir`, posix. `[]` when `dir` is missing. */
+  readDir: (dir: string) => Promise<string[]>
+  removeFile: (path: string) => Promise<void>
   fetch: typeof fetch
 }
 
 const USAGE =
   'Usage: ts-pf-codegen <emit|pull|hash> …\n' +
-  '  ts-pf-codegen emit <catalog.json|-> [-o contract.d.ts] [--name Contract] [--fail-on-unavailable]\n' +
-  '  ts-pf-codegen pull <url> [-o contract.d.ts] [--lock catalog.lock.json]\n' +
+  '  ts-pf-codegen emit <catalog.json|-> [-o contract.d.ts | --out-dir <dir>] [--name Contract] [--fail-on-unavailable]\n' +
+  '  ts-pf-codegen pull <url> [-o contract.d.ts | --out-dir <dir>] [--lock catalog.lock.json]\n' +
   '  ts-pf-codegen hash <catalog.json|->\n' +
   '  ts-pf-codegen --help\n'
 
@@ -49,8 +54,12 @@ export async function runCli(argv: string[], io: CliIo): Promise<number> {
 async function emitCmd(args: string[], io: CliIo): Promise<number> {
   const parsed = parseArgs(args, {
     flags: new Set(['fail-on-unavailable']),
-    values: new Set(['o', 'name']),
+    values: new Set(['o', 'name', 'out-dir']),
   })
+  const output = takeOutput(parsed, 'emit', io)
+  if (output.kind === 'error') {
+    return 1
+  }
   const input = parsed.positional[0]
   if (input === undefined) {
     io.stderr.write('emit: missing catalog path (use - for stdin)\n')
@@ -60,18 +69,26 @@ async function emitCmd(args: string[], io: CliIo): Promise<number> {
   const catalog = parseCatalog(raw)
   const name =
     typeof parsed.values.name === 'string' ? parsed.values.name : undefined
-  const dts = emit(catalog, {
+  const options = {
     ...(name !== undefined ? { name } : {}),
     failOnUnavailable: parsed.flags.has('fail-on-unavailable'),
-  })
-  return writeOutput(dts, parsed.values.o, io)
+  }
+  if (output.kind === 'dir') {
+    return writeOutDir(emitFiles(catalog, options), output.path, 'emit', io)
+  }
+  const dts = emit(catalog, options)
+  return writeOutput(dts, output.kind === 'file' ? output.path : undefined, io)
 }
 
 async function pullCmd(args: string[], io: CliIo): Promise<number> {
   const parsed = parseArgs(args, {
     flags: new Set(),
-    values: new Set(['o', 'lock']),
+    values: new Set(['o', 'lock', 'out-dir']),
   })
+  const output = takeOutput(parsed, 'pull', io)
+  if (output.kind === 'error') {
+    return 1
+  }
   const url = parsed.positional[0]
   if (url === undefined) {
     io.stderr.write('pull: missing catalog url\n')
@@ -110,8 +127,11 @@ async function pullCmd(args: string[], io: CliIo): Promise<number> {
       await io.writeFile(`${lockPath}`, `${JSON.stringify(lock, null, 2)}\n`)
     }
   }
+  if (output.kind === 'dir') {
+    return writeOutDir(emitFiles(catalog), output.path, 'pull', io)
+  }
   const dts = emit(catalog)
-  return writeOutput(dts, parsed.values.o, io)
+  return writeOutput(dts, output.kind === 'file' ? output.path : undefined, io)
 }
 
 async function hashCmd(args: string[], io: CliIo): Promise<number> {
@@ -145,6 +165,116 @@ async function writeOutput(
   }
   io.stdout.write(content)
   return 0
+}
+
+type Parsed = {
+  positional: string[]
+  flags: Set<string>
+  values: Record<string, string>
+}
+
+type OutputTarget =
+  | { kind: 'stdout' }
+  | { kind: 'file'; path: string }
+  | { kind: 'dir'; path: string }
+  | { kind: 'error' }
+
+function takeOutput(parsed: Parsed, command: string, io: CliIo): OutputTarget {
+  const file = parsed.values.o
+  const dir = parsed.values['out-dir']
+  if (typeof file === 'string' && typeof dir === 'string') {
+    io.stderr.write(`${command}: pass -o or --out-dir, not both\n`)
+    return { kind: 'error' }
+  }
+  if (typeof dir === 'string') {
+    if (dir.length === 0) {
+      io.stderr.write(`${command}: missing value for --out-dir\n`)
+      return { kind: 'error' }
+    }
+    return { kind: 'dir', path: dir }
+  }
+  if (typeof file === 'string') {
+    return { kind: 'file', path: file }
+  }
+  return { kind: 'stdout' }
+}
+
+async function writeOutDir(
+  files: readonly EmitFile[],
+  dir: string,
+  command: string,
+  io: CliIo,
+): Promise<number> {
+  let existing: string[]
+  try {
+    existing = await io.readDir(dir)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    io.stderr.write(`${command}: ${message}\n`)
+    return 1
+  }
+  for (const rel of existing) {
+    if (!rel.endsWith('.d.ts')) {
+      io.stderr.write(`${command}: out-dir contains non-d.ts file: ${rel}\n`)
+      return 1
+    }
+  }
+  for (const file of files) {
+    await io.writeFile(joinOut(dir, file.path), file.contents)
+  }
+  const emitted = new Set(files.map((file) => file.path))
+  for (const rel of existing) {
+    if (!emitted.has(rel)) {
+      await io.removeFile(joinOut(dir, rel))
+    }
+  }
+  return 0
+}
+
+function joinOut(dir: string, rel: string): string {
+  return join(dir, ...rel.split('/'))
+}
+
+/** Recursive file list relative to `dir`, posix separators. Missing dir is `[]`. */
+export async function readOutDir(dir: string): Promise<string[]> {
+  try {
+    const entries = await readdir(dir, { withFileTypes: true })
+    const out: string[] = []
+    for (const entry of entries) {
+      const abs = join(dir, entry.name)
+      const rel = relative(dir, abs).split(sep).join('/')
+      if (entry.isSymbolicLink()) {
+        throw new Error(`out-dir contains a symlink: ${rel}`)
+      }
+      if (entry.isDirectory()) {
+        const nested = await readOutDir(abs)
+        for (const child of nested) {
+          out.push(`${rel}/${child}`)
+        }
+        continue
+      }
+      if (entry.isFile()) {
+        out.push(rel)
+        continue
+      }
+      throw new Error(`out-dir contains an unsupported entry: ${rel}`)
+    }
+    return out
+  } catch (error) {
+    if (isEnoent(error)) {
+      return []
+    }
+    throw error
+  }
+}
+
+function isEnoent(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === 'ENOENT'
+  )
 }
 
 function parseCatalog(raw: string): ProcedureCatalog {
@@ -263,7 +393,12 @@ async function main(): Promise<void> {
     stdout: { write: (chunk) => nodeStdout.write(chunk) },
     stderr: { write: (chunk) => nodeStderr.write(chunk) },
     readFile: (path) => readFile(path, 'utf8'),
-    writeFile: (path, content) => writeFile(path, content, 'utf8'),
+    writeFile: async (path, content) => {
+      await mkdir(dirname(path), { recursive: true })
+      await writeFile(path, content, 'utf8')
+    },
+    readDir: readOutDir,
+    removeFile: (path) => unlink(path),
     fetch,
   }
   try {

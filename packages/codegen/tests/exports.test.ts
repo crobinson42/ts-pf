@@ -1,11 +1,19 @@
-import { catalogHash, type EmitOptions, emit } from '@ts-pf/codegen'
+import {
+  catalogHash,
+  type EmitFile,
+  type EmitOptions,
+  emit,
+  emitFiles,
+} from '@ts-pf/codegen'
 import { describe, expect, expectTypeOf, it } from 'vitest'
 
 describe('public exports', () => {
-  it('exports emit and catalogHash', () => {
+  it('exports emit, emitFiles, and catalogHash', () => {
     expect(typeof emit).toBe('function')
+    expect(typeof emitFiles).toBe('function')
     expect(typeof catalogHash).toBe('function')
     expectTypeOf<EmitOptions['name']>('Contract')
+    expectTypeOf<EmitFile['path']>('contract.d.ts')
   })
 
   it('does not export createClientFromCatalog', async () => {
