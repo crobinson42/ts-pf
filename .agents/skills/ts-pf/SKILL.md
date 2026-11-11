@@ -108,7 +108,7 @@ packages/openapi/src/
   index.ts            openapi, OpenAPIOptions, OpenAPIDocument
 packages/codegen/src/
   index.ts            emit, emitFiles, catalogHash, EmitOptions, EmitFile
-  files.ts            emitFiles — flat group + procedure .d.ts; entry contract.d.ts; _phantom.d.ts only if some error has data; catalogHash on the entry only
+  files.ts            emitFiles — flat group + procedure .d.ts; entry contract.d.ts; _phantom.d.ts only if some error has data; catalogHash on the entry only; headers are role + path/call/parent (procedure `group:`, group `parent:`)
   cli.ts              emit / pull / hash; --out-dir (not exported from ".")
   jsdoc.ts            JSDoc from catalog docs() (internal; not exported)
 packages/message/src/

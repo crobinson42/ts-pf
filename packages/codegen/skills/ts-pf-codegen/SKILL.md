@@ -34,7 +34,7 @@ const client = createClient<Contract>(new FetchLink({ url: '/rpc' }))
 
 `emit()` prints JSDoc from `docs()` (`description` / `summary` / `@deprecated`) onto `Contract` members. Other `.meta()` stays on the catalog — ship `catalog.json` beside the `.d.ts` for runtime policy (`CachePlugin` `key`, etc.). Hover on `client.planet.find` may not show that JSDoc (`ContractClient` is a mapped type).
 
-A large catalog: `emitFiles()` writes one entry plus a file per group and procedure. `_phantom.d.ts` is added only when some error has `data`. The entry stays `createClient<Contract>`. Open the group file for the scope, the procedure file for one endpoint. `catalogHash` is on the entry only.
+A large catalog: `emitFiles()` writes one entry plus a file per group and procedure. `_phantom.d.ts` is added only when some error has `data`. The entry stays `createClient<Contract>`. Open the group file for the scope, the procedure file for one endpoint. `catalogHash` is on the entry only. Each file's header starts with `role:` (`entry`, `group`, `procedure`, `phantom`). Group files name `path:`, `exports:`, and `parent:`. Procedure files name `path:`, `call:` (`client.planet.find(input)`), `exports:`, and `group:` when nested, plus a one-line `summary:` when `docs()` has one. `_phantom.d.ts` says it is internal.
 
 ```ts
 import { mkdirSync, writeFileSync } from 'node:fs'

@@ -40,7 +40,7 @@ const spec = catalog(contract, { prefix: '/rpc' })
 emit(spec, {
   name: 'Contract', // default
   failOnUnavailable: false, // default; true throws on kind: 'unavailable'
-  banner: true, // catalogVersion + sha256 hash
+  banner: true, // role: entry, catalogVersion, sha256 hash
 })
 
 catalogHash(spec) // 'sha256:<hex>' of canonical JSON
@@ -77,6 +77,8 @@ import type { Contract } from './src/generated/contract.js'
 ```
 
 `contract.d.ts` is the entry (`export type Contract`). A group file is an index (`planet.d.ts` exports `Planet` and points each member at a file). A procedure file is the spec (`planet.find.d.ts` exports `PlanetFind`, `PlanetFindInput`, `PlanetFindOutput`, and `PlanetFindErrors` when the procedure declares errors). `_phantom.d.ts` is added only when some error has `data`. Open the group to see the scope. Open one procedure file for that endpoint. The catalog hash is on the entry only.
+
+Each split file's header starts with `role:` (`entry`, `group`, `procedure`, or `phantom`). A group file names its contract `path:`, `exports:`, and `parent:` file. A procedure file names `path:`, `call:` (`client.planet.find(input)`), `exports:` (including `Errors` only when the procedure declares errors), and `group:` when it is nested. A `docs()` summary, or description when there is no summary, is one collapsed `summary:` line (capped at 120 characters). The full JSDoc stays on the type. `_phantom.d.ts` is marked internal. The hash stays on the entry.
 
 Paths are flat. A segment outside `[A-Za-z0-9_]` is UTF-8 percent-encoded, so a key `planet.find` and a path `planet` / `find` do not share a filename. The output directory is owned by codegen: `--out-dir` deletes stale `.d.ts` files and refuses to run if any other file is already there.
 
