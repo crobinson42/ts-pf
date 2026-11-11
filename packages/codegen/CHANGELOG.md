@@ -1,5 +1,11 @@
 # @ts-pf/codegen
 
+## 0.2.1
+
+### Patch Changes
+
+- [#38](https://github.com/crobinson42/ts-pf/pull/38) [`de71625`](https://github.com/crobinson42/ts-pf/commit/de7162505007b33c10156632a2f0d372427badb1) Thanks [@crobinson42](https://github.com/crobinson42)! - emitFiles headers name each file's role, contract path, and client call or parent file so a large generated directory can be navigated from the first lines. The catalog hash stays on the entry.
+
 ## 0.2.0
 
 ### Minor Changes
