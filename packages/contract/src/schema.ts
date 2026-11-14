@@ -1,8 +1,8 @@
 import type { StandardSchemaV1 } from '@standard-schema/spec'
-import type { Static, TSchema } from 'typebox'
 import { standardSchemaAdapter } from './adapters/standard-schema.js'
 import { typeboxAdapter } from './adapters/typebox.js'
 import type { SchemaAdapter, SchemaResult } from './schema-types.js'
+import type { InferTypeBox } from './typebox-static.js'
 
 export type {
   SchemaAdapter,
@@ -53,10 +53,6 @@ type InferStandardIO<S, Kind extends 'input' | 'output'> = S extends {
   ? NonNullable<T> extends { [K in Kind]: infer V }
     ? V
     : unknown
-  : unknown
-
-type InferTypeBox<S> = S extends { readonly '~kind': string }
-  ? Static<Extract<S, TSchema>>
   : unknown
 
 export type InferSchemaOutput<S> = S extends { _zod: { output: infer Z } }
