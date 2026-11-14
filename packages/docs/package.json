@@ -63,7 +63,7 @@
   },
   "devDependencies": {
     "@ts-pf/stream": "0.2.3",
-    "typebox": "^1.3.24",
+    "typebox": "^1.4.6",
     "zod": "^4.0.0"
   }
 }
