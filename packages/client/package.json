@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/client",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Typed createClient, Link, call plugins, asResult, and isLocalFailure",
   "keywords": [
     "ts-pf",
@@ -48,7 +48,7 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/contract": "0.2.3",
+    "@ts-pf/contract": "0.2.4",
     "@ts-pf/protocol": "0.2.2"
   },
   "devDependencies": {

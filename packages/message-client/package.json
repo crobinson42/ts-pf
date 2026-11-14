@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/message-client",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Opt-in PortLink, WsLink, and StdioLink",
   "keywords": [
     "ts-pf",
@@ -54,15 +54,15 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/client": "0.2.3",
+    "@ts-pf/client": "0.2.4",
     "@ts-pf/message": "0.2.2",
     "@ts-pf/protocol": "0.2.2"
   },
   "devDependencies": {
-    "@ts-pf/contract": "0.2.3",
-    "@ts-pf/message-server": "0.3.3",
-    "@ts-pf/server": "0.4.3",
-    "@ts-pf/stream": "0.2.3",
+    "@ts-pf/contract": "0.2.4",
+    "@ts-pf/message-server": "0.3.4",
+    "@ts-pf/server": "0.4.4",
+    "@ts-pf/stream": "0.2.4",
     "@types/node": "^22.15.0",
     "typebox": "^1.4.6",
     "zod": "^4.0.0"

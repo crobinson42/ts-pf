@@ -1,5 +1,12 @@
 # @ts-pf/codegen
 
+## 0.2.2
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @ts-pf/docs@0.1.12
+
 ## 0.2.1
 
 ### Patch Changes

@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/docs",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "description": "Opt-in procedure catalog from a contract (docs, catalog)",
   "keywords": [
     "ts-pf",
@@ -49,7 +49,7 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/contract": "0.2.3",
+    "@ts-pf/contract": "0.2.4",
     "@ts-pf/http": "0.2.2",
     "@ts-pf/protocol": "0.2.2"
   },
@@ -62,7 +62,7 @@
     }
   },
   "devDependencies": {
-    "@ts-pf/stream": "0.2.3",
+    "@ts-pf/stream": "0.2.4",
     "typebox": "^1.4.6",
     "zod": "^4.0.0"
   }

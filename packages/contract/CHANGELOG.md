@@ -1,5 +1,11 @@
 # @ts-pf/contract
 
+## 0.2.4
+
+### Patch Changes
+
+- [#42](https://github.com/crobinson42/ts-pf/pull/42) [`44d5c83`](https://github.com/crobinson42/ts-pf/commit/44d5c8350d2370161fa092ee7725e860f0adbc2d) Thanks [@crobinson42](https://github.com/crobinson42)! - Published types no longer import the optional `typebox` peer, so a project can type-check `@ts-pf/contract` with `skipLibCheck` off without installing `typebox`. TypeBox schemas still infer.
+
 ## 0.2.3
 
 ### Patch Changes
