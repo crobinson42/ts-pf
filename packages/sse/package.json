@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/sse",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Opt-in SseCodec for SSE output framing of the same envelopes",
   "keywords": [
     "ts-pf",
@@ -51,14 +51,14 @@
   "dependencies": {
     "@ts-pf/http": "0.2.2",
     "@ts-pf/protocol": "0.2.2",
-    "@ts-pf/stream": "0.2.3"
+    "@ts-pf/stream": "0.2.4"
   },
   "devDependencies": {
-    "@ts-pf/client": "0.2.3",
-    "@ts-pf/client-http": "0.2.3",
-    "@ts-pf/contract": "0.2.3",
-    "@ts-pf/server": "0.4.3",
-    "@ts-pf/server-http": "0.3.4",
+    "@ts-pf/client": "0.2.4",
+    "@ts-pf/client-http": "0.2.4",
+    "@ts-pf/contract": "0.2.4",
+    "@ts-pf/server": "0.4.4",
+    "@ts-pf/server-http": "0.3.5",
     "zod": "^4.0.0"
   }
 }

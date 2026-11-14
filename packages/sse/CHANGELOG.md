@@ -1,5 +1,12 @@
 # @ts-pf/sse
 
+## 0.2.4
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @ts-pf/stream@0.2.4
+
 ## 0.2.3
 
 ### Patch Changes
