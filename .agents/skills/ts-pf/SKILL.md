@@ -40,6 +40,7 @@ packages/contract/src/
   procedure.ts        ContractProcedure brand
   router.ts           nested-object brand + walk
   schema.ts           validateSchema dispatch
+  typebox-static.ts   structural Static (no typebox import; optional peer stays optional in published types)
   adapters/           standard-schema, typebox
   errors.ts           ErrorDef, ErrorMap, InferErrorData
   infer.ts            InferContractProcedure / IsContractProcedure (the one builder-or-ContractProcedure match; `[X] extends [never]`, never `X extends never`), InferContract*, InferContractErrors, ClientError, ContractClient, ContractResultPromise, CallOptions, ContractProtocolErrorCode (hand-written duplicate of the protocol set; no protocol import)
@@ -301,10 +302,10 @@ Client: `createClient` / `intercept()` call interceptors (path + input + signal)
 `procedure.input` / `.output` accept unconstrained `S`; types come from `InferSchemaOutput<S>`:
 
 1. Zod 4-style `_zod.output`
-2. TypeBox `static`
+2. TypeBox `~kind` walk (`typebox-static.ts`). Do not import `typebox`'s `Static`: that import would be emitted into published types and make the optional peer required for `skipLibCheck: false`.
 3. Standard Schema `~standard.types`
 
-Runtime `validateSchema`: user `registerSchemaAdapter` (first `accept` match) → `'~standard' in schema` → TypeBox `Symbol.for('TypeBox.Kind')` → throw. TypeBox adapter dynamic-imports `@sinclair/typebox/value` (optional peer).
+Runtime `validateSchema`: user `registerSchemaAdapter` (first `accept` match) → `'~standard' in schema` → TypeBox `~kind` string → throw. TypeBox adapter dynamic-imports `typebox/value` (optional peer) only when validating a TypeBox schema.
 
 ## How to add things
 

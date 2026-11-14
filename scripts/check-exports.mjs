@@ -73,6 +73,10 @@ function checkPublishConfig(pkgName, publishConfig) {
   }
 }
 
+function importsTypebox(text) {
+  return /(?:from|import)\s*\(?\s*['"]typebox(?:\/[^'"]*)?['"]/.test(text)
+}
+
 function listTar(tgz) {
   return execFileSync('tar', ['-tzf', tgz], { encoding: 'utf8' })
     .trim()
@@ -163,6 +167,17 @@ if (errors.length === 0) {
         errors.push(
           `${dir}: packed package.json still has publishConfig.exports`,
         )
+      }
+      if (dir === 'contract' || dir === 'docs') {
+        for (const file of files) {
+          if (!file.endsWith('.d.ts')) continue
+          const text = readTarFile(tgz, file)
+          if (importsTypebox(text)) {
+            errors.push(
+              `${dir}: ${file} imports optional peer typebox (published types must not)`,
+            )
+          }
+        }
       }
       for (const value of Object.values(pkg.exports ?? {})) {
         for (const target of Object.values(value)) {
