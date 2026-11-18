@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/mcp",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "description": "Opt-in typed projection of a ts-pf contract into MCP tools",
   "keywords": [
     "ts-pf",
