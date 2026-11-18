@@ -1,4 +1,6 @@
+import { defined } from '@ts-pf/protocol'
 import type { BoundTool } from './bound-tool.js'
+import { type McpOnError, reportError } from './error-text.js'
 import type { Effect } from './meta.js'
 import {
   discoverToolName,
@@ -7,7 +9,7 @@ import {
   hostScope,
 } from './names.js'
 import { errorResult, successResult } from './result.js'
-import { createSearchIndex } from './search.js'
+import type { SearchFactory, SearchIndex } from './search.js'
 import { aliasesOf, descriptionOf, effectOf, tagsOf } from './tool-meta.js'
 import type { HostSpec } from './toolset.js'
 import type {
@@ -155,9 +157,10 @@ type Bucket = {
   host: HostSpec
   inner: readonly Inner[]
   byName: ReadonlyMap<string, Inner>
-  index: ReturnType<typeof createSearchIndex>
+  index: SearchIndex
   invoke: Invoke
   maxChars: number
+  onError: McpOnError | undefined
 }
 
 function sortedCategories(inner: readonly Inner[]): string[] {
@@ -213,7 +216,7 @@ function bucketViews(b: Bucket, inner: readonly Inner[]): [ToolView, ToolView] {
       annotations: { readOnlyHint: true },
       effect: 'read',
     },
-    async invoke(args) {
+    async invoke(args, info) {
       const parsed = readDiscoverArgs(args)
       if (typeof parsed === 'string') {
         return invalidDiscover(getName, parsed, b.maxChars)
@@ -226,8 +229,22 @@ function bucketViews(b: Bucket, inner: readonly Inner[]): [ToolView, ToolView] {
       }
       if (parsed.query) {
         const kept = new Set(matches)
-        matches = b.index
-          .search(parsed.query)
+        const where = { ...info, tool: { name: getName, path: '' } }
+        const report = (error: unknown) => reportError(error, where, b.onError)
+        let ranked: readonly string[]
+        try {
+          ranked = await b.index.search(
+            parsed.query,
+            defined({ signal: info.signal, report }),
+          )
+        } catch (error) {
+          report(error)
+          return errorResult(
+            `Search failed for ${getName}. Retry, or pass names or category instead of query.`,
+            b.maxChars,
+          )
+        }
+        matches = ranked
           .flatMap((name) => allowed.get(name) ?? [])
           .filter((t) => kept.has(t))
       }
@@ -350,13 +367,19 @@ function bucketEntries(b: Bucket): ToolEntry[] {
   ]
 }
 
+export type HostOptions = {
+  invoke: Invoke
+  maxChars: number
+  onError: McpOnError | undefined
+  search: SearchFactory
+}
+
 /** The `get_*_capabilities` / `call_*_capability` pairs of one host; empty buckets list nothing. */
 export function hostEntries(
   key: string,
   host: HostSpec,
   tools: readonly BoundTool[],
-  invoke: Invoke,
-  maxChars: number,
+  options: HostOptions,
 ): ToolEntry[] {
   const cats = categories(tools)
   const inner: Inner[] = tools.map((tool, i) => ({
@@ -381,7 +404,7 @@ export function hostEntries(
         host,
         inner: list,
         byName: new Map(list.map((t) => [t.tool.name, t])),
-        index: createSearchIndex(
+        index: options.search(
           list.map((t) => ({
             id: t.tool.name,
             text: [
@@ -393,8 +416,9 @@ export function hostEntries(
             ].join(' '),
           })),
         ),
-        invoke,
-        maxChars,
+        invoke: options.invoke,
+        maxChars: options.maxChars,
+        onError: options.onError,
       }),
     )
 }

@@ -1,6 +1,6 @@
 ---
 name: ts-pf-mcp
-description: "Use when exposing a ts-pf contract as MCP tools for LLM clients — one-call serving, shaping tools for the model, toolsets, tool hosts, coverage, or serving over HTTP / stdio with the MCP SDK v2. Triggers: @ts-pf/mcp, MCP, Model Context Protocol, createToolkit, createMcpFactory, bindTools, all(), $toolset, $host, $coverage, mcp({ effect }), audit()."
+description: "Use when exposing a ts-pf contract as MCP tools for LLM clients — one-call serving, shaping tools for the model, toolsets, tool hosts, coverage, or serving over HTTP / stdio with the MCP SDK v2. Triggers: @ts-pf/mcp, MCP, Model Context Protocol, createToolkit, createMcpFactory, bindTools, all(), $toolset, $host, $coverage, mcp({ effect }), audit(), hybridSearch, denseSearch, embeddings / semantic tool search."
 ---
 
 # @ts-pf/mcp
@@ -61,8 +61,9 @@ export const factory = createMcpFactory(tools, { name: 'planets', version: '1.0.
 - `.input(schema, map)` replaces the model input; it is exclusive with `.inject` (inject inside the map).
 - `.output(map)` reshapes; `.output(schema, map)` also advertises `outputSchema`, returns `structuredContent`, and checks the result (a mismatch is `INTERNAL`). Mapper `call` is a typed client on the same executor, for joins. Literal unions in a mapper return need `as const`.
 - `all(node, { tags: ['billing'] })` and `docs({ hidden: true })` filter in the types when the contract writes them as literals; a widened `string[]` keeps the tool in the type (runtime `$coverage` still checks).
-- `.errors({ CODE: ({ data }) => 'next step' })` for declared codes only. `VALIDATION` returns the issues plus the model-facing schema. Unknown throws are `INTERNAL: Internal server error` (via `toWireError`) and logged with `console.error` unless `onError` is set.
-- More than about 15 tools in a group: `tk.$host({ description, tools: all(tk.admin) })`. `split: 'effect'` (default) gives `get_admin_query_capabilities` / `call_admin_query_capability` (read) and `get_admin_operations_capabilities` / `call_admin_operations_capability` (write + destructive); `split: false` gives `get_admin_capabilities` / `call_admin_capability`. Pin hot tools flat beside the host. Whole-server discovery is one host over `all(tk)`.
+- `.errors({ CODE: ({ data }) => 'next step' })` for declared codes only. `VALIDATION` returns the issues plus the model-facing schema. Unknown throws are `INTERNAL: Internal server error` (via `toWireError`). `onError(error, info)` receives every tool error; without it, unknown throws and `INTERNAL` errors are logged with `console.error`.
+- More than about 15 tools in a group: `tk.$host({ description, tools: all(tk.admin) })`. `split: 'effect'` (default) gives `get_admin_query_capabilities` / `call_admin_query_capability` (read) and `get_admin_operations_capabilities` / `call_admin_operations_capability` (write + destructive); `split: false` gives `get_admin_capabilities` / `call_admin_capability`. Pin hot tools flat beside the host. Whole-server discovery is one host over `all(tk)`. By default, discovery `query` keeps only BM25 matches (name, description, `docs({ tags })`, `mcp({ aliases })`, category); add aliases for words callers use.
+- Discovery by meaning: `bindTools(toolset, { …, search: hybridSearch({ embed }) })` (or `denseSearch`; `bm25Search()` is the default). `embed(texts, { kind: 'query' | 'document', signal })` returns one vector per text; it can run in-process (transformers.js `feature-extraction` with `pooling: 'mean', normalize: true`), with no vector database. Tool vectors are embedded on the first query and cached. Hybrid falls back to BM25 when `embed` fails (reported to `onError`); dense-only returns an error result.
 - `tk.$coverage({ toolsets, exclude })` is a compile error (and a runtime throw) naming every procedure no toolset exposes and no `exclude` names. Hosts count; `$tool` composites do not; `docs({ hidden: true })` counts as decided at runtime (and in types when written literally).
 - `audit(toolsets)` in CI: missing descriptions (error), unclassified tools, schema roots (unions / allOf, recursion, non-object), more than 15 tools, names over 60 characters.
 - Identity comes from `info.authInfo` (HTTP: your verified token passed to `createMcpHandler(factory).fetch(req, { authInfo })`). stdio never sets it: `serveStdio((ctx) => factory({ ...ctx, authInfo }))`, with `serveStdio` from `@modelcontextprotocol/server/stdio`. Enforce roles in procedure middleware; annotations and `docs({ hidden: true })` are hints, not security.
@@ -111,7 +112,8 @@ export async function fetchHandler(request: Request): Promise<Response> {
 - `mcp` (`@ts-pf/mcp/meta`)
 - `createToolkit` — root members `$context`, `$tool`, `$host`, `$toolset`, `$coverage`
 - `all`
-- `bindTools` — `{ app, context, interceptors?, onError?, maxResultChars? }` or `{ client, context?, onError?, maxResultChars? }` (`context` required when the toolkit's context type has required keys)
+- `bindTools` — `{ app, context, interceptors?, onError?, maxResultChars?, search? }` or `{ client, context?, onError?, maxResultChars?, search? }` (`context` required when the toolkit's context type has required keys)
+- `bm25Search()`, `denseSearch({ embed, minScore? })`, `hybridSearch({ embed, minScore? })` — `SearchFactory` values for `bindTools({ search })`; types `Embed`, `EmbedOptions`, `DenseSearchOptions`, `SearchFactory`, `SearchIndex`, `SearchDocument`, `SearchContext`
 - `audit` — `(toolsets, { maxTools? = 15, maxNameLength? = 60, missingDescription? = 'error' })` → `{ level, tool, message }[]`
 - `createMcpFactory` (`@ts-pf/mcp/sdk`) — `(app, { name, version, instructions?, listTtlMs?, context, interceptors?, onError?, maxResultChars? })` (`context` optional for an unbranded app) or `(tools, { name, version, instructions?, listTtlMs? })`
 - `McpTools` — `{ list(info?), call(name, args, info?), scopesFor?(name, args, info?) }` (`scopesFor` async)

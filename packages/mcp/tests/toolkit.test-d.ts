@@ -8,7 +8,10 @@ import { z } from 'zod'
 import {
   all,
   bindTools,
+  bm25Search,
   createToolkit,
+  denseSearch,
+  hybridSearch,
   type McpCallInfo,
 } from '../src/index.js'
 import { mcp } from '../src/meta.js'
@@ -447,6 +450,25 @@ describe('bindTools / createMcpFactory', () => {
     bindTools(optional.$toolset({ tools: all(optional.user) }), { client })
     // @ts-expect-error wrong context shape on the client form
     bindTools(ts, { client, context: () => ({ tenantId: 1 }) })
+  })
+
+  it('takes a search factory on both binding forms', () => {
+    const embed = async (texts: readonly string[]) => texts.map(() => [0, 1])
+    bindTools(ts, { app, context: ctx, search: bm25Search() })
+    bindTools(ts, { app, context: ctx, search: hybridSearch({ embed }) })
+    const client = {} as ContractClient<typeof contract>
+    bindTools(ts, { client, context: ctx, search: denseSearch({ embed }) })
+    // Float32Array vectors and a synchronous embed are fine
+    denseSearch({ embed: (texts) => texts.map(() => new Float32Array(2)) })
+    // @ts-expect-error embed returns one vector per text, not one per call
+    denseSearch({ embed: async () => [0, 1] })
+    // @ts-expect-error the app form of createMcpFactory has no hosts to search
+    createMcpFactory(app, {
+      name: 'x',
+      version: '1',
+      context: ctx,
+      search: bm25Search(),
+    })
   })
 
   it('requires context for a branded app only', () => {
