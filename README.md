@@ -49,8 +49,9 @@ Wire spec: [packages/protocol/PROTOCOL.md](packages/protocol/PROTOCOL.md).
 
 ## Guides
 
-Prose for humans, between this README and the wire spec. Index: [`docs/README.md`](docs/README.md).
+Prose for humans, between this README and the wire spec. Index: [`docs/README.md`](docs/README.md). The same pages (plus every package README) are published at [crobinson42.github.io/ts-pf](https://crobinson42.github.io/ts-pf/).
 
+- [Tutorial](docs/tutorial.md): install, contract, implementer, `FetchHandler`, `createClient`.
 - [Concepts](docs/concepts.md): contract vs implementer vs app, context, middleware, links, codecs, the three interceptor kinds, validation defaults.
 - [Errors](docs/errors.md): `PFError`, declared errors, the protocol code set and its JSON, `asResult`, `status` per transport, `onError`.
 - [Testing](docs/testing.md): in-process tests through a `fetch` stub or `createLocalClient`; declared errors, middleware, streams.

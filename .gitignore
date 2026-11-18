@@ -1,5 +1,6 @@
 node_modules
 dist
+.astro
 .turbo
 .idea
 *.tsbuildinfo
@@ -11,3 +12,8 @@ coverage
 *.tgz
 *.log
 .claude/worktrees/
+site/src/content/docs/packages/
+site/src/content/docs/guides/
+site/src/content/docs/getting-started.md
+site/src/content/docs/tutorial.md
+site/src/content/docs/protocol.md

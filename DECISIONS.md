@@ -132,6 +132,10 @@ Releases authenticate with GitHub OIDC through npm trusted publishers, so no lon
 
 `packages/<pkg>/skills/ts-pf-<pkg>/SKILL.md` versions with the package it documents, so an agent that syncs skills from `node_modules` gets the docs for the version it has installed. A separate `@ts-pf/skills` package would drift from the code by at least one release, and a library `postinstall` that syncs skills into a consumer's repo is a supply-chain smell the project refuses. The hub skill on `contract` names opt-in packages the consumer has not installed, because that is the one package every consumer has.
 
+### Docs site is `site/`, not `packages/docs`
+
+`@ts-pf/docs` is the procedure-catalog library (`catalog()`, `docs()`). Putting the Starlight site in `packages/docs` would collide with that name and pull a private Astro app into the library DAG (`check-deps` requires every `@ts-pf/*` directory under `packages/` to be in `PROD`). `site/` is a workspace outside `packages/`, private, Changesets-ignored. Package pages are generated from READMEs at build time (the hexok pattern) so a public API change that updates the README is the docs-site change; generated copies are gitignored and must not be edited.
+
 ### README and SKILL are different surfaces (`Q8`)
 
 The README is the npm page: narrative, install line, one snippet, and (since the review) an `API` list. The skill is the agent cheat-sheet: `Do` / `API` / `Pair with` / `Don't`. They were drifting (identifiers in one and not the other, review `O8`), so `check:skills` asserts that every symbol a skill lists under `API` is named in the package README. The direction is skill → README because the skill's `API` section is the explicit export list and the README is where a human lands first.

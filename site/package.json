@@ -1,0 +1,24 @@
+{
+  "name": "@ts-pf/site",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "sync-docs": "node scripts/sync-docs.mjs",
+    "dev": "node scripts/sync-docs.mjs && astro dev",
+    "build": "node scripts/sync-docs.mjs && astro build",
+    "preview": "astro preview",
+    "type-check": "astro check",
+    "lint": "biome check scripts astro.config.mjs src/content.config.ts package.json turbo.json tsconfig.json",
+    "clean": "rm -rf dist .astro"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "^0.42.0",
+    "astro": "^7.3.2",
+    "starlight-links-validator": "^0.27.0"
+  }
+}

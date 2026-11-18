@@ -6,7 +6,7 @@ ts-pf is a contract-first TypeScript RPC library published as 19 `@ts-pf/*` pack
 - **Why each rule exists**: [`DECISIONS.md`](DECISIONS.md). Read it before proposing to change a lock.
 - **Architecture map and "how to add things"**: [`.agents/skills/ts-pf/SKILL.md`](.agents/skills/ts-pf/SKILL.md).
 - **Wire format**: [`packages/protocol/PROTOCOL.md`](packages/protocol/PROTOCOL.md).
-- **User guides** (concepts, errors, testing, migration): [`docs/README.md`](docs/README.md). Their `ts` blocks are covered by `check:snippets`.
+- **User guides** (tutorial, concepts, errors, testing, migration): [`docs/README.md`](docs/README.md). Their `ts` blocks are covered by `check:snippets`. The Starlight site ([`site/`](site/README.md)) copies these files and every published package README at build time; do not edit the generated copies.
 - **Security reports**: [`SECURITY.md`](SECURITY.md), not an issue.
 
 ## Setup
@@ -60,7 +60,7 @@ CI runs the same chain on Node 22 and 24, plus `changeset status` on pull reques
 1. **Find the owner.** The "Owns" table in `.agents/rules.md` and the file map in the internal skill say which package a change belongs in. A new pipe (another transport) is a `Duplex` adapter bound with `DuplexHandler` / `DuplexLink` from the message packages, or a new adapter package that calls `runProcedure` / implements `Link`; a new paradigm (REST, GraphQL) is a projection like `@ts-pf/openapi`. Neither touches `createImplementer`, middleware, or `createClient`.
 2. **Respect the DAG.** `scripts/check-deps.mjs` encodes it. A new edge is a `.agents/rules.md` change and a `check-deps.mjs` change in the same PR, with the reason in `DECISIONS.md`.
 3. **Use the public names.** The "Public names" table lists the oRPC names that must not come back. `check:skills` greps for them.
-4. **Keep docs in the same PR.** A public API, name, or happy-path change updates `packages/<pkg>/skills/ts-pf-<pkg>/SKILL.md` and that package's `README.md`. If the change is an opt-in happy path, also update the matching snippet in the hub skill `packages/contract/skills/ts-pf-app/SKILL.md`. The README is narrative plus install plus one snippet; the skill is `Do` / `API` / `Pair with` / `Don't`, and `check:skills` asserts every `API` symbol appears in the README.
+4. **Keep docs in the same PR.** A public API, name, or happy-path change updates `packages/<pkg>/skills/ts-pf-<pkg>/SKILL.md` and that package's `README.md`. If the change is an opt-in happy path, also update the matching snippet in the hub skill `packages/contract/skills/ts-pf-app/SKILL.md`. The README is narrative plus install plus one snippet; the skill is `Do` / `API` / `Pair with` / `Don't`, and `check:skills` asserts every `API` symbol appears in the README. That README is also the package's page on the docs site (`site/` generates it; a published package without a README fails the site build). Do not add a hand-written Starlight page for a package.
 5. **Wire changes update `PROTOCOL.md`** and the conformance tests listed in the internal skill's review checklist. Additive-looking changes still need a design note; the v1 handshake has no extension point.
 6. **Tests.** Vitest for behaviour; `expectTypeOf` plus `@ts-expect-error` in `tests/*.test-d.ts` for types.
 
@@ -72,11 +72,11 @@ Every PR that changes a published `packages/*` package includes a changeset. Run
 npx changeset
 ```
 
-Pick the packages, the bump (`patch` / `minor` / `major`), and write the summary as a changelog entry a consumer will read. Anything under `packages/<pkg>/` counts as a package change, including its `README.md` and `skills/` (both ship in the tarball, and CI's `changeset status` fails without a changeset); root docs, `scripts/`, and examples do not. A change under `packages/` that ships nothing (tests, devDependencies) still needs one: `npx changeset add --empty` satisfies `changeset status` without a release. Do not run `changeset pre enter` and do not add `.changeset/pre.json`.
+Pick the packages, the bump (`patch` / `minor` / `major`), and write the summary as a changelog entry a consumer will read. Anything under `packages/<pkg>/` counts as a package change, including its `README.md` and `skills/` (both ship in the tarball, and CI's `changeset status` fails without a changeset); root docs, `site/`, `scripts/`, and examples do not. A change under `packages/` that ships nothing (tests, devDependencies) still needs one: `npx changeset add --empty` satisfies `changeset status` without a release. Do not run `changeset pre enter` and do not add `.changeset/pre.json`.
 
 ### Adding a package
 
-The checklist for a new published package (`package.json` fields, `LICENSE`, skill, tsconfigs, `vitest.config.ts`, `skills/README.md` row, `scripts/check-deps.mjs` `PROD` entry, changeset) is the "Code" section of `.agents/rules.md`; `check:exports`, `check:skills`, and `check:deps` fail on omissions. New examples follow the "Examples" section there and are appended to `.changeset/config.json` `ignore`.
+The checklist for a new published package (`package.json` fields, `LICENSE`, skill, tsconfigs, `vitest.config.ts`, `skills/README.md` row, `scripts/check-deps.mjs` `PROD` entry, changeset) is the "Code" section of `.agents/rules.md`; `check:exports`, `check:skills`, and `check:deps` fail on omissions. New examples follow the "Examples" section there and are appended to `.changeset/config.json` `ignore`. `@ts-pf/site` is ignored too.
 
 ## Examples
 
@@ -98,7 +98,7 @@ Only `hello` listens; the others are smoke-tested. Do not add a framework adapte
 Releases use [Changesets](https://github.com/changesets/changesets) and publish to the npm `latest` dist-tag. The full runbook, including npm trusted-publisher setup, lives in [`.changeset/README.md`](.changeset/README.md); this is the shape of it.
 
 1. Merging a PR to `main` triggers the [release workflow](.github/workflows/release.yml). It re-runs lint, `lint:root`, `check:skills`, `check:deps`, type-check, test, build, `check:exports`, and `check:snippets` (CI has already run the full chain on the PR), then `changesets/action` opens or updates a **Version packages** PR when unpublished changesets exist. That PR consumes `.changeset/*.md`, bumps versions, writes `CHANGELOG.md` files, rewrites internal `"*"` dependencies to the released versions (do not restore `"*"` afterwards), and refreshes the lockfile.
-2. Merging the Version packages PR publishes every bumped package, pushes git tags, and creates GitHub Releases. Do not publish by hand in a separate step; that skips tags and releases.
+2. Merging the Version packages PR publishes every bumped package, pushes git tags, and creates GitHub Releases. Do not publish by hand in a separate step; that skips tags and releases. The same workflow builds `@ts-pf/site` and deploys [crobinson42.github.io/ts-pf](https://crobinson42.github.io/ts-pf/) (GitHub Pages, source **GitHub Actions**, environment `github-pages`). A `workflow_dispatch` input `deploy_docs` deploys the site without a publish.
 3. Publishing uses npm **trusted publishing** (OIDC), not a token. Each `@ts-pf/*` package has a trusted publisher pointing at user `crobinson42`, repository `ts-pf`, workflow filename `release.yml`, empty environment, with `npm publish` allowed (not stage-only). `id-token: write` is the only credential. Do not set `NPM_TOKEN`, and do not pass `registry-url` to `actions/setup-node`: it writes an empty `_authToken` and npm then skips OIDC and fails with `ENEEDAUTH`. The job runs `scripts/probe-npm-oidc.mjs` first so a failed token exchange prints the registry's message. A 404 `package not found` from that exchange means a missing trusted publisher, not an unpublished package; `scripts/trust-github-publishers.sh` creates them all with interactive 2FA.
 4. The release job pins Node 24 with a global `npm@11.12.1`, the combination the OIDC flow was verified with. It is deliberately not tied to `.nvmrc`.
 5. Repository settings the workflow needs: **Settings → Actions → General → Workflow permissions**: *Read and write permissions* and *Allow GitHub Actions to create and approve pull requests*.

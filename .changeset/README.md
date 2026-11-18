@@ -16,7 +16,7 @@ New published packages start at `0.0.0` and need a changeset. They also ship `sk
 
 ## Release
 
-On `main`, the [release workflow](../.github/workflows/release.yml) opens a **Version packages** PR when unpublished changesets exist. Merging that PR publishes to npm as `latest`, pushes git tags, and creates GitHub Releases (`changesets/action` `publish-script`).
+On `main`, the [release workflow](../.github/workflows/release.yml) opens a **Version packages** PR when unpublished changesets exist. Merging that PR publishes to npm as `latest`, pushes git tags, and creates GitHub Releases (`changesets/action` `publish-script`). The same workflow deploys the Starlight site (`site/`) to [crobinson42.github.io/ts-pf](https://crobinson42.github.io/ts-pf/).
 
 The action's default `github-token` (the workflow `GITHUB_TOKEN`) can only open that PR if the repo allows it: **Settings → Actions → General → Workflow permissions → Allow GitHub Actions to create and approve pull requests**. Also set **Read and write permissions**. After changing this, re-run the `release` workflow.
 

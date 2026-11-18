@@ -26,6 +26,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      deploy_docs:
+        description: Deploy docs even if no package was published
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -43,6 +48,8 @@ jobs:
       contents: write
       pull-requests: write
       id-token: write
+    outputs:
+      published: ${{ steps.changesets.outputs.published }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -70,6 +77,7 @@ jobs:
           unset NODE_AUTH_TOKEN NPM_TOKEN
           node scripts/probe-npm-oidc.mjs
       - uses: changesets/action@v2
+        id: changesets
         with:
           pr-title: Version packages
           commit-message: 'chore: version packages'
@@ -80,3 +88,57 @@ jobs:
           # GITHUB_TOKEN during `changeset version` to link PRs and authors.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_CONFIG_LOGLEVEL: verbose
+
+  build-docs:
+    name: Build docs
+    needs: release
+    # always() lets this job run when publish fails. A failed needs job
+    # would otherwise skip the docs site. Main pushes deploy the site even
+    # when every package version is already on npm.
+    if: |
+      always() &&
+      needs.release.result != 'cancelled' &&
+      (
+        needs.release.outputs.published == 'true' ||
+        github.event_name == 'push' ||
+        (github.event_name == 'workflow_dispatch' && inputs.deploy_docs)
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pages: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build --workspace=@ts-pf/site
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site/dist
+
+  deploy-docs:
+    name: Deploy docs
+    needs: build-docs
+    # The github-pages environment skips this job when any other job in the
+    # run fails or is cancelled, unless an if is set. Deploy whenever the
+    # docs build succeeded and the run itself was not cancelled.
+    if: ${{ !cancelled() && needs.build-docs.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

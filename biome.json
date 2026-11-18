@@ -23,8 +23,14 @@
       "!**/dist",
       "!**/node_modules",
       "!**/.turbo",
+      "!**/.astro",
       "!**/tests/fixtures",
-      "!examples/codegen/client/src/contract.d.ts"
+      "!examples/codegen/client/src/contract.d.ts",
+      "!site/src/content/docs/packages",
+      "!site/src/content/docs/guides",
+      "!site/src/content/docs/getting-started.md",
+      "!site/src/content/docs/tutorial.md",
+      "!site/src/content/docs/protocol.md"
     ]
   }
 }

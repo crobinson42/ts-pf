@@ -21,6 +21,7 @@
     "@ts-pf/example-mcp",
     "@ts-pf/example-message",
     "@ts-pf/example-plugins",
-    "@ts-pf/example-stream"
+    "@ts-pf/example-stream",
+    "@ts-pf/site"
   ]
 }
