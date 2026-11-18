@@ -7,6 +7,7 @@ import { appExecutor, clientExecutor } from './executor.js'
 import { hostEntries, type ToolEntry, type ToolView } from './host.js'
 import type { MaybePromise } from './infer.js'
 import { DEFAULT_MAX_RESULT_CHARS, errorResult } from './result.js'
+import { bm25Search, type SearchFactory } from './search.js'
 import { type Toolset, type ToolsetSpec, toolsetSpec } from './toolset.js'
 import type { McpCallInfo, McpToolResult, McpTools } from './types.js'
 
@@ -18,13 +19,20 @@ export type CallPipelineOptions = {
   maxResultChars?: number
 }
 
-export type AppBinding<T, Ctx> = CallPipelineOptions & {
-  app: ImplementedRouter<T, Ctx>
-  /** Runs once per call, with `info.tool` set. */
-  context: (info: McpCallInfo) => MaybePromise<Ctx>
-  /** Server `CallInterceptor`s, passed straight to `runProcedure`. */
-  interceptors?: readonly CallInterceptor[]
+/** Options for a toolkit binding that `createMcpFactory(app, …)` (no hosts) does not take. */
+export type ToolsetBindingOptions = {
+  /** How `$host` discovery ranks a `query`: `bm25Search()` (default), `denseSearch()`, or `hybridSearch()`. */
+  search?: SearchFactory
 }
+
+export type AppBinding<T, Ctx> = CallPipelineOptions &
+  ToolsetBindingOptions & {
+    app: ImplementedRouter<T, Ctx>
+    /** Runs once per call, with `info.tool` set. */
+    context: (info: McpCallInfo) => MaybePromise<Ctx>
+    /** Server `CallInterceptor`s, passed straight to `runProcedure`. */
+    interceptors?: readonly CallInterceptor[]
+  }
 
 /**
  * Mappers and `inject` still see `context`, so it is required when the
@@ -35,10 +43,11 @@ type ClientContext<Ctx> = {} extends Ctx
   ? { context?: (info: McpCallInfo) => MaybePromise<Ctx> }
   : { context: (info: McpCallInfo) => MaybePromise<Ctx> }
 
-export type ClientBinding<T, Ctx> = CallPipelineOptions & {
-  /** A typed client, or one built per caller (a gateway calling upstream as the user). */
-  client: ContractClient<T> | ((info: McpCallInfo) => ContractClient<T>)
-} & ClientContext<Ctx>
+export type ClientBinding<T, Ctx> = CallPipelineOptions &
+  ToolsetBindingOptions & {
+    /** A typed client, or one built per caller (a gateway calling upstream as the user). */
+    client: ContractClient<T> | ((info: McpCallInfo) => ContractClient<T>)
+  } & ClientContext<Ctx>
 
 /** A flat tool's entry: one fixed view, hidden per caller only by its own `visible`. */
 function flatEntry(
@@ -64,7 +73,10 @@ function flatEntry(
 }
 
 /** Bound tools from runtime specs; definitions, schemas, and search indexes are built once here. */
-export function bindToolset(spec: ToolsetSpec, options: CallOptions): McpTools {
+export function bindToolset(
+  spec: ToolsetSpec,
+  options: CallOptions & { search?: SearchFactory | undefined },
+): McpTools {
   const entries = new Map<string, ToolEntry>()
   const invoke = (tool: BoundTool, args: unknown, info: McpCallInfo) =>
     callTool(tool, args, info, options)
@@ -75,13 +87,12 @@ export function bindToolset(spec: ToolsetSpec, options: CallOptions): McpTools {
     const inner = Object.entries(host.tools).map(([name, s]) =>
       bindTool(name, s),
     )
-    for (const entry of hostEntries(
-      key,
-      host,
-      inner,
+    for (const entry of hostEntries(key, host, inner, {
       invoke,
-      options.maxResultChars,
-    )) {
+      maxChars: options.maxResultChars,
+      onError: options.onError,
+      search: options.search ?? bm25Search(),
+    })) {
       entries.set(entry.name, entry)
     }
   }
@@ -134,5 +145,6 @@ export function bindTools(
     executor,
     onError: binding.onError,
     maxResultChars: binding.maxResultChars ?? DEFAULT_MAX_RESULT_CHARS,
+    search: binding.search,
   })
 }

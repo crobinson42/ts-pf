@@ -1,5 +1,13 @@
-import { describe, expect, it } from 'vitest'
-import { all, bindTools, createToolkit } from '../src/index.js'
+import { describe, expect, it, vi } from 'vitest'
+import {
+  all,
+  bindTools,
+  createToolkit,
+  denseSearch,
+  hybridSearch,
+  type SearchFactory,
+} from '../src/index.js'
+import { toyEmbed } from './embed.js'
 import { app, type Ctx, contract } from './fixture.js'
 
 const tk = createToolkit(contract).$context<Ctx>()
@@ -200,6 +208,60 @@ describe('call_*_capability', () => {
     })
     expect(text(result)).toMatch(
       /^Invalid input for user_find: id: .*\nExpected schema: \{"type":"object"/,
+    )
+  })
+})
+
+describe('search option', () => {
+  const users = (search?: SearchFactory, onError = () => {}) =>
+    bindTools(
+      tk.$toolset({
+        hosts: {
+          users: tk.$host({
+            description: 'User accounts.',
+            tools: [
+              all(tk.user, { inject: tenant, exclude: [tk.user.ping] }),
+              { user_ping: tk.user.ping.visible(() => false) },
+            ],
+          }),
+        },
+      }),
+      { app, context: ctx, onError, ...(search && { search }) },
+    )
+  const names = async (tools: ReturnType<typeof users>, query: string) =>
+    json(
+      await tools.call('get_users_operations_capabilities', { query }),
+    ).tools.map((t: { name: string }) => t.name)
+
+  it('defaults to BM25, which needs a shared word', async () => {
+    expect(await names(users(), 'erase account')).toEqual([])
+  })
+
+  it('finds by meaning with hybridSearch; hidden tools stay hidden', async () => {
+    expect(
+      await names(users(hybridSearch({ embed: toyEmbed })), 'erase account'),
+    ).toEqual(['user_remove'])
+  })
+
+  it('reports a failed search and tells the model what else to pass', async () => {
+    const failure = new Error('model down')
+    const onError = vi.fn()
+    const tools = users(
+      denseSearch({ embed: () => Promise.reject(failure) }),
+      onError,
+    )
+    const result = await tools.call('get_users_operations_capabilities', {
+      query: 'erase account',
+    })
+    expect(result.isError).toBe(true)
+    expect(text(result)).toBe(
+      'Search failed for get_users_operations_capabilities. Retry, or pass names or category instead of query.',
+    )
+    expect(onError).toHaveBeenCalledWith(
+      failure,
+      expect.objectContaining({
+        tool: { name: 'get_users_operations_capabilities', path: '' },
+      }),
     )
   })
 })

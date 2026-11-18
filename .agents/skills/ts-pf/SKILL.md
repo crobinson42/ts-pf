@@ -23,7 +23,7 @@ examples/
   message/            PortHandler + PortLink over MessageChannel
   stream/             StreamCodec + stream()
   plugins/            CallPlugin / CallInterceptor; first-party retry/cache/dedupe; local TimeoutPlugin / AuditPlugin; CORSPlugin is HTTP-only; userland GetBridgePlugin + getInterceptor (cacheable GET reads)
-  mcp/                @ts-pf/mcp: toolkit + toolset + split host + $coverage + bindTools + createMcpFactory; smoke test drives the v2 Client over HTTP (createMcpHandler) and stdio (serveStdio + InMemoryTransport), versionNegotiation auto and legacy
+  mcp/                @ts-pf/mcp: toolkit + toolset + split host + $coverage + bindTools + createMcpFactory; smoke test drives the v2 Client over HTTP (createMcpHandler) and stdio (serveStdio + InMemoryTransport), versionNegotiation auto and legacy; vector-search.test.ts: hybridSearch with a toy embed
 scripts/check-skills.mjs
 scripts/check-deps.mjs                   @ts-pf/* DAG allow-list (mirrors rules.md "Packages"); package.json + src/tests imports; cycles
 scripts/check-exports.mjs
@@ -170,8 +170,8 @@ packages/mcp/src/
   call.ts             one call: context → inject / .input map → procedure → .output map + check → result; errors via error-text
   error-text.ts       VALIDATION issues + schema; declared .errors() text; other PFError code: message; toWireError; reportError (onError or console.error default)
   result.ts           success / isError results, maxResultChars truncation
-  host.ts             get_* / call_* entries per bucket (split by effect), resolved per caller (visible inner set; index built once), BM25 discovery, categories, name enum cap, per-inner scopes
-  search.ts           BM25 index + tokenize
+  host.ts             get_* / call_* entries per bucket (split by effect), resolved per caller (visible inner set; search index built once per bucket from `options.search`), discovery (a search throw → `onError` + error result), categories, name enum cap, per-inner scopes
+  search.ts           tokenize + SearchFactory: bm25Search (default), denseSearch / hybridSearch (app-supplied embed, lazy cached tool vectors, RRF)
   bind.ts             bindToolset (entries map; fixed list when nothing is per-caller; scopesFor) + bindTools overloads (AppBinding / ClientBinding)
   scopes.ts           OAuth scope-token check, step-up set (granted ∪ required)
   audit.ts            audit(toolsets, options)

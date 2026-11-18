@@ -303,7 +303,7 @@ Your unsplit `users-mcp` example is `hosts: { users: tk.$host({ description: 'Us
 
 **`get_*_capabilities` input** (all optional):
 
-- `query`: BM25 ranking over name, description, tags and `mcp()` aliases.
+- `query`: BM25 ranking (the default; pluggable via `bindTools({ search })`) over name, description, tags and `mcp()` aliases.
 - `category`: the first path segment under the host node (e.g. `billing`, `flags`).
 - `names`: exact tools.
 - `detail`: `'name' | 'summary' | 'full'`, default `summary`; `full` adds input schema and examples.
@@ -380,7 +380,7 @@ export const createMcpFactory = (tools: McpTools, o: McpFactoryOptions): McpServ
 | 400 flat tools | 0.61 / 4.72 ms | 3.01 / 8.84 ms | 1.24 / 6.23 ms |
 | 4 hosts (8 tools) | 0.02 / 0.03 ms | 0.26 / 0.48 ms | 0.27 / 0.43 ms |
 
-No server caching is needed. Reusing one instance fails as soon as two requests overlap; the SDK says "Return a new instance for each request." `bindTools` precomputes definitions, JSON Schemas and the BM25 index once, so the factory only filters and registers.
+No server caching is needed. Reusing one instance fails as soon as two requests overlap; the SDK says "Return a new instance for each request." `bindTools` precomputes definitions, JSON Schemas and the search index once (dense tool vectors are embedded lazily on the first query), so the factory only filters and registers.
 
 **Facts the design rests on** (checked in the 2.4.0 type definitions and runs):
 
@@ -454,13 +454,14 @@ No server caching is needed. Reusing one instance fails as soon as two requests 
 | Toolkit, builder methods (`describe`, `effect`, `inject`, `input`, `output`, `errors`, `examples`) | In | — |
 | `$tool` composite tools, `all()` with filters and `inject` | In | — |
 | `$toolset` with type-level duplicate check, `$coverage` | In | — |
-| `$host` with `split`, BM25, `category`, `detail` | In | Pluggable `search` (embeddings) in v1.1 |
+| `$host` with `split`, BM25, `category`, `detail` | In | — |
 | `bindTools` for `app` and `client`; `createMcpFactory (app or McpTools)` | In | — |
 | `audit()`: unclassified, missing descriptions, schema roots, more than 15 tools, names over 60 chars (our soft limit for Cursor; the spec allows 128). Coverage lives only in $coverage | In | Token estimates in v1.1 |
 | `maxResultChars` truncation, `onError`, interceptors | In | — |
 | `.visible()` per-caller tool lists | v1.1 (done) | — |
 | OAuth scope step-up (`.scopes()` → `403 insufficient_scope`) | v1.1 (done) | — |
 | Type-level `all({ tags })` / literal `docs({ hidden: true })` | v1.1 (done) | — |
+| Pluggable host search: `bindTools({ search })` with `bm25Search` / `denseSearch` / `hybridSearch` (app-supplied `embed`) | v1.1 (done) | — |
 | `confirm: true` via `inputRequired` with fallback | — | v1.1 |
 | `.title()`, `.text()`, custom host name templates | — | v1.1 |
 | Streams (collect + progress), file inputs | — | v2 |
@@ -474,7 +475,7 @@ Suggested files, one job each:
 - `toolkit.ts` (builder, `all`)
 - `toolset.ts` (`$toolset`, `$host`, `$tool`, `$coverage` types)
 - `schema.ts` (model-facing JSON Schema)
-- `search.ts` (BM25)
+- `search.ts` (BM25 default; dense / hybrid)
 - `bind.ts`
 - `audit.ts`
 - `sdk.ts`
@@ -498,7 +499,7 @@ The repo checklist applies: a `skills/ts-pf-mcp/SKILL.md`, the README `## API` l
 | Reuse ts-pf message/HTTP handlers for MCP | B | MCP is JSON-RPC 2.0, not ts-pf frames; the repo rules forbid repurposing them |
 | Read procedures as MCP resources by default | B, C | Cursor shows no resource support; Claude Code reads them only through extra built-in tools; elsewhere resources are user-attached. Tools are the reliable path |
 | `mapInput` over the procedure input | C | The model still sees every field, including the "forced" one; `.inject` removes it from the schema |
-| Embeddings as the default search | B, C | Adds a model dependency and 50–200 ms per query; BM25 gives about 87–90% top-5 at under 1 ms |
+| Embeddings as the default search | B, C | Adds a model dependency and 50–200 ms per query with a hosted API (in-process MiniLM measured 1–8 ms per query after a model load); BM25 gives about 87–90% top-5 at under 1 ms |
 | Automatic switch to hosts above N tools | Stainless pattern | Behavior would change silently when a procedure is added; `audit()` warns and the developer decides |
 | Code generation of a second contract for MCP | Considered in A | Duplicate code that drifts, which is the problem you want to avoid |
 

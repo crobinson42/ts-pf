@@ -6,6 +6,18 @@ export { type AuditFinding, type AuditOptions, audit } from './audit.js'
 export { bindTools } from './bind.js'
 export type { CompositeTool } from './composite.js'
 export type { ToolkitNode } from './node.js'
+export {
+  bm25Search,
+  type DenseSearchOptions,
+  denseSearch,
+  type Embed,
+  type EmbedOptions,
+  hybridSearch,
+  type SearchContext,
+  type SearchDocument,
+  type SearchFactory,
+  type SearchIndex,
+} from './search.js'
 export type {
   BuilderState,
   MapperOpts,
