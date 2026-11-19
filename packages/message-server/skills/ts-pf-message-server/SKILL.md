@@ -107,7 +107,7 @@ new WsHandler(app, {
 - `HandlerPlugin` here (HTTP-only on `FetchHandler`).
 - Reconstruct HTTP status from `error.code`.
 - Throw a plain `Error` from the context factory to say why a connection was refused — only a `PFError`'s code and message reach the client.
-- Close a socket with a 49xx code, or call `socket.close()` yourself and then the handle — `handle.close(code, reason)` closes the socket first so your code wins.
+- Close a socket with a 49xx code (reserved for the protocol). End a connection with `handle.close(code, reason)`; it closes the socket first, so your code wins over the session's `1000`.
 - Copy the multiplexer for a new pipe — write a `Duplex` and use `DuplexHandler`.
 - Treat the drain-timeout `INTERNAL` as a handler bug — it is the peer not reading; log it with `onStall`, not `onError`.
 - Set `highWaterMark: Infinity` on a public WebSocket server — one slow client then grows the process again.

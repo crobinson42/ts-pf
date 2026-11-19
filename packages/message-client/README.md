@@ -49,7 +49,7 @@ User owns listen / upgrade / spawn / Worker bootstrap. Prod never depends on `@t
 
 ## Credentials and refused connections
 
-`meta` is sent once, in the `hello` that opens the connection. The convention for a credential is `meta.authorization` with the same value as an HTTP `Authorization` header (browsers cannot set headers on a WebSocket upgrade). A server that refuses the connection throws a `PFError` from its context factory; every call on the link then rejects with that `code` / `message` / `data` (not a local failure, so `RetryPlugin` does not retry it by default). The credential is fixed for the connection: to rotate it, close the link and open a new one. Streams do not survive a reconnect; call the stream procedure again after the new link is ready.
+`meta` is sent once, in the `hello` that opens the connection. The convention for a credential is `meta.authorization` with the same value as an HTTP `Authorization` header (browsers cannot set headers on a WebSocket upgrade). A server that refuses the connection throws a `PFError` from its context factory; every call on the link then rejects with that `code` / `message` / `data` (not a local failure, so `RetryPlugin` does not retry it by default). The credential is fixed for the connection: to rotate it, close the link and open a new one. Streams do not survive a reconnect; call the stream procedure again after the new link is ready. A server that ends a live connection with an application close code (4400–4499, e.g. `4401`) fails in-flight calls with a local `Connection closed`; the code is on the socket's `close` event, so pass your own `socket` to `WsLink` if you need it.
 
 ```ts
 import { createClient } from '@ts-pf/client'

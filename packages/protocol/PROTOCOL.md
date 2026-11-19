@@ -6,7 +6,7 @@ The default binding is HTTP Fetch (POST JSON). Optional codecs wrap the same env
 
 ## Conventions
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in BCP 14 [RFC 2119] [RFC 8174] when, and only when, they appear in all capitals, as shown here.
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in BCP 14 [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119) [RFC 8174](https://www.rfc-editor.org/rfc/rfc8174) when, and only when, they appear in all capitals, as shown here.
 
 The frame-handling tables under [Message transports](#message-transports-optional) are normative as written: each row is the action a conforming peer takes. Sections marked **non-normative** are advice.
 
@@ -20,9 +20,9 @@ Everything a JSON-over-HTTP client needs. Streams, files, and SSE are optional.
 - Send `x-ts-pf-protocol: 1` on every request. → [HTTP Fetch binding](#http-fetch-binding-default)
 - If the response carries `x-ts-pf-protocol` with any other value, do not decode the body; fail the call. → [Classifying an HTTP response](#classifying-an-http-response)
 - Decode the body as an envelope: `"ok": true` → `output` (optional); `"ok": false` → `error`. → [Classifying an HTTP response](#classifying-an-http-response)
-- A body that does not decode is a **transport failure**, never an application outcome: do not read "not found", "unauthenticated", or "forbidden" off the HTTP status. Retrying 5xx / 408 / 429 / network errors is optional. → [Classifying an HTTP response](#classifying-an-http-response)
+- A body that does not decode is a **transport failure**, never an application outcome: do not read "not found", "unauthenticated", or "forbidden" off the HTTP status. Retrying 5xx / 408 / 429 / network errors is optional, and only for calls that are safe to repeat (every call is a POST). → [Classifying an HTTP response](#classifying-an-http-response)
 - On failure, switch on `error.code`, not the HTTP status. Handle unknown codes with a catch-all. → [Protocol errors](#protocol-errors)
-- Never retry `BAD_REQUEST` `Unsupported protocol version`: the server speaks another wire major. → [Versioning](#versioning)
+- Do not retry `BAD_REQUEST` `Unsupported protocol version`: the server speaks another wire major. → [Versioning](#versioning)
 - Optional streams: an `application/jsonl` response is one envelope per line and ends at EOF; a `text/event-stream` response ends at `event: close` (EOF without it is a failure); an `"ok": false` line or `event: error` ends the stream as a failure. → [Message streams](#message-streams-optional), [SSE](#sse-optional)
 
 ## WebSocket client checklist
@@ -33,9 +33,9 @@ The same envelopes as multiplexed JSON text frames. The same list applies to std
 - Send `{ "type": "hello", "v": 1 }` first (optionally with `meta`, e.g. `{ "authorization": "Bearer …" }`). Send no `call` until `hello-ok`. → [Handshake](#handshake), [Authenticating with `hello.meta`](#authenticating-with-hellometa-non-normative)
 - Accept `hello-ok` only when `v` is the JSON number `1`; anything else fails the connect. On `hello-error`, fail the connect with its `error`. Close if neither arrives within your timeout. → [Handshake](#handshake)
 - Do not retry a `hello-error` `Unsupported protocol version`. → [Reconnecting](#reconnecting-non-normative)
-- Call ids are non-empty **strings**, unique among your in-flight calls. Do not reuse an id you cancelled (nothing confirms the server stopped). → [Frame types](#frame-types)
+- Call ids are non-empty **strings**, unique among your in-flight calls. Do not reuse an id you cancelled (nothing confirms the server stopped). → [Frame types](#frame-types), [Cancel and mid-stream errors](#cancel-and-mid-stream-errors)
 - You cannot tell a unary procedure from a stream before it answers: the first frame for an id decides. `result` → unary; `item` or `done` → the call resolves as a stream. → [First frame (client)](#first-frame-client)
-- Terminal frames are `result` and `done`; exactly one per id. In a stream, `result` `"ok": false` is the failure and no `done` follows. → [Multiplex](#multiplex), [Output streams](#output-streams)
+- Terminal frames are `result` and `done`; at most one per id (none after you cancel). In a stream, `result` `"ok": false` is the failure and no `done` follows. → [Multiplex](#multiplex), [Output streams](#output-streams)
 - Ignore frames for ids that are not in flight (for example `item` / `done` after a unary `result`), and frames of an unknown type for an in-flight id. → [Multiplex](#multiplex), [Legal sequences](#legal-sequences)
 - On a local timeout, abort, or `break` out of a stream, send `{ "type": "cancel", "id" }`. No frame acknowledges it; ignore any frames that still arrive for that id. → [Cancel and mid-stream errors](#cancel-and-mid-stream-errors)
 - A message that is not JSON, parses to a non-object, or is an invalid frame with no usable `id` closes the connection; a binary message closes it with `1002`. → [Multiplex](#multiplex), [Close codes](#close-codes-websocket)
@@ -115,7 +115,7 @@ A client decides what an HTTP response means from its headers and body, not from
    Clients SHOULD additionally require `error` to be an object (not an array) whose `code` is a non-empty string and whose `message` is a string, and MAY additionally require `Content-Type: application/json`. Other keys are ignored.
 3. **Transport failure.** A response whose body does not decode is a **transport failure**. A client MUST NOT turn it into an application-level outcome (not found, unauthenticated, forbidden, validation failed, …) from the HTTP status alone. It MAY retry by status class: 5xx, 408, and 429 responses, and network errors that produced no response at all. Only retry a call the application knows is safe to repeat; ts-pf calls are POSTs and may write.
 4. **Headerless responses.** A response without `x-ts-pf-protocol` whose body decodes is trusted as a result. A cross-origin browser client cannot read the header at all unless the server lists it in `Access-Control-Expose-Headers`, so the header's absence alone is not a transport failure.
-5. **Streams.** A response with `Content-Type: application/jsonl` or `text/event-stream` to a client that accepts streams is classified by that content type, before any line is read: the call has succeeded with a stream (see [Message streams](#message-streams-optional) and [SSE](#sse-optional)). Each JSONL line, and the `data` of each SSE `message` / `error` event, is then decoded as an envelope as in step 2. A line that does not decode MUST end the stream with a failure; it MUST NOT be skipped or delivered as an item. A response with any other content type is classified by steps 2–4.
+5. **Streams.** A response with `Content-Type: application/jsonl` or `text/event-stream` to a client that accepts streams is classified by that content type, before any line is read: the call has succeeded with a stream (see [Message streams](#message-streams-optional) and [SSE](#sse-optional)). Each JSONL line, and the `data` of each SSE `message` / `error` event, is then decoded as an envelope as in step 2. Blank JSONL lines are ignored, and an SSE event with no `data` (other than `close`) carries nothing. A line that does not decode MUST end the stream with a failure; it MUST NOT be skipped or delivered as an item. A response with any other content type is classified by steps 2–4.
 
 A decoded failure envelope is the server's answer whatever the HTTP status: switch on `error.code` ([Protocol errors](#protocol-errors)).
 
@@ -146,7 +146,9 @@ Header `x-ts-pf-protocol` and `v` on `hello` / `hello-ok` carry the **wire major
 
 **Revisions.** This document has a revision number (this is 1.2). Revisions are additive and keep the wire major: a peer cannot tell 1.0 from 1.1 or 1.2 on the wire. Additive means a 1.x sender emits a new key, frame type, header, or content type only when the user opted in, and a 1.0 receiver that does not understand it fails **that call** (`BAD_REQUEST`), never the connection and never silently. Receivers MUST NOT reject a value that 1.0 defined as valid. Bump the wire major only when the JSON envelope, a required frame field, or the handshake changes.
 
-- **1.1** — servers read the request `x-ts-pf-protocol` (another value is `BAD_REQUEST` `Unsupported protocol version`), clients do not decode a response carrying another value, and the advisory [content negotiation](#versioning) paragraph below.
+A client SHOULD NOT retry a call or connection that failed with `BAD_REQUEST` `Unsupported protocol version` (HTTP 400 or `hello-error`): the server speaks another wire major and answers the same way every time.
+
+- **1.1** — servers read the request `x-ts-pf-protocol` (another value is `BAD_REQUEST` `Unsupported protocol version`), clients do not decode a response carrying another value, and the advisory content negotiation paragraph below.
 - **1.2** — no new frame, key, header, or code. It adds [Classifying an HTTP response](#classifying-an-http-response), the RFC 2119 [conventions](#conventions), the [HTTP](#http-client-checklist) and [WebSocket](#websocket-client-checklist) client checklists, the [TypeScript reference client](#appendix-typescript-reference-client) appendix, the WebSocket [close-code ranges](#close-codes-websocket), the non-normative [reconnecting](#reconnecting-non-normative) and [`hello.meta.authorization`](#authenticating-with-hellometa-non-normative) notes, `hello-error` carrying the application error a server raised while accepting `hello` ([Handshake](#handshake)), and `BAD_REQUEST` for a stream procedure called on an endpoint whose codec cannot carry streams ([Message streams](#message-streams-optional)).
 
 **Content negotiation.** Clients MAY send `Accept` listing the response media types they can decode (`application/json`, `application/jsonl`, `text/event-stream`). Servers MAY use it to choose the framing of a streamed response and MUST ignore it when they cannot satisfy it (never 406; the JSON failure envelope is always `application/json`). `Content-Type` on the request selects the request codec as today.
@@ -513,7 +515,7 @@ Option omitted = **unlimited in both directions** (same as Fetch without a reque
 - `METHOD_NOT_ALLOWED` is not used.
 - `cancel` of an unknown / already-finished id is a no-op.
 
-Sequence: `C: call` then `S: result ok:true | result ok:false`. Optional: `C: cancel` after `call` and before the terminal. After cancel, the server stops; no further frames for this id. No frame acknowledges `cancel`: the client treats the call as finished when it sends `cancel` and ignores any frames that still arrive for that id.
+Sequence: `C: call` then `S: result ok:true | result ok:false`. Optional: `C: cancel` after `call` and before the terminal. After cancel, the server stops; no further frames for this id. No frame acknowledges `cancel`: the client treats the call as finished when it sends `cancel` and ignores any frames that still arrive for that id. Because nothing confirms the server has let go of the id, a client SHOULD NOT reuse a cancelled id (a server still holding it ignores the new `call` as a duplicate).
 
 HTTP distinguishes unary vs stream via `Content-Type`. Message frames have no content type. The client uses the **first inbound frame for that id**.
 
@@ -525,16 +527,16 @@ After sending `call` (and while possibly sending `in-item` / `in-done` if `call.
 |---|---|
 | `result` `ok: true` | Resolve to `output` (possibly `undefined`). Unary done. |
 | `result` `ok: false` | Reject with that `error`. |
-| `item` | Resolve to an async iterable whose first `next()` yields this `output`; then continue in `streaming-out`. |
-| `done` | Resolve to an async iterable that immediately completes (empty stream; JSONL uses EOF, multiplex cannot). |
+| `item` | Resolve the call as a stream whose first item is this `output` (an async iterable in TypeScript); then continue in `streaming-out`. |
+| `done` | Resolve the call as an empty stream that is already complete (JSONL uses EOF, multiplex cannot). |
 | `cancel` / `call` / `hello*` / `in-item` / `in-done` | Reject this call as local `Invalid response`. Do not close the connection. Ignore further frames for this id. |
 | Peer close before any frame | Reject as local `Connection closed`. |
 
-The call promise is not itself async-iterable. For output streams it **resolves to** an async iterable (same DX as JSONL: `const tokens = await client.planet.chat(...)` then `for await`).
+The call's result is not itself the stream: for output streams it **resolves to** a stream the caller then reads (in TypeScript, `const tokens = await client.planet.chat(...)` then `for await`, the same as JSONL).
 
-#### `streaming-out` (after the promise resolved to an async iterable)
+#### `streaming-out` (after the call resolved to a stream)
 
-Further frames drive the **iterator**, not the call promise.
+Further frames drive the **stream**, not the call's result.
 
 | Event | Action |
 |---|---|
@@ -543,7 +545,7 @@ Further frames drive the **iterator**, not the call promise.
 | `result` `ok: false` | **Reject the iterator** with that `error`. This is the legal mid-stream error, **not** the “in-flight → ignore” rule. No `done`. |
 | `result` `ok: true` / unknown type / extra `done` / `item` after `done` | Illegal. **Ignore** (do not close the connection; do not reject a second time). Well-behaved servers never send these. |
 | Peer close / client close | Reject the iterator as local `Connection closed` if not already done. |
-| User `break` / iterator `return()` / `throw()` | Send `{ "type": "cancel", "id" }` (not `in-done`, not `done`). Stop reading frames for this id. The server sees `cancel` and stops emitting. |
+| Caller stops reading early (TypeScript: `break`, iterator `return()` / `throw()`) | Send `{ "type": "cancel", "id" }` (not `in-done`, not `done`). Stop reading frames for this id. The server sees `cancel` and stops emitting. |
 
 `for-await` `break` and iterator `return()` are the Fetch-body-cancel equivalent.
 
@@ -652,7 +654,7 @@ A client keeps three outcomes apart: a **local failure** (no protocol result arr
 
 ### Close codes (WebSocket)
 
-ts-pf itself closes a WebSocket with only two codes today: `1000` (normal closure — an explicit close, the close after a `hello-error`, a hello timeout, a malformed or oversize text message) and `1002` (protocol error — a binary or other non-string message). The close code is advisory: the reason for a failure travels in frames (`hello-error`, `result`).
+The protocol uses two standard close codes: `1000` (normal closure — an explicit close, the close after a `hello-error`, a hello timeout, a malformed or oversize text message) and `1002` (protocol error — a binary or other non-string message). The close code is advisory: the reason for a failure travels in frames (`hello-error`, `result`).
 
 - **4900–4999 are reserved for this protocol** (for example, a future code for a version mismatch that must not be retried, or for a hello timeout). Applications MUST NOT send them.
 - **4400–4499 are RECOMMENDED for applications**, mirroring HTTP status: `4401` unauthenticated, `4403` forbidden, `4429` rate limited, and so on. Use them to end a live connection for an application reason after `hello-ok` (a revoked session, a ban), with a short reason string. Before `hello-ok`, refuse with a `hello-error` carrying an application code instead.
@@ -684,9 +686,9 @@ The TypeScript client maps a local failure to a `PFError` with `code: 'INTERNAL'
 | `AbortSignal` while a call is in flight | `INTERNAL`, `local: true`, status `0`, message `Request aborted`, `cause` set; message transports send `cancel` | true |
 | `AbortSignal` while waiting on `ready` (no id) | `INTERNAL`, `local: true`, status `0`, message `Request aborted`, `cause` set; no `cancel`; connection stays up | true |
 | HTTP network error (no response) | `INTERNAL`, `local: true`, status `0`, the thrown error's message (or `Network error`), `cause` set | true |
-| Peer disconnect mid-call | `INTERNAL`, `local: true`, status `0`, message `Connection closed`, `cause` set | true |
-| Hello timeout / connect fail / hello stringify fail | `INTERNAL`, `local: true`, status `0`, message `Network error`, `cause` set; close | true |
-| Malformed frame from peer with no usable id (connection closes) | Inflight: `INTERNAL`, `local: true`, status `0`, message `Invalid response` or `Connection closed`, `cause` set | true |
+| Peer disconnect mid-call | `INTERNAL`, `local: true`, status `0`, message `Connection closed`; `cause` only when the transport reported an error | true |
+| Hello timeout / connect fail / hello stringify fail | `INTERNAL`, `local: true`, status `0`, message `Network error` (a `WsLink` socket `error` event before open: `Network error` with the event as `cause`; a close before open: `Connection closed`); close | true |
+| Malformed frame from peer with no usable id (connection closes) | Inflight: `INTERNAL`, `local: true`, status `0`, message `Connection closed` (`Invalid response` / `Network error` during the handshake) | true |
 | First frame for an id is illegal | `INTERNAL`, `local: true`, status `0`, message `Invalid response`; that call only | true |
 | `hello-ok` with another `v` | `INTERNAL`, `local: true`, status `0`, message `Invalid response`; close | true |
 | Protocol `result` `{ "ok": false, "error" }` | code / message / data from the envelope; `status` is `undefined` | false |
@@ -699,8 +701,8 @@ The TypeScript client maps a local failure to a `PFError` with `code: 'INTERNAL'
 
 | Transport | `status` on the rejected `PFError` |
 |---|---|
-| HTTP unary failure (`FetchLink`) | The HTTP response status (declared `NOT_FOUND { status: 404 }` → `404`; declared code without `status` → `400`; protocol codes → the table above) |
-| HTTP after a stream started (JSONL line / SSE `event: error`) | `undefined` (the response was already 200) |
+| HTTP unary failure (`FetchLink`) | The HTTP response status (declared `NOT_FOUND { status: 404 }` → `404`; declared code without `status` → `400`; protocol codes → the table above). A codec decode failure rethrown under `x-ts-pf-protocol: 1` keeps the codec's `400` |
+| HTTP after a stream started (JSONL line / SSE `event: error`) | `undefined` (the response was already 200); a line that does not decode throws the codec's `BAD_REQUEST` with `400` |
 | WebSocket / stdio / MessagePort | `undefined` (no HTTP status on a frame; `errorFromEnvelope` does not synthesize one) |
 | Local failure (`localFailure`, `isLocalFailure`) | `0` with `local: true` |
 | In-process `createLocalClient` | The declared `ErrorDef.status` when there is one, else `undefined` |
@@ -722,7 +724,7 @@ Retries are a `CallPlugin`: `createClient` retries nothing by default, and `Retr
 
 ### Message transports
 
-`MessageSession` defaults its hello timeout to `10_000` ms on both client and server (`helloTimeoutMs`; `0` disables it). On the server, the per-connection context factory (`bind(..., { context })`) is the hello accept: a thrown `PFError` becomes the `hello-error` (through `toWireError`, the same mapping as a handler's error), and any other throw becomes `INTERNAL` / `Internal server error`. `HandlerOptions.onError` sees the non-`PFError` throws only, as it does for handlers. `WsHandler.bind(...)` returns a handle whose `close(code?, reason?)` closes the socket with that code (default `1000`) before the session tears down; `PortHandler` and `StdioHandler` handles take `close()` (those pipes have no close codes). `WsLink` / `PortLink` / `StdioLink` / `DuplexLink` take the hello `meta` as the `meta` option.
+`MessageSession` defaults its hello timeout to `10_000` ms on both client and server (`helloTimeoutMs`; `0` disables it). On the server, the per-connection context factory (`bind(..., { context })`) is the hello accept: a thrown `PFError` becomes the `hello-error` (through `toWireError`, the same mapping as a handler's error), and any other throw becomes `INTERNAL` / `Internal server error`. `HandlerOptions.onError` sees the non-`PFError` throws only, as it does for handlers. `WsHandler.bind(...)` returns a handle whose `close(code?, reason?)` closes the socket with that code (default `1000`) before the session tears down; `PortHandler`, `StdioHandler`, and `DuplexHandler` handles take `close()` (those pipes have no close codes). The TypeScript packages send only `1000` and `1002` themselves. The client side does not surface the close code: calls fail with a local `Connection closed`, so an app that wants the code passes its own `socket` to `WsLink` and listens for `close` on it. `WsLink` / `PortLink` / `StdioLink` / `DuplexLink` take the hello `meta` as the `meta` option.
 
 ### Server side (`FetchHandler`)
 

@@ -144,7 +144,7 @@ Revision 1.2 is the clarity pass. It adds:
 - `hello-error` from a thrown `PFError` (below);
 - `BAD_REQUEST` for a stream procedure called on an endpoint whose codec cannot carry streams.
 
-The normative text matches what the TypeScript client and server already do, so no 1.1 implementation becomes non-conforming. Checks stricter than `JSONCodec` (an object `error` with string `code` / `message`) and status-class retry are SHOULD / MAY. The cacheable GET binding earmarked above as 1.2 moves to revision 1.3, unchanged.
+The normative text matches what the TypeScript client and server already do, so no 1.1 implementation becomes non-conforming. Checks stricter than `JSONCodec` (an object `error` with string `code` / `message`) and status-class retry are SHOULD / MAY. The cacheable GET binding previously earmarked as 1.2 (above) moves to revision 1.3, unchanged.
 
 #### `hello-error` carries a `PFError` thrown by `onHello` (revision 1.2)
 
