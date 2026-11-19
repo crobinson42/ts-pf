@@ -19,3 +19,4 @@ export {
   type RunProcedureOptions,
   runProcedure,
 } from './runtime.js'
+export { validationError } from './validation-error.js'

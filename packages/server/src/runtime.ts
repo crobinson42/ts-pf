@@ -12,6 +12,7 @@ import {
 } from './call-interceptor.js'
 import { createErrorFactory, finalizeDeclaredError } from './error-factory.js'
 import type { MiddlewareFn } from './middleware.js'
+import { validationError } from './validation-error.js'
 
 export type HandlerFn = (opts: {
   input: unknown
@@ -267,11 +268,7 @@ async function runUse(run: Execution, index: number): Promise<unknown> {
     if (run.validateInput && inputSchema) {
       const result = await validateSchema(inputSchema, run.input)
       if (!result.success) {
-        throw new PFError({
-          code: 'VALIDATION',
-          message: 'Validation failed',
-          data: { issues: result.issues },
-        })
+        throw validationError(result.issues)
       }
       run.input = result.value
     }

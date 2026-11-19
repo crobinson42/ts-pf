@@ -49,6 +49,25 @@ await local.planet.find({ id: 1 })
 
 `Db`, `User`, `db`, and `auth()` are your app's. `.use()` runs before input validation (`input: unknown`); `.useAfter()` runs after it. Input checks default on; output checks run only with `validation: { output: true }`. Name the implemented router `app`.
 
+A declared code gets its declared `status` whether you throw `errors.NOT_FOUND(...)` or a hand-built `new PFError({ code: 'NOT_FOUND', data, cause })`: `runProcedure` fills an unset `status` from the contract's `.errors()` entry and keeps `cause` (it never fills `message`).
+
+`validation: { input: false }` hands the handler the raw value, although its `input` type still says parsed: contract-only narrowing (zod `.omit()`, defaults, transforms) is not applied. A handler that validates on its own reports failures in the built-in shape with `validationError` and `toValidationIssues` from `@ts-pf/contract`:
+
+```ts
+import { toValidationIssues } from '@ts-pf/contract'
+import { createImplementer, validationError } from '@ts-pf/server'
+import { z } from 'zod'
+
+const createInput = z.object({ name: z.string().min(1) })
+
+const impl = createImplementer(contract)
+const create = impl.planet.create.handler(async ({ input }) => {
+  const result = await createInput['~standard'].validate(input)
+  if (result.issues) throw validationError(toValidationIssues(result.issues))
+  return { id: 1, name: result.value.name }
+})
+```
+
 Serve it over HTTP with `FetchHandler` from `@ts-pf/server-http` — `new FetchHandler(app).handle(request, { prefix: '/rpc', context: (req) => ({ db, req }) })` — on Workers, Bun, Deno, Node, Hono, or Next.js: see [Serving FetchHandler](https://github.com/crobinson42/ts-pf#serving-fetchhandler). Message transports are `@ts-pf/message-server`.
 
 Server `DedupePlugin` keys every unary call by default, writes included; pass `key` to restrict it to reads.
@@ -56,6 +75,7 @@ Server `DedupePlugin` keys every unary call by default, writes included; pass `k
 ## API
 
 - `createImplementer`, `createLocalClient`, `runProcedure`, `lookupProcedure`, `ProcedureValidation`
+- `validationError(issues)` — the `VALIDATION` `PFError` the input check throws, for handlers that validate themselves
 - `applyPlugins`, `CallPlugin`, `CallInterceptor`, `DedupePlugin`
 - `onStart` / `onSuccess` / `onError` / `onFinish`
 

@@ -1,5 +1,6 @@
 import { type AnySchema, validateSchema } from '@ts-pf/contract'
 import { PFError } from '@ts-pf/protocol'
+import { validationError } from '@ts-pf/server'
 import type { BoundTool } from './bound-tool.js'
 import { errorText, type McpOnError, reportError } from './error-text.js'
 import type { Executor } from './executor.js'
@@ -20,11 +21,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 async function parse(schema: AnySchema, value: unknown): Promise<unknown> {
   const result = await validateSchema(schema, value)
   if (!result.success) {
-    throw new PFError({
-      code: 'VALIDATION',
-      message: 'Validation failed',
-      data: { issues: result.issues },
-    })
+    throw validationError(result.issues)
   }
   return result.value
 }
