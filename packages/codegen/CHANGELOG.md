@@ -1,5 +1,19 @@
 # @ts-pf/codegen
 
+## 0.5.0
+
+### Minor Changes
+
+- [#59](https://github.com/crobinson42/ts-pf/pull/59) [`c9df62d`](https://github.com/crobinson42/ts-pf/commit/c9df62d5a3cac4db7e0f68c17c139b04935e1f9e) Thanks [@crobinson42](https://github.com/crobinson42)! - Add `diffCatalog(previous, next)` and `ts-pf-codegen diff <previous.json> <next.json> [--json]`: a breaking-change check over two `catalog()` documents. Inputs are compared as what old clients send; outputs and error `data` as what they receive. Adding an output field, enum value, union variant, or error code is safe. `diff` exits 2 when there is a breaking change, so CI can fail on it. New exports: `diffCatalog`, `CatalogDiff`, `CatalogChange`.
+
+### Patch Changes
+
+- [#59](https://github.com/crobinson42/ts-pf/pull/59) [`29c8fac`](https://github.com/crobinson42/ts-pf/commit/29c8fac45a3be7a01eaffd2a490671190e6d6516) Thanks [@crobinson42](https://github.com/crobinson42)! - `@ts-pf/docs` exports `canonicalize(value)`, a copy of a JSON value with every object's keys sorted, so `JSON.stringify` of the result is byte-stable. `catalogHash()` in `@ts-pf/codegen` now hashes `canonicalize(catalog)` from `@ts-pf/docs` instead of a private copy; hash values are unchanged.
+
+- [#59](https://github.com/crobinson42/ts-pf/pull/59) [`cdf1f66`](https://github.com/crobinson42/ts-pf/commit/cdf1f66d71cf7c0a726fc44743cc4e0411307798) Thanks [@crobinson42](https://github.com/crobinson42)! - Every published `@ts-pf/*` package now releases together on one version (a Changesets `fixed` group), starting with this release; that is why this package's version jumps. Keep all `@ts-pf/*` dependencies on the same version and update them together in one install command: internal dependencies are exact pins, so a mixed set installs duplicate copies of shared packages such as `@ts-pf/protocol`.
+- Updated dependencies [[`29c8fac`](https://github.com/crobinson42/ts-pf/commit/29c8fac45a3be7a01eaffd2a490671190e6d6516), [`cdf1f66`](https://github.com/crobinson42/ts-pf/commit/cdf1f66d71cf7c0a726fc44743cc4e0411307798), [`09140cd`](https://github.com/crobinson42/ts-pf/commit/09140cd8c927d04953479f9f56f3449b3a30459c), [`4c7ba42`](https://github.com/crobinson42/ts-pf/commit/4c7ba42a4b64aa44ac3ddc86ca9858d100c74784)]:
+  - @ts-pf/docs@0.5.0
+
 ## 0.2.2
 
 ### Patch Changes

@@ -1,5 +1,15 @@
 # @ts-pf/mvc-kit
 
+## 0.5.0
+
+### Patch Changes
+
+- [#59](https://github.com/crobinson42/ts-pf/pull/59) [`cdf1f66`](https://github.com/crobinson42/ts-pf/commit/cdf1f66d71cf7c0a726fc44743cc4e0411307798) Thanks [@crobinson42](https://github.com/crobinson42)! - Every published `@ts-pf/*` package now releases together on one version (a Changesets `fixed` group), starting with this release; that is why this package's version jumps. Keep all `@ts-pf/*` dependencies on the same version and update them together in one install command: internal dependencies are exact pins, so a mixed set installs duplicate copies of shared packages such as `@ts-pf/protocol`.
+
+- [#59](https://github.com/crobinson42/ts-pf/pull/59) [`26d42ca`](https://github.com/crobinson42/ts-pf/commit/26d42ca895f73451d81f6198f659acf8fcb0e7ee) Thanks [@crobinson42](https://github.com/crobinson42)! - `isPFError` now recognises a `PFError` from another installed copy of `@ts-pf/protocol` (version skew, or a bundler that inlined one). Before, such an error failed the check, so `toWireError` sent a typed failure as `INTERNAL` and `FetchLink` wrapped one thrown by a Fetch interceptor as a local failure. `PFError.prototype` carries a non-enumerable `Symbol.for('ts-pf.PFError')` brand; instances gain no own property. `FetchLink` and `bindClient` use the same check.
+- Updated dependencies [[`e81b871`](https://github.com/crobinson42/ts-pf/commit/e81b87125b359d488734273603bb313bdf00624a), [`82fdd63`](https://github.com/crobinson42/ts-pf/commit/82fdd63d04e6732d96f8b792627bcaf69f569cf3), [`cdf1f66`](https://github.com/crobinson42/ts-pf/commit/cdf1f66d71cf7c0a726fc44743cc4e0411307798), [`09140cd`](https://github.com/crobinson42/ts-pf/commit/09140cd8c927d04953479f9f56f3449b3a30459c), [`c001422`](https://github.com/crobinson42/ts-pf/commit/c001422da0b1bc8d379cab560e4b83c19bf9fa60), [`7de78ce`](https://github.com/crobinson42/ts-pf/commit/7de78ce883a8e24801934ef7853f32850d0644ec)]:
+  - @ts-pf/contract@0.5.0
+
 ## 0.1.10
 
 ### Patch Changes

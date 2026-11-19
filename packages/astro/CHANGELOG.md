@@ -1,5 +1,22 @@
 # @ts-pf/astro
 
+## 0.5.0
+
+### Minor Changes
+
+- [#59](https://github.com/crobinson42/ts-pf/pull/59) [`cef54db`](https://github.com/crobinson42/ts-pf/commit/cef54db72e74c4fcaaa1cae9eb7f73d23e20ba99) Thanks [@crobinson42](https://github.com/crobinson42)! - Raise the `astro` peer dependency floor from `>=4.9.0` to `>=7.0.0`, the major the package is built and tested against. Astro 4, 5, and 6 are no longer declared as supported. The README and `ts-pf-astro` skill state the new floor; the skill now says to declare the other `@ts-pf/*` packages the app imports on the same version as `@ts-pf/astro`, and adds a lint rule that keeps server-only and Node-only entry points out of island code.
+
+### Patch Changes
+
+- [#59](https://github.com/crobinson42/ts-pf/pull/59) [`cdf1f66`](https://github.com/crobinson42/ts-pf/commit/cdf1f66d71cf7c0a726fc44743cc4e0411307798) Thanks [@crobinson42](https://github.com/crobinson42)! - Every published `@ts-pf/*` package now releases together on one version (a Changesets `fixed` group), starting with this release; that is why this package's version jumps. Keep all `@ts-pf/*` dependencies on the same version and update them together in one install command: internal dependencies are exact pins, so a mixed set installs duplicate copies of shared packages such as `@ts-pf/protocol`.
+- Updated dependencies [[`e81b871`](https://github.com/crobinson42/ts-pf/commit/e81b87125b359d488734273603bb313bdf00624a), [`d47d657`](https://github.com/crobinson42/ts-pf/commit/d47d65766943cbbc02411f27961e8da3f93d33a9), [`82fdd63`](https://github.com/crobinson42/ts-pf/commit/82fdd63d04e6732d96f8b792627bcaf69f569cf3), [`cdf1f66`](https://github.com/crobinson42/ts-pf/commit/cdf1f66d71cf7c0a726fc44743cc4e0411307798), [`26d42ca`](https://github.com/crobinson42/ts-pf/commit/26d42ca895f73451d81f6198f659acf8fcb0e7ee), [`a603b5c`](https://github.com/crobinson42/ts-pf/commit/a603b5cfec1d52d385d5fa7eab098d9415cb90dd), [`d772f61`](https://github.com/crobinson42/ts-pf/commit/d772f61b4c8c27b134c3f7185498bb94964d8b3e), [`09140cd`](https://github.com/crobinson42/ts-pf/commit/09140cd8c927d04953479f9f56f3449b3a30459c), [`c001422`](https://github.com/crobinson42/ts-pf/commit/c001422da0b1bc8d379cab560e4b83c19bf9fa60), [`675edb7`](https://github.com/crobinson42/ts-pf/commit/675edb75df8e400dfc70474b60989b59ff464375), [`e32afd5`](https://github.com/crobinson42/ts-pf/commit/e32afd5c369fea7e9e3b2a7b772546ab134df26c), [`7de78ce`](https://github.com/crobinson42/ts-pf/commit/7de78ce883a8e24801934ef7853f32850d0644ec)]:
+  - @ts-pf/server@0.5.0
+  - @ts-pf/contract@0.5.0
+  - @ts-pf/client@0.5.0
+  - @ts-pf/client-http@0.5.0
+  - @ts-pf/protocol@0.5.0
+  - @ts-pf/server-http@0.5.0
+
 ## 0.2.5
 
 ### Patch Changes
