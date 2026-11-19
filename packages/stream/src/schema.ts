@@ -32,20 +32,56 @@ export function stream<S>(
   return schema
 }
 
-async function* wrap<S>(
+/**
+ * Validates each item on `next()`. Hand-written, not an async generator: a
+ * generator's `return()` before its first `next()` completes it without
+ * running its body, so it would never reach the inner iterator. This one
+ * forwards `return()` to the inner iterator, which is how a cancel reaches
+ * the handler's stream even when nothing was pulled yet.
+ */
+function wrap<S>(
   value: AsyncIterable<unknown>,
   item: S,
 ): AsyncIterable<InferSchemaOutput<S>> {
-  for await (const entry of value) {
-    const result = await validateSchema<InferSchemaOutput<S>>(item, entry)
-    if (!result.success) {
-      throw new PFError({
-        code: 'VALIDATION',
-        status: 422,
-        message: 'Validation failed',
-        data: { issues: result.issues },
-      })
-    }
-    yield result.value
+  return {
+    [Symbol.asyncIterator]() {
+      const it = value[Symbol.asyncIterator]()
+      return {
+        async next() {
+          const next = await it.next()
+          if (next.done) {
+            return { done: true, value: undefined }
+          }
+          const result = await validateSchema<InferSchemaOutput<S>>(
+            item,
+            next.value,
+          )
+          if (!result.success) {
+            // Like `for await` leaving on a throw: close the source first.
+            await closeQuietly(it)
+            throw new PFError({
+              code: 'VALIDATION',
+              status: 422,
+              message: 'Validation failed',
+              data: { issues: result.issues },
+            })
+          }
+          return { done: false, value: result.value }
+        },
+        async return() {
+          await it.return?.()
+          return { done: true, value: undefined }
+        },
+      }
+    },
+  }
+}
+
+/** The validation error is what the caller sees; a failing `return()` is not. */
+async function closeQuietly(it: AsyncIterator<unknown>): Promise<void> {
+  try {
+    await it.return?.()
+  } catch {
+    // Keep the validation error.
   }
 }
