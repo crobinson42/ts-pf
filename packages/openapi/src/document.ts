@@ -4,10 +4,19 @@ import type { OpenAPIDocument } from './types.js'
 
 const COMPONENT_REF = /^#\/components\/schemas\/([^/]+)(.*)$/
 
+// `x-ts-pf-streams` entry fields and the side each describes.
+const STREAM_SIDES = {
+  input: 'input',
+  inputItem: 'input',
+  item: 'output',
+  output: 'output',
+} as const satisfies Record<string, Side>
+
 /**
  * Replaces every schema root in the document with `map(root, side)`:
  * component schemas and parameter schemas (no side), then each operation's
- * request bodies (`'input'`) and response headers and bodies (`'output'`).
+ * request bodies (`'input'`) and response headers and bodies (`'output'`),
+ * then each `x-ts-pf-streams` entry's schemas.
  */
 export function mapDocumentSchemas(
   document: OpenAPIDocument,
@@ -42,6 +51,15 @@ export function mapDocumentSchemas(
         if (media.schema !== undefined) {
           media.schema = map(media.schema, 'output')
         }
+      }
+    }
+  }
+  for (const entry of Object.values(document['x-ts-pf-streams'] ?? {})) {
+    for (const [field, side] of Object.entries(STREAM_SIDES)) {
+      const key = field as keyof typeof STREAM_SIDES
+      const schema = entry[key]
+      if (schema !== undefined) {
+        entry[key] = map(schema, side)
       }
     }
   }

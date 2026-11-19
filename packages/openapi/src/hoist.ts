@@ -34,8 +34,12 @@ export type Hoister = {
    * returns a `$ref` to it.
    */
   add(host: string, side: Side, owner: string, schema: JsonSchema): JsonSchema
-  /** Writes every host, id, and generated component into `schemas`. */
-  finish(): void
+  /**
+   * Writes every host, id, and generated component into `schemas` and
+   * returns their names: the components that hold catalog schemas, as
+   * opposed to protocol envelopes.
+   */
+  finish(): Set<string>
 }
 
 /**
@@ -51,6 +55,7 @@ export function createHoister(schemas: Record<string, JsonSchema>): Hoister {
   const slots: Slot[] = []
   const ids = new Map<string, Partial<Record<Side, IdEntry>>>()
   const generatedByShape = new Map<string, string>()
+  const written = new Set<string>()
 
   function add(
     host: string,
@@ -101,9 +106,10 @@ export function createHoister(schemas: Record<string, JsonSchema>): Hoister {
       )
     }
     schemas[name] = schema
+    written.add(name)
   }
 
-  function finish(): void {
+  function finish(): Set<string> {
     const split = splitIds(ids)
 
     const idName = (id: string, side: Side) =>
@@ -153,6 +159,7 @@ export function createHoister(schemas: Record<string, JsonSchema>): Hoister {
         claim(idName(id, 'input'), rewrite(input.body, input.slot))
       }
     }
+    return written
   }
 
   return { add, finish }

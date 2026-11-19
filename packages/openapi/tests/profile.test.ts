@@ -1,7 +1,7 @@
 import { procedure, router } from '@ts-pf/contract'
 import { catalog } from '@ts-pf/docs'
 import Type from 'typebox'
-import { describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import { closeInputs } from '../src/close-inputs.js'
 import { openapi } from '../src/openapi.js'
@@ -21,6 +21,15 @@ function build(contract: unknown, options: ProfileOptions) {
 }
 
 const ref = (name: string) => ({ $ref: `#/components/schemas/${name}` })
+
+// `hoist: 'objects'` warns about the names it makes up.
+let warn: ReturnType<typeof vi.spyOn>
+beforeAll(() => {
+  warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+})
+afterAll(() => {
+  warn.mockRestore()
+})
 
 const planet = router({
   planet: {
@@ -45,8 +54,27 @@ describe('profile resolution', () => {
       constAsEnum: false,
       dropFormatPatterns: false,
       emptyInputNull: false,
+      discriminators: false,
+      hoist: 'none',
+      canonical: false,
+      streams: 'operation',
     })
-    expect(explicit).toEqual(plain)
+    expect(JSON.stringify(explicit)).toBe(JSON.stringify(plain))
+  })
+
+  it('lets an explicit part-2 option override the profile', () => {
+    const spec = build(codegenAppContract, {
+      profile: 'codegen',
+      discriminators: false,
+      hoist: 'none',
+      canonical: false,
+    })
+    const { schemas } = spec.components
+    expect(schemas.BookMediaOutput).not.toHaveProperty('discriminator')
+    expect(schemas).not.toHaveProperty('BookPublisher')
+    expect(Object.keys(spec)[0]).toBe('openapi')
+    // The rest of the profile still applies.
+    expect(schemas).toHaveProperty('RpcError')
   })
 
   it('lets an explicit option override the profile', () => {
@@ -451,6 +479,80 @@ describe('emptyInputNull', () => {
     expect(names).not.toContain('clear.Request')
     expect(names).not.toContain('ping.Request')
     expect(names).toContain('find.Request')
+  })
+})
+
+describe('pass order', () => {
+  it('names, rewrites, hoists, then infers discriminators', () => {
+    const Square = z
+      .object({ shape: z.enum(['square']), side: z.number() })
+      .meta({ id: 'Square' })
+    const spec = build(
+      router({
+        draw: {
+          shape: procedure.output(
+            z.union([
+              z.object({ shape: z.literal('circle'), r: z.literal(1) }),
+              Square,
+            ]),
+          ),
+        },
+      }),
+      {
+        naming: 'pascal',
+        constAsEnum: 'exceptTags',
+        hoist: 'objects',
+        discriminators: true,
+      },
+    )
+    const { schemas } = spec.components
+    // The hoisted variant is named after the pascal parent and its tag, and
+    // the mapping points at the final names. `Square`'s tag is a one-value
+    // enum, so constAsEnum saw no all-const tag and enum'd `circle` too:
+    // discriminators still read both.
+    expect(schemas.DrawShapeOutput).toEqual({
+      anyOf: [ref('DrawShapeOutputCircle'), ref('Square')],
+      discriminator: {
+        propertyName: 'shape',
+        mapping: {
+          circle: '#/components/schemas/DrawShapeOutputCircle',
+          square: '#/components/schemas/Square',
+        },
+      },
+    })
+    expect(schemas.DrawShapeOutputCircle).toMatchObject({
+      properties: {
+        shape: { type: 'string', enum: ['circle'] },
+        r: { type: 'number', enum: [1] },
+      },
+    })
+  })
+
+  it('names enums before hoisting, so hoisted shapes share the $ref', () => {
+    const spec = build(
+      router({
+        a: procedure.output(
+          z.object({ item: z.object({ s: z.enum(['x', 'y']) }) }),
+        ),
+        b: procedure.output(
+          z.object({ entry: z.object({ s: z.enum(['y', 'x']) }) }),
+        ),
+      }),
+      {
+        naming: 'pascal',
+        hoist: 'objects',
+        enumNames: { Letter: ['x', 'y'] },
+      },
+    )
+    const { schemas } = spec.components
+    expect(schemas.AOutputItem).toEqual({
+      type: 'object',
+      properties: { s: ref('Letter') },
+      required: ['s'],
+    })
+    expect(schemas.BOutput).toMatchObject({
+      properties: { entry: ref('AOutputItem') },
+    })
   })
 })
 

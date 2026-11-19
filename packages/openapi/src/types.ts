@@ -78,6 +78,41 @@ export type OpenAPIOptions = {
    * `{ input: null }` request body and no `Input` component. Default false.
    */
   emptyInputNull?: boolean
+  /**
+   * Add `discriminator: { propertyName, mapping }` to a `oneOf` / `anyOf`
+   * whose variants are all component `$ref`s with a distinct required string
+   * `const` (or one-value `enum`) on one property. Default false.
+   */
+  discriminators?: boolean
+  /**
+   * `'objects'`: every nested inline object becomes a named component
+   * (`BookPublisher`, `…Item` for array items), identical shapes shared.
+   * Protocol envelopes are never hoisted. Default `'none'`.
+   */
+  hoist?: 'none' | 'objects'
+  /**
+   * Sort the document's keys at every depth (`canonicalize` from
+   * `@ts-pf/docs`), so equal documents serialize byte for byte. Default false.
+   */
+  canonical?: boolean
+  /**
+   * `'operation'` (default): stream procedures are `POST … application/jsonl`
+   * operations. `'components'`: no path; their schemas are named in the
+   * document-level `x-ts-pf-streams` map. `'omit'`: left out entirely.
+   * Not set by `profile: 'codegen'`: only you know which streams are HTTP.
+   */
+  streams?: 'operation' | 'components' | 'omit'
+  /**
+   * Names shared inline enums by value set: `{ BookStatus: ['available',
+   * 'loaned'] }` turns every inline `enum` with exactly those values (in any
+   * order) into a `$ref` to component `BookStatus`. Prefer `.meta({ id })`.
+   */
+  enumNames?: Record<string, ReadonlyArray<string | number | boolean | null>>
+  /**
+   * Written to `info['x-ts-pf-catalog-hash']`. Pass `catalogHash(catalog)`
+   * from `@ts-pf/codegen`.
+   */
+  catalogHash?: string
 }
 
 type OpenAPIMediaType = {
@@ -130,9 +165,26 @@ export type PathItem = {
   post?: OpenAPIOperation
 }
 
+/**
+ * One stream procedure under `streams: 'components'`. Each schema is a
+ * `$ref` to the component the operation would have used.
+ */
+export type OpenAPIStreamEntry = {
+  /** The unary input. */
+  input?: JsonSchema
+  /** Each item of a streamed input. */
+  inputItem?: JsonSchema
+  /** Each item of a streamed output. */
+  item?: JsonSchema
+  /** The unary output of a procedure whose input streams. */
+  output?: JsonSchema
+  /** The error codes the procedure can return. */
+  errors: string[]
+}
+
 export type OpenAPIDocument = {
   openapi: '3.1.0'
-  info: OpenAPIInfo
+  info: OpenAPIInfo & { 'x-ts-pf-catalog-hash'?: string }
   jsonSchemaDialect?: string
   servers?: ReadonlyArray<OpenAPIServer>
   tags?: Array<{ name: string }>
@@ -141,4 +193,6 @@ export type OpenAPIDocument = {
     schemas: Record<string, JsonSchema>
     parameters?: Record<string, OpenAPIParameter>
   }
+  /** Stream procedures by catalog key (`streams: 'components'`). */
+  'x-ts-pf-streams'?: Record<string, OpenAPIStreamEntry>
 }

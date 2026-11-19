@@ -66,7 +66,7 @@ const spec = openapi(catalog(contract, { prefix: '/rpc' }), {
 })
 ```
 
-The profile describes the same POST JSON RPC paths and envelopes: no GET, no path params, no REST. It sets the options below. Each one can also be set alone, and an option you pass yourself wins over the profile (`{ profile: 'codegen', naming: 'path' }` keeps dotted names).
+The profile describes the same POST JSON RPC paths and envelopes: no GET, no path params, no REST. It sets the options below to their `codegen` column (`streams`, `enumNames`, and `catalogHash` are never set by the profile). Each one can also be set alone, and an option you pass yourself wins over the profile (`{ profile: 'codegen', naming: 'path' }` keeps dotted names).
 
 | Option | Default | `codegen` | Effect |
 | --- | --- | --- | --- |
@@ -77,16 +77,32 @@ The profile describes the same POST JSON RPC paths and envelopes: no GET, no pat
 | `constAsEnum` | `false` | `'exceptTags'` | `const: v` → `enum: [v]`, except on the tag property of a union of objects (a property with a different `const` in every variant). |
 | `dropFormatPatterns` | `false` | `true` | Drops `pattern` where a standard `format` (`date-time`, `email`, `uuid`, `uri`, …) is set. Zod emits both. Non-standard formats keep their pattern. |
 | `emptyInputNull` | `false` | `true` | A procedure with no input, or a `null` input, gets an inline `{ input: null }` request body and no `Input` component. (`z.void()` / `z.undefined()` are `unavailable` in the catalog and are not detected; omit `.input()` instead.) |
+| `hoist` | `'none'` | `'objects'` | Every inline object nested in a schema component becomes a named component. Names are structural: the parent component's name plus a segment per step (`naming: 'pascal'`: `BookFindOutput` + `author` → `BookFindOutputAuthor`; `naming: 'path'`: `book.find.Output.author`). Array items add `Item`, record values add `Value`. A union's inline object variants add their tag value (`ShapeOutputCircle`), else `Option1`, `Option2`, …; a nested union with one inline object (`.nullable()`) names it like the union (at a component root, `Option1`). Identical shapes share one component, named by the alphabetically first of their names. Protocol envelopes (`RpcError`, `…Request`, `…Success`, error envelopes) keep their inline objects. Warns once (`console.warn`) listing the names it made up: give those objects a `.meta({ id })` to choose the name. Throws when one name would hold two different schemas. |
+| `discriminators` | `false` | `true` | Adds `discriminator: { propertyName, mapping }` to a `oneOf` / `anyOf` whose variants are all component `$ref`s, each requiring a different string `const` (or one-value `enum`) on one property; `mapping` points each value at its variant's component. If several properties qualify, the alphabetically first wins. Other unions are left as they are. |
+| `canonical` | `false` | `true` | Sorts keys at every depth (`canonicalize` from `@ts-pf/docs`, as `catalogHash` does), so the same catalog always serializes to the same bytes. `paths` and `components.schemas` become alphabetical. |
+| `streams` | `'operation'` | `'operation'` | See [Streams without paths](#streams-without-paths). |
+| `enumNames` | unset | unset | `{ BookStatus: ['available', 'loaned', 'lost'] }`: every inline `enum` with exactly that value set (in any order) becomes a `$ref` to component `BookStatus` (values in the entry's order; the node's `description` / `default` stay next to the `$ref`). A heuristic, so the profile never sets it: prefer `.meta({ id })` on the enum. Throws on an empty or invalid name, two entries with one value set, or a name another schema already has; warns about entries that matched nothing. |
+| `catalogHash` | unset | unset | Written to `info['x-ts-pf-catalog-hash']`. Pass `catalogHash(cat)` from `@ts-pf/codegen` so a generated client can tell which catalog it came from. |
 
-More profile options follow in a later release.
+The passes run in a fixed order, so each sees the previous one's result: `naming`, `enumNames`, `closeInputs`, `dropFormatPatterns`, `constAsEnum`, `hoist` (names come from final parent names; shapes are compared after the rewrites), `discriminators` (mappings use final names and see one-value enums), then `canonical`.
+
+`x-ts-pf-errors`, `x-ts-pf-streams`, and `x-ts-pf-catalog-hash` are the only `x-` extensions the document uses. Generators ignore extensions they do not know.
+
+#### Streams without paths
+
+The catalog does not say which transport serves a procedure, so `openapi()` cannot tell a stream served over HTTP from one served only over a message transport (WebSocket, stdio, MessagePort). The `streams` option is your statement about the catalog you pass (`catalog(c, { filter })` still selects procedures), so the profile leaves it at `'operation'`:
+
+- `'operation'` (default): each stream procedure is a `POST … application/jsonl` operation.
+- `'components'`: stream procedures get no path. Their schemas are the same `<path>.Input` / `<path>.Output` components (named by `naming`), listed in a document-level map by catalog key: `x-ts-pf-streams: { "book/watch": { input: { $ref }, item: { $ref }, errors: [codes] } }`. `item` is each output item; a streamed input is `inputItem` (with the unary `output`, if any). `errors` lists the codes, as `x-ts-pf-errors` does; with `errors: 'shared'`, each code's data is its `<Code>Data` component.
+- `'omit'`: stream procedures are left out, as if filtered from the catalog.
 
 App-specific parts of the document (security schemes, extra components, operation overrides) stay in userland: mutate the returned document, as with the default output.
 
-Message transports (WebSocket, stdio, MessagePort) are not HTTP and are not in this document.
+Message transports (WebSocket, stdio, MessagePort) are not HTTP and have no paths in this document. Their stream schemas can be described with `streams: 'components'`.
 
 Typed split-repo clients: [`@ts-pf/codegen`](../codegen).
 
 ## API
 
 - `openapi`
-- `OpenAPIOptions` (`sse: true` / `multipart: true` advertise those content types; `profile: 'codegen'` and its options `envelopes`, `errors`, `naming`, `closeInputs`, `constAsEnum`, `dropFormatPatterns`, `emptyInputNull`), `OpenAPIDocument`
+- `OpenAPIOptions` (`sse: true` / `multipart: true` advertise those content types; `profile: 'codegen'` and its options `envelopes`, `errors`, `naming`, `closeInputs`, `constAsEnum`, `dropFormatPatterns`, `emptyInputNull`, `hoist`, `discriminators`, `canonical`; also `streams`, `enumNames`, `catalogHash`), `OpenAPIDocument`

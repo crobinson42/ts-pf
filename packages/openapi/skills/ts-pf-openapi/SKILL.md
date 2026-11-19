@@ -1,6 +1,6 @@
 ---
 name: ts-pf-openapi
-description: "Use when projecting a ts-pf catalog() to OpenAPI 3.1 with openapi(). Triggers: @ts-pf/openapi, openapi(), OpenAPI 3.1, POST JSON RPC spec, profile: 'codegen', openapi-generator / Kiota / orval / swagger_parser."
+description: "Use when projecting a ts-pf catalog() to OpenAPI 3.1 with openapi(). Triggers: @ts-pf/openapi, openapi(), OpenAPI 3.1, POST JSON RPC spec, profile: 'codegen', openapi-generator / Kiota / orval / swagger_parser, discriminator, x-ts-pf-streams."
 ---
 
 # @ts-pf/openapi
@@ -56,7 +56,7 @@ const spec = openapi(catalog(contract, { prefix: '/rpc' }), {
 })
 ```
 
-It sets these options (each settable alone; an explicit option beats the profile, e.g. `{ profile: 'codegen', naming: 'path' }`):
+It sets these options (each settable alone; an explicit option beats the profile, e.g. `{ profile: 'codegen', naming: 'path' }` or `{ profile: 'codegen', hoist: 'none' }`):
 
 - `envelopes: 'inline'` (default `'components'`): envelopes inline in each operation (no `<path>.Request` / `<path>.Success` components).
 - `errors: 'shared'` (default `'per-code'`): one `RpcError`, an `ErrorCode` enum, `<Code>Data` per code with data (`NotFoundData`; protocol `ValidationErrorData`), `x-ts-pf-errors: [codes]` per operation. Nothing `$ref`s `<Code>Data`: map it by name from `error.code`. Throws when one code has two `data` shapes: declare one shape per code or rename one.
@@ -65,6 +65,19 @@ It sets these options (each settable alone; an explicit option beats the profile
 - `constAsEnum: 'exceptTags'`: `const` → one-value `enum`, except union tag properties.
 - `dropFormatPatterns: true`: drop `pattern` next to a standard `format`.
 - `emptyInputNull: true`: no input or a `null` input → inline `{ input: null }` body, no `Input` component.
+- `hoist: 'objects'` (default `'none'`): every nested inline object → a component named parent + path (`BookFindOutputAuthor`; array items `…Item`, record values `…Value`, union variants by tag value else `…Option1`; dotted under `naming: 'path'`). Identical shapes share one component (alphabetically first name). Envelopes keep their inline objects. Warns once listing the made-up names: give those objects `.meta({ id })`. One name for two shapes throws.
+- `discriminators: true`: `discriminator: { propertyName, mapping }` on a `oneOf` / `anyOf` of component `$ref`s that each require a different string `const` (or one-value `enum`) on one property. Anything else is left alone.
+- `canonical: true`: keys sorted at every depth (`canonicalize` from `@ts-pf/docs`), byte-stable output; `paths` and components become alphabetical.
+
+Pass order (each sees the previous result): `naming` → `enumNames` → `closeInputs` → `dropFormatPatterns` → `constAsEnum` → `hoist` → `discriminators` → `canonical`.
+
+Never set by the profile:
+
+- `streams` (default `'operation'`): `'components'` gives stream procedures no path and lists their `<path>.Input` / `<path>.Output` components in `x-ts-pf-streams: { "<catalog key>": { input?, inputItem?, item?, output?, errors } }`; `'omit'` drops them like a catalog filter. The catalog cannot tell message-only streams from HTTP ones, so this is your call: use `'components'` when the streams are served over a message transport.
+- `enumNames: { BookStatus: ['available', 'loaned'] }`: every inline `enum` with that value set (any order) → `$ref` to `BookStatus`. Prefer `.meta({ id })`. Unused entries warn; a taken name, empty entry, or duplicate value set throws.
+- `catalogHash`: written to `info['x-ts-pf-catalog-hash']`; pass `catalogHash(cat)` from `@ts-pf/codegen`.
+
+`x-ts-pf-errors`, `x-ts-pf-streams`, and `x-ts-pf-catalog-hash` are the only `x-` extensions.
 
 Security schemes and extra components stay userland: mutate the returned document.
 
@@ -112,7 +125,7 @@ A REST facade has its own paths and bodies, so it documents them by hand (or wit
 ## API
 
 - `openapi`
-- `OpenAPIOptions` (`sse: true` / `multipart: true` advertise those content types; `profile: 'codegen'` and its options `envelopes`, `errors`, `naming`, `closeInputs`, `constAsEnum`, `dropFormatPatterns`, `emptyInputNull`), `OpenAPIDocument`
+- `OpenAPIOptions` (`sse: true` / `multipart: true` advertise those content types; `profile: 'codegen'` and its options `envelopes`, `errors`, `naming`, `closeInputs`, `constAsEnum`, `dropFormatPatterns`, `emptyInputNull`, `hoist`, `discriminators`, `canonical`; also `streams`, `enumNames`, `catalogHash`), `OpenAPIDocument`
 
 ## Pair with
 
@@ -123,4 +136,4 @@ A REST facade has its own paths and bodies, so it documents them by hand (or wit
 
 - GET/PUT/path params or flattened REST bodies from `openapi()` itself. Post-process the document in userland.
 - Serve the spec from `FetchHandler`.
-- Message transports (not HTTP) in this document.
+- Paths for message transports (not HTTP) in this document. Their stream schemas go in `x-ts-pf-streams` with `streams: 'components'`.

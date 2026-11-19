@@ -1,14 +1,637 @@
 {
-  "openapi": "3.1.0",
+  "components": {
+    "parameters": {
+      "TsPfProtocol": {
+        "in": "header",
+        "name": "x-ts-pf-protocol",
+        "required": true,
+        "schema": {
+          "enum": [
+            "1"
+          ],
+          "type": "string"
+        }
+      }
+    },
+    "schemas": {
+      "AlreadyOnLoanData": {
+        "properties": {
+          "dueAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "isbn": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "isbn",
+          "dueAt"
+        ],
+        "type": "object"
+      },
+      "AudioMedia": {
+        "properties": {
+          "kind": {
+            "const": "audio",
+            "type": "string"
+          },
+          "minutes": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "kind",
+          "minutes"
+        ],
+        "type": "object"
+      },
+      "Author": {
+        "properties": {
+          "genres": {
+            "items": {
+              "$ref": "#/components/schemas/Genre"
+            },
+            "type": "array"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "genres"
+        ],
+        "type": "object"
+      },
+      "AuthorFindInput": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "Book": {
+        "properties": {
+          "available": {
+            "default": true,
+            "type": "boolean"
+          },
+          "genre": {
+            "$ref": "#/components/schemas/Genre"
+          },
+          "isbn": {
+            "type": "string"
+          },
+          "publisher": {
+            "$ref": "#/components/schemas/BookPublisher"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "isbn",
+          "title",
+          "genre",
+          "available",
+          "publisher"
+        ],
+        "type": "object"
+      },
+      "BookAdded": {
+        "properties": {
+          "book": {
+            "$ref": "#/components/schemas/Book"
+          },
+          "type": {
+            "const": "added",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "book"
+        ],
+        "type": "object"
+      },
+      "BookFindInput": {
+        "additionalProperties": false,
+        "properties": {
+          "isbn": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "isbn"
+        ],
+        "type": "object"
+      },
+      "BookInput": {
+        "additionalProperties": false,
+        "properties": {
+          "available": {
+            "default": true,
+            "type": "boolean"
+          },
+          "genre": {
+            "$ref": "#/components/schemas/Genre"
+          },
+          "isbn": {
+            "type": "string"
+          },
+          "publisher": {
+            "$ref": "#/components/schemas/BookInputPublisher"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "isbn",
+          "title",
+          "genre",
+          "publisher"
+        ],
+        "type": "object"
+      },
+      "BookInputPublisher": {
+        "additionalProperties": false,
+        "properties": {
+          "address": {
+            "$ref": "#/components/schemas/BookInputPublisherAddress"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "address"
+        ],
+        "type": "object"
+      },
+      "BookInputPublisherAddress": {
+        "additionalProperties": false,
+        "properties": {
+          "city": {
+            "type": "string"
+          },
+          "geo": {
+            "$ref": "#/components/schemas/BookInputPublisherAddressGeo"
+          },
+          "street": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "street",
+          "city",
+          "geo"
+        ],
+        "type": "object"
+      },
+      "BookInputPublisherAddressGeo": {
+        "additionalProperties": false,
+        "properties": {
+          "lat": {
+            "type": "number"
+          },
+          "lng": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "lat",
+          "lng"
+        ],
+        "type": "object"
+      },
+      "BookListInput": {
+        "additionalProperties": false,
+        "properties": {
+          "genre": {
+            "$ref": "#/components/schemas/Genre"
+          }
+        },
+        "type": "object"
+      },
+      "BookListOutput": {
+        "items": {
+          "$ref": "#/components/schemas/Book"
+        },
+        "type": "array"
+      },
+      "BookMediaInput": {
+        "additionalProperties": false,
+        "properties": {
+          "isbn": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "isbn"
+        ],
+        "type": "object"
+      },
+      "BookMediaOutput": {
+        "discriminator": {
+          "mapping": {
+            "audio": "#/components/schemas/AudioMedia",
+            "print": "#/components/schemas/PrintMedia"
+          },
+          "propertyName": "kind"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/PrintMedia"
+          },
+          {
+            "$ref": "#/components/schemas/AudioMedia"
+          }
+        ]
+      },
+      "BookPublisher": {
+        "properties": {
+          "address": {
+            "$ref": "#/components/schemas/BookPublisherAddress"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "address"
+        ],
+        "type": "object"
+      },
+      "BookPublisherAddress": {
+        "properties": {
+          "city": {
+            "type": "string"
+          },
+          "geo": {
+            "$ref": "#/components/schemas/BookPublisherAddressGeo"
+          },
+          "street": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "street",
+          "city",
+          "geo"
+        ],
+        "type": "object"
+      },
+      "BookPublisherAddressGeo": {
+        "properties": {
+          "lat": {
+            "type": "number"
+          },
+          "lng": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "lat",
+          "lng"
+        ],
+        "type": "object"
+      },
+      "BookRemoved": {
+        "properties": {
+          "isbn": {
+            "type": "string"
+          },
+          "type": {
+            "const": "removed",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "isbn"
+        ],
+        "type": "object"
+      },
+      "BookReviewsInput": {
+        "additionalProperties": false,
+        "properties": {
+          "isbn": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "isbn"
+        ],
+        "type": "object"
+      },
+      "BookReviewsOutput": {
+        "items": {
+          "$ref": "#/components/schemas/Review"
+        },
+        "type": "array"
+      },
+      "BookReviewsOutputSchema0": {
+        "properties": {
+          "replies": {
+            "items": {
+              "$ref": "#/components/schemas/BookReviewsOutputSchema0"
+            },
+            "type": "array"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "replies"
+        ],
+        "type": "object"
+      },
+      "BookWatchInput": {
+        "additionalProperties": false,
+        "properties": {
+          "genre": {
+            "$ref": "#/components/schemas/Genre"
+          }
+        },
+        "required": [
+          "genre"
+        ],
+        "type": "object"
+      },
+      "BookWatchOutput": {
+        "discriminator": {
+          "mapping": {
+            "added": "#/components/schemas/BookAdded",
+            "removed": "#/components/schemas/BookRemoved"
+          },
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/BookAdded"
+          },
+          {
+            "$ref": "#/components/schemas/BookRemoved"
+          }
+        ]
+      },
+      "Category": {
+        "properties": {
+          "children": {
+            "items": {
+              "$ref": "#/components/schemas/Category"
+            },
+            "type": "array"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "children"
+        ],
+        "type": "object"
+      },
+      "CategoryTreeInput": {
+        "additionalProperties": false,
+        "properties": {},
+        "type": "object"
+      },
+      "ConflictData": {
+        "properties": {
+          "isbn": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "isbn"
+        ],
+        "type": "object"
+      },
+      "ErrorCode": {
+        "enum": [
+          "NOT_FOUND",
+          "CONFLICT",
+          "FORBIDDEN",
+          "ALREADY_ON_LOAN",
+          "BAD_REQUEST",
+          "VALIDATION",
+          "INTERNAL",
+          "PAYLOAD_TOO_LARGE"
+        ],
+        "type": "string"
+      },
+      "Genre": {
+        "enum": [
+          "fiction",
+          "science",
+          "history"
+        ],
+        "type": "string"
+      },
+      "LoanCreateInput": {
+        "additionalProperties": false,
+        "properties": {
+          "isbn": {
+            "type": "string"
+          },
+          "memberId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "isbn",
+          "memberId"
+        ],
+        "type": "object"
+      },
+      "LoanCreateOutput": {
+        "properties": {
+          "dueAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "loanId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "loanId",
+          "dueAt"
+        ],
+        "type": "object"
+      },
+      "LoanReturnInput": {
+        "additionalProperties": false,
+        "properties": {
+          "loanId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "loanId"
+        ],
+        "type": "object"
+      },
+      "NotFoundData": {
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "PrintMedia": {
+        "properties": {
+          "kind": {
+            "const": "print",
+            "type": "string"
+          },
+          "pages": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "pages"
+        ],
+        "type": "object"
+      },
+      "Review": {
+        "properties": {
+          "bookIsbn": {
+            "type": "string"
+          },
+          "rating": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "thread": {
+            "$ref": "#/components/schemas/BookReviewsOutputSchema0"
+          }
+        },
+        "required": [
+          "bookIsbn",
+          "rating",
+          "thread"
+        ],
+        "type": "object"
+      },
+      "ReviewFindInput": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "RpcError": {
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "$ref": "#/components/schemas/ErrorCode"
+              },
+              "data": {
+                "description": "Shape depends on code: see <Code>Data."
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ],
+            "type": "object"
+          },
+          "ok": {
+            "enum": [
+              false
+            ]
+          }
+        },
+        "required": [
+          "ok",
+          "error"
+        ],
+        "type": "object"
+      },
+      "ValidationErrorData": {
+        "properties": {
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationErrorDataIssuesItem"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "issues"
+        ],
+        "type": "object"
+      },
+      "ValidationErrorDataIssuesItem": {
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "path": {
+            "items": {
+              "type": [
+                "string",
+                "number"
+              ]
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "message",
+          "path"
+        ],
+        "type": "object"
+      }
+    }
+  },
   "info": {
     "title": "Library API",
     "version": "1.0.0"
   },
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "openapi": "3.1.0",
   "paths": {
-    "/rpc/book/list": {
+    "/rpc/author/find": {
       "post": {
-        "operationId": "book.list",
+        "operationId": "author.find",
         "parameters": [
           {
             "$ref": "#/components/parameters/TsPfProtocol"
@@ -18,16 +641,16 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
                 "additionalProperties": false,
+                "properties": {
+                  "input": {
+                    "$ref": "#/components/schemas/AuthorFindInput"
+                  }
+                },
                 "required": [
                   "input"
                 ],
-                "properties": {
-                  "input": {
-                    "$ref": "#/components/schemas/BookListInput"
-                  }
-                }
+                "type": "object"
               }
             }
           },
@@ -35,27 +658,10 @@
         },
         "responses": {
           "200": {
-            "description": "RPC success",
-            "headers": {
-              "x-ts-pf-protocol": {
-                "required": true,
-                "schema": {
-                  "type": "string",
-                  "enum": [
-                    "1"
-                  ]
-                }
-              }
-            },
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
                   "additionalProperties": false,
-                  "required": [
-                    "ok",
-                    "output"
-                  ],
                   "properties": {
                     "ok": {
                       "enum": [
@@ -63,190 +669,90 @@
                       ]
                     },
                     "output": {
-                      "$ref": "#/components/schemas/BookListOutput"
+                      "$ref": "#/components/schemas/Author"
                     }
-                  }
+                  },
+                  "required": [
+                    "ok",
+                    "output"
+                  ],
+                  "type": "object"
                 }
               }
-            }
-          },
-          "400": {
-            "description": "BAD_REQUEST",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RpcError"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "PAYLOAD_TOO_LARGE",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RpcError"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "VALIDATION",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RpcError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "INTERNAL",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RpcError"
-                }
-              }
-            }
-          }
-        },
-        "x-ts-pf-errors": [
-          "BAD_REQUEST",
-          "PAYLOAD_TOO_LARGE",
-          "VALIDATION",
-          "INTERNAL"
-        ],
-        "summary": "List books",
-        "tags": [
-          "books"
-        ]
-      }
-    },
-    "/rpc/book/find": {
-      "post": {
-        "operationId": "book.find",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/TsPfProtocol"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "input"
-                ],
-                "properties": {
-                  "input": {
-                    "$ref": "#/components/schemas/BookFindInput"
-                  }
-                }
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
+            },
             "description": "RPC success",
             "headers": {
               "x-ts-pf-protocol": {
                 "required": true,
                 "schema": {
-                  "type": "string",
                   "enum": [
                     "1"
-                  ]
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "required": [
-                    "ok",
-                    "output"
                   ],
-                  "properties": {
-                    "ok": {
-                      "enum": [
-                        true
-                      ]
-                    },
-                    "output": {
-                      "$ref": "#/components/schemas/Book"
-                    }
-                  }
+                  "type": "string"
                 }
               }
             }
           },
           "400": {
-            "description": "BAD_REQUEST",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RpcError"
                 }
               }
-            }
+            },
+            "description": "BAD_REQUEST"
           },
           "404": {
-            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RpcError"
                 }
               }
-            }
+            },
+            "description": "Not found"
           },
           "413": {
-            "description": "PAYLOAD_TOO_LARGE",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RpcError"
                 }
               }
-            }
+            },
+            "description": "PAYLOAD_TOO_LARGE"
           },
           "422": {
-            "description": "VALIDATION",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RpcError"
                 }
               }
-            }
+            },
+            "description": "VALIDATION"
           },
           "500": {
-            "description": "INTERNAL",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RpcError"
                 }
               }
-            }
+            },
+            "description": "INTERNAL"
           }
         },
+        "tags": [
+          "author"
+        ],
         "x-ts-pf-errors": [
           "BAD_REQUEST",
           "NOT_FOUND",
           "PAYLOAD_TOO_LARGE",
           "VALIDATION",
           "INTERNAL"
-        ],
-        "tags": [
-          "book"
         ]
       }
     },
@@ -262,16 +768,16 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
                 "additionalProperties": false,
-                "required": [
-                  "input"
-                ],
                 "properties": {
                   "input": {
                     "$ref": "#/components/schemas/BookInput"
                   }
-                }
+                },
+                "required": [
+                  "input"
+                ],
+                "type": "object"
               }
             }
           },
@@ -279,27 +785,10 @@
         },
         "responses": {
           "200": {
-            "description": "RPC success",
-            "headers": {
-              "x-ts-pf-protocol": {
-                "required": true,
-                "schema": {
-                  "type": "string",
-                  "enum": [
-                    "1"
-                  ]
-                }
-              }
-            },
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
                   "additionalProperties": false,
-                  "required": [
-                    "ok",
-                    "output"
-                  ],
                   "properties": {
                     "ok": {
                       "enum": [
@@ -309,72 +798,92 @@
                     "output": {
                       "$ref": "#/components/schemas/Book"
                     }
-                  }
+                  },
+                  "required": [
+                    "ok",
+                    "output"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "RPC success",
+            "headers": {
+              "x-ts-pf-protocol": {
+                "required": true,
+                "schema": {
+                  "enum": [
+                    "1"
+                  ],
+                  "type": "string"
                 }
               }
             }
           },
           "400": {
-            "description": "BAD_REQUEST",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RpcError"
                 }
               }
-            }
+            },
+            "description": "BAD_REQUEST"
           },
           "403": {
-            "description": "Forbidden",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RpcError"
                 }
               }
-            }
+            },
+            "description": "Forbidden"
           },
           "409": {
-            "description": "Duplicate ISBN",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RpcError"
                 }
               }
-            }
+            },
+            "description": "Duplicate ISBN"
           },
           "413": {
-            "description": "PAYLOAD_TOO_LARGE",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RpcError"
                 }
               }
-            }
+            },
+            "description": "PAYLOAD_TOO_LARGE"
           },
           "422": {
-            "description": "VALIDATION",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RpcError"
                 }
               }
-            }
+            },
+            "description": "VALIDATION"
           },
           "500": {
-            "description": "INTERNAL",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RpcError"
                 }
               }
-            }
+            },
+            "description": "INTERNAL"
           }
         },
+        "tags": [
+          "book"
+        ],
         "x-ts-pf-errors": [
           "BAD_REQUEST",
           "FORBIDDEN",
@@ -382,9 +891,250 @@
           "PAYLOAD_TOO_LARGE",
           "VALIDATION",
           "INTERNAL"
+        ]
+      }
+    },
+    "/rpc/book/find": {
+      "post": {
+        "operationId": "book.find",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TsPfProtocol"
+          }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "input": {
+                    "$ref": "#/components/schemas/BookFindInput"
+                  }
+                },
+                "required": [
+                  "input"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "ok": {
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "output": {
+                      "$ref": "#/components/schemas/Book"
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "output"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "RPC success",
+            "headers": {
+              "x-ts-pf-protocol": {
+                "required": true,
+                "schema": {
+                  "enum": [
+                    "1"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcError"
+                }
+              }
+            },
+            "description": "BAD_REQUEST"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcError"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcError"
+                }
+              }
+            },
+            "description": "PAYLOAD_TOO_LARGE"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcError"
+                }
+              }
+            },
+            "description": "VALIDATION"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcError"
+                }
+              }
+            },
+            "description": "INTERNAL"
+          }
+        },
         "tags": [
           "book"
+        ],
+        "x-ts-pf-errors": [
+          "BAD_REQUEST",
+          "NOT_FOUND",
+          "PAYLOAD_TOO_LARGE",
+          "VALIDATION",
+          "INTERNAL"
+        ]
+      }
+    },
+    "/rpc/book/list": {
+      "post": {
+        "operationId": "book.list",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TsPfProtocol"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "input": {
+                    "$ref": "#/components/schemas/BookListInput"
+                  }
+                },
+                "required": [
+                  "input"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "ok": {
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "output": {
+                      "$ref": "#/components/schemas/BookListOutput"
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "output"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "RPC success",
+            "headers": {
+              "x-ts-pf-protocol": {
+                "required": true,
+                "schema": {
+                  "enum": [
+                    "1"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcError"
+                }
+              }
+            },
+            "description": "BAD_REQUEST"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcError"
+                }
+              }
+            },
+            "description": "PAYLOAD_TOO_LARGE"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcError"
+                }
+              }
+            },
+            "description": "VALIDATION"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcError"
+                }
+              }
+            },
+            "description": "INTERNAL"
+          }
+        },
+        "summary": "List books",
+        "tags": [
+          "books"
+        ],
+        "x-ts-pf-errors": [
+          "BAD_REQUEST",
+          "PAYLOAD_TOO_LARGE",
+          "VALIDATION",
+          "INTERNAL"
         ]
       }
     },
@@ -400,16 +1150,16 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
                 "additionalProperties": false,
-                "required": [
-                  "input"
-                ],
                 "properties": {
                   "input": {
                     "$ref": "#/components/schemas/BookMediaInput"
                   }
-                }
+                },
+                "required": [
+                  "input"
+                ],
+                "type": "object"
               }
             }
           },
@@ -417,27 +1167,10 @@
         },
         "responses": {
           "200": {
-            "description": "RPC success",
-            "headers": {
-              "x-ts-pf-protocol": {
-                "required": true,
-                "schema": {
-                  "type": "string",
-                  "enum": [
-                    "1"
-                  ]
-                }
-              }
-            },
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
                   "additionalProperties": false,
-                  "required": [
-                    "ok",
-                    "output"
-                  ],
                   "properties": {
                     "ok": {
                       "enum": [
@@ -447,60 +1180,77 @@
                     "output": {
                       "$ref": "#/components/schemas/BookMediaOutput"
                     }
-                  }
+                  },
+                  "required": [
+                    "ok",
+                    "output"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "RPC success",
+            "headers": {
+              "x-ts-pf-protocol": {
+                "required": true,
+                "schema": {
+                  "enum": [
+                    "1"
+                  ],
+                  "type": "string"
                 }
               }
             }
           },
           "400": {
-            "description": "BAD_REQUEST",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RpcError"
                 }
               }
-            }
+            },
+            "description": "BAD_REQUEST"
           },
           "413": {
-            "description": "PAYLOAD_TOO_LARGE",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RpcError"
                 }
               }
-            }
+            },
+            "description": "PAYLOAD_TOO_LARGE"
           },
           "422": {
-            "description": "VALIDATION",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RpcError"
                 }
               }
-            }
+            },
+            "description": "VALIDATION"
           },
           "500": {
-            "description": "INTERNAL",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RpcError"
                 }
               }
-            }
+            },
+            "description": "INTERNAL"
           }
         },
+        "tags": [
+          "book"
+        ],
         "x-ts-pf-errors": [
           "BAD_REQUEST",
           "PAYLOAD_TOO_LARGE",
           "VALIDATION",
           "INTERNAL"
-        ],
-        "tags": [
-          "book"
         ]
       }
     },
@@ -516,16 +1266,16 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
                 "additionalProperties": false,
-                "required": [
-                  "input"
-                ],
                 "properties": {
                   "input": {
                     "$ref": "#/components/schemas/BookReviewsInput"
                   }
-                }
+                },
+                "required": [
+                  "input"
+                ],
+                "type": "object"
               }
             }
           },
@@ -533,27 +1283,10 @@
         },
         "responses": {
           "200": {
-            "description": "RPC success",
-            "headers": {
-              "x-ts-pf-protocol": {
-                "required": true,
-                "schema": {
-                  "type": "string",
-                  "enum": [
-                    "1"
-                  ]
-                }
-              }
-            },
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
                   "additionalProperties": false,
-                  "required": [
-                    "ok",
-                    "output"
-                  ],
                   "properties": {
                     "ok": {
                       "enum": [
@@ -563,60 +1296,77 @@
                     "output": {
                       "$ref": "#/components/schemas/BookReviewsOutput"
                     }
-                  }
+                  },
+                  "required": [
+                    "ok",
+                    "output"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "RPC success",
+            "headers": {
+              "x-ts-pf-protocol": {
+                "required": true,
+                "schema": {
+                  "enum": [
+                    "1"
+                  ],
+                  "type": "string"
                 }
               }
             }
           },
           "400": {
-            "description": "BAD_REQUEST",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RpcError"
                 }
               }
-            }
+            },
+            "description": "BAD_REQUEST"
           },
           "413": {
-            "description": "PAYLOAD_TOO_LARGE",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RpcError"
                 }
               }
-            }
+            },
+            "description": "PAYLOAD_TOO_LARGE"
           },
           "422": {
-            "description": "VALIDATION",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RpcError"
                 }
               }
-            }
+            },
+            "description": "VALIDATION"
           },
           "500": {
-            "description": "INTERNAL",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RpcError"
                 }
               }
-            }
+            },
+            "description": "INTERNAL"
           }
         },
+        "tags": [
+          "book"
+        ],
         "x-ts-pf-errors": [
           "BAD_REQUEST",
           "PAYLOAD_TOO_LARGE",
           "VALIDATION",
           "INTERNAL"
-        ],
-        "tags": [
-          "book"
         ]
       }
     },
@@ -632,16 +1382,16 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
                 "additionalProperties": false,
-                "required": [
-                  "input"
-                ],
                 "properties": {
                   "input": {
                     "$ref": "#/components/schemas/BookWatchInput"
                   }
-                }
+                },
+                "required": [
+                  "input"
+                ],
+                "type": "object"
               }
             }
           },
@@ -649,27 +1399,10 @@
         },
         "responses": {
           "200": {
-            "description": "RPC success stream. HTTP status stays 200 after the stream starts; in-band `{ ok: false, error }` lines are failures; EOF ends the stream.",
-            "headers": {
-              "x-ts-pf-protocol": {
-                "required": true,
-                "schema": {
-                  "type": "string",
-                  "enum": [
-                    "1"
-                  ]
-                }
-              }
-            },
             "content": {
               "application/jsonl": {
                 "schema": {
-                  "type": "object",
                   "additionalProperties": false,
-                  "required": [
-                    "ok",
-                    "output"
-                  ],
                   "properties": {
                     "ok": {
                       "enum": [
@@ -679,314 +1412,77 @@
                     "output": {
                       "$ref": "#/components/schemas/BookWatchOutput"
                     }
-                  }
+                  },
+                  "required": [
+                    "ok",
+                    "output"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "RPC success stream. HTTP status stays 200 after the stream starts; in-band `{ ok: false, error }` lines are failures; EOF ends the stream.",
+            "headers": {
+              "x-ts-pf-protocol": {
+                "required": true,
+                "schema": {
+                  "enum": [
+                    "1"
+                  ],
+                  "type": "string"
                 }
               }
             }
           },
           "400": {
-            "description": "BAD_REQUEST",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RpcError"
                 }
               }
-            }
+            },
+            "description": "BAD_REQUEST"
           },
           "413": {
-            "description": "PAYLOAD_TOO_LARGE",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RpcError"
                 }
               }
-            }
+            },
+            "description": "PAYLOAD_TOO_LARGE"
           },
           "422": {
-            "description": "VALIDATION",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RpcError"
                 }
               }
-            }
+            },
+            "description": "VALIDATION"
           },
           "500": {
-            "description": "INTERNAL",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RpcError"
                 }
               }
-            }
+            },
+            "description": "INTERNAL"
           }
         },
-        "x-ts-pf-errors": [
-          "BAD_REQUEST",
-          "PAYLOAD_TOO_LARGE",
-          "VALIDATION",
-          "INTERNAL"
-        ],
         "tags": [
           "book"
-        ]
-      }
-    },
-    "/rpc/author/find": {
-      "post": {
-        "operationId": "author.find",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/TsPfProtocol"
-          }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "input"
-                ],
-                "properties": {
-                  "input": {
-                    "$ref": "#/components/schemas/AuthorFindInput"
-                  }
-                }
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "RPC success",
-            "headers": {
-              "x-ts-pf-protocol": {
-                "required": true,
-                "schema": {
-                  "type": "string",
-                  "enum": [
-                    "1"
-                  ]
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "required": [
-                    "ok",
-                    "output"
-                  ],
-                  "properties": {
-                    "ok": {
-                      "enum": [
-                        true
-                      ]
-                    },
-                    "output": {
-                      "$ref": "#/components/schemas/Author"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "BAD_REQUEST",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RpcError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RpcError"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "PAYLOAD_TOO_LARGE",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RpcError"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "VALIDATION",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RpcError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "INTERNAL",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RpcError"
-                }
-              }
-            }
-          }
-        },
         "x-ts-pf-errors": [
           "BAD_REQUEST",
-          "NOT_FOUND",
           "PAYLOAD_TOO_LARGE",
           "VALIDATION",
           "INTERNAL"
-        ],
-        "tags": [
-          "author"
-        ]
-      }
-    },
-    "/rpc/review/find": {
-      "post": {
-        "operationId": "review.find",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/TsPfProtocol"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "input"
-                ],
-                "properties": {
-                  "input": {
-                    "$ref": "#/components/schemas/ReviewFindInput"
-                  }
-                }
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "RPC success",
-            "headers": {
-              "x-ts-pf-protocol": {
-                "required": true,
-                "schema": {
-                  "type": "string",
-                  "enum": [
-                    "1"
-                  ]
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "required": [
-                    "ok",
-                    "output"
-                  ],
-                  "properties": {
-                    "ok": {
-                      "enum": [
-                        true
-                      ]
-                    },
-                    "output": {
-                      "$ref": "#/components/schemas/Review"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "BAD_REQUEST",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RpcError"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RpcError"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "PAYLOAD_TOO_LARGE",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RpcError"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "VALIDATION",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RpcError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "INTERNAL",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RpcError"
-                }
-              }
-            }
-          }
-        },
-        "x-ts-pf-errors": [
-          "BAD_REQUEST",
-          "NOT_FOUND",
-          "PAYLOAD_TOO_LARGE",
-          "VALIDATION",
-          "INTERNAL"
-        ],
-        "tags": [
-          "review"
         ]
       }
     },
@@ -1002,16 +1498,16 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
                 "additionalProperties": false,
-                "required": [
-                  "input"
-                ],
                 "properties": {
                   "input": {
                     "$ref": "#/components/schemas/CategoryTreeInput"
                   }
-                }
+                },
+                "required": [
+                  "input"
+                ],
+                "type": "object"
               }
             }
           },
@@ -1019,27 +1515,10 @@
         },
         "responses": {
           "200": {
-            "description": "RPC success",
-            "headers": {
-              "x-ts-pf-protocol": {
-                "required": true,
-                "schema": {
-                  "type": "string",
-                  "enum": [
-                    "1"
-                  ]
-                }
-              }
-            },
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
                   "additionalProperties": false,
-                  "required": [
-                    "ok",
-                    "output"
-                  ],
                   "properties": {
                     "ok": {
                       "enum": [
@@ -1049,310 +1528,77 @@
                     "output": {
                       "$ref": "#/components/schemas/Category"
                     }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "BAD_REQUEST",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RpcError"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "PAYLOAD_TOO_LARGE",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RpcError"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "VALIDATION",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RpcError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "INTERNAL",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RpcError"
-                }
-              }
-            }
-          }
-        },
-        "x-ts-pf-errors": [
-          "BAD_REQUEST",
-          "PAYLOAD_TOO_LARGE",
-          "VALIDATION",
-          "INTERNAL"
-        ],
-        "tags": [
-          "category"
-        ]
-      }
-    },
-    "/rpc/loan/create": {
-      "post": {
-        "operationId": "loan.create",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/TsPfProtocol"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "input"
-                ],
-                "properties": {
-                  "input": {
-                    "$ref": "#/components/schemas/LoanCreateInput"
-                  }
-                }
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "RPC success",
-            "headers": {
-              "x-ts-pf-protocol": {
-                "required": true,
-                "schema": {
-                  "type": "string",
-                  "enum": [
-                    "1"
-                  ]
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": false,
+                  },
                   "required": [
                     "ok",
                     "output"
                   ],
-                  "properties": {
-                    "ok": {
-                      "enum": [
-                        true
-                      ]
-                    },
-                    "output": {
-                      "$ref": "#/components/schemas/LoanCreateOutput"
-                    }
-                  }
+                  "type": "object"
                 }
               }
-            }
-          },
-          "400": {
-            "description": "BAD_REQUEST",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RpcError"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RpcError"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Already on loan",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RpcError"
-                }
-              }
-            }
-          },
-          "413": {
-            "description": "PAYLOAD_TOO_LARGE",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RpcError"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "VALIDATION",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RpcError"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "INTERNAL",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RpcError"
-                }
-              }
-            }
-          }
-        },
-        "x-ts-pf-errors": [
-          "BAD_REQUEST",
-          "FORBIDDEN",
-          "ALREADY_ON_LOAN",
-          "PAYLOAD_TOO_LARGE",
-          "VALIDATION",
-          "INTERNAL"
-        ],
-        "tags": [
-          "loan"
-        ]
-      }
-    },
-    "/rpc/loan/return": {
-      "post": {
-        "operationId": "loan.return",
-        "parameters": [
-          {
-            "$ref": "#/components/parameters/TsPfProtocol"
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "additionalProperties": false,
-                "required": [
-                  "input"
-                ],
-                "properties": {
-                  "input": {
-                    "$ref": "#/components/schemas/LoanReturnInput"
-                  }
-                }
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
+            },
             "description": "RPC success",
             "headers": {
               "x-ts-pf-protocol": {
                 "required": true,
                 "schema": {
-                  "type": "string",
                   "enum": [
                     "1"
-                  ]
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": false,
-                  "required": [
-                    "ok"
                   ],
-                  "properties": {
-                    "ok": {
-                      "enum": [
-                        true
-                      ]
-                    }
-                  }
+                  "type": "string"
                 }
               }
             }
           },
           "400": {
-            "description": "BAD_REQUEST",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RpcError"
                 }
               }
-            }
+            },
+            "description": "BAD_REQUEST"
           },
           "413": {
-            "description": "PAYLOAD_TOO_LARGE",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RpcError"
                 }
               }
-            }
+            },
+            "description": "PAYLOAD_TOO_LARGE"
           },
           "422": {
-            "description": "VALIDATION",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RpcError"
                 }
               }
-            }
+            },
+            "description": "VALIDATION"
           },
           "500": {
-            "description": "INTERNAL",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RpcError"
                 }
               }
-            }
+            },
+            "description": "INTERNAL"
           }
         },
+        "tags": [
+          "category"
+        ],
         "x-ts-pf-errors": [
           "BAD_REQUEST",
           "PAYLOAD_TOO_LARGE",
           "VALIDATION",
           "INTERNAL"
-        ],
-        "tags": [
-          "loan"
         ]
       }
     },
@@ -1368,79 +1614,79 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
                 "additionalProperties": false,
                 "properties": {
                   "input": {
                     "type": "null"
                   }
-                }
+                },
+                "type": "object"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "RPC success",
-            "headers": {
-              "x-ts-pf-protocol": {
-                "required": true,
-                "schema": {
-                  "type": "string",
-                  "enum": [
-                    "1"
-                  ]
-                }
-              }
-            },
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
                   "additionalProperties": false,
-                  "required": [
-                    "ok"
-                  ],
                   "properties": {
                     "ok": {
                       "enum": [
                         true
                       ]
                     }
-                  }
+                  },
+                  "required": [
+                    "ok"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "RPC success",
+            "headers": {
+              "x-ts-pf-protocol": {
+                "required": true,
+                "schema": {
+                  "enum": [
+                    "1"
+                  ],
+                  "type": "string"
                 }
               }
             }
           },
           "400": {
-            "description": "BAD_REQUEST",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RpcError"
                 }
               }
-            }
+            },
+            "description": "BAD_REQUEST"
           },
           "413": {
-            "description": "PAYLOAD_TOO_LARGE",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RpcError"
                 }
               }
-            }
+            },
+            "description": "PAYLOAD_TOO_LARGE"
           },
           "500": {
-            "description": "INTERNAL",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RpcError"
                 }
               }
-            }
+            },
+            "description": "INTERNAL"
           }
         },
         "x-ts-pf-errors": [
@@ -1449,593 +1695,382 @@
           "INTERNAL"
         ]
       }
-    }
-  },
-  "components": {
-    "schemas": {
-      "ErrorCode": {
-        "type": "string",
-        "enum": [
-          "NOT_FOUND",
-          "CONFLICT",
-          "FORBIDDEN",
-          "ALREADY_ON_LOAN",
-          "BAD_REQUEST",
-          "VALIDATION",
-          "INTERNAL",
-          "PAYLOAD_TOO_LARGE"
-        ]
-      },
-      "RpcError": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "ok",
-          "error"
+    },
+    "/rpc/loan/create": {
+      "post": {
+        "operationId": "loan.create",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TsPfProtocol"
+          }
         ],
-        "properties": {
-          "ok": {
-            "enum": [
-              false
-            ]
-          },
-          "error": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "code",
-              "message"
-            ],
-            "properties": {
-              "code": {
-                "$ref": "#/components/schemas/ErrorCode"
-              },
-              "message": {
-                "type": "string"
-              },
-              "data": {
-                "description": "Shape depends on code: see <Code>Data."
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "input": {
+                    "$ref": "#/components/schemas/LoanCreateInput"
+                  }
+                },
+                "required": [
+                  "input"
+                ],
+                "type": "object"
               }
             }
-          }
-        }
-      },
-      "NotFoundData": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id"
-        ]
-      },
-      "ConflictData": {
-        "type": "object",
-        "properties": {
-          "isbn": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "isbn"
-        ]
-      },
-      "AlreadyOnLoanData": {
-        "type": "object",
-        "properties": {
-          "isbn": {
-            "type": "string"
           },
-          "dueAt": {
-            "type": "string",
-            "format": "date-time"
-          }
+          "required": true
         },
-        "required": [
-          "isbn",
-          "dueAt"
-        ]
-      },
-      "ValidationErrorData": {
-        "type": "object",
-        "required": [
-          "issues"
-        ],
-        "properties": {
-          "issues": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": [
-                "message",
-                "path"
-              ],
-              "properties": {
-                "message": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "ok": {
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "output": {
+                      "$ref": "#/components/schemas/LoanCreateOutput"
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "output"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "RPC success",
+            "headers": {
+              "x-ts-pf-protocol": {
+                "required": true,
+                "schema": {
+                  "enum": [
+                    "1"
+                  ],
                   "type": "string"
-                },
-                "path": {
-                  "type": "array",
-                  "items": {
-                    "type": [
-                      "string",
-                      "number"
-                    ]
-                  }
                 }
               }
             }
-          }
-        }
-      },
-      "BookListInput": {
-        "type": "object",
-        "properties": {
-          "genre": {
-            "$ref": "#/components/schemas/Genre"
-          }
-        },
-        "additionalProperties": false
-      },
-      "BookListOutput": {
-        "type": "array",
-        "items": {
-          "$ref": "#/components/schemas/Book"
-        }
-      },
-      "BookFindInput": {
-        "type": "object",
-        "properties": {
-          "isbn": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "isbn"
-        ],
-        "additionalProperties": false
-      },
-      "BookMediaInput": {
-        "type": "object",
-        "properties": {
-          "isbn": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "isbn"
-        ],
-        "additionalProperties": false
-      },
-      "BookMediaOutput": {
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/PrintMedia"
           },
-          {
-            "$ref": "#/components/schemas/AudioMedia"
-          }
-        ]
-      },
-      "BookReviewsInput": {
-        "type": "object",
-        "properties": {
-          "isbn": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "isbn"
-        ],
-        "additionalProperties": false
-      },
-      "BookReviewsOutput": {
-        "type": "array",
-        "items": {
-          "$ref": "#/components/schemas/Review"
-        }
-      },
-      "BookWatchInput": {
-        "type": "object",
-        "properties": {
-          "genre": {
-            "$ref": "#/components/schemas/Genre"
-          }
-        },
-        "required": [
-          "genre"
-        ],
-        "additionalProperties": false
-      },
-      "BookWatchOutput": {
-        "oneOf": [
-          {
-            "$ref": "#/components/schemas/BookAdded"
-          },
-          {
-            "$ref": "#/components/schemas/BookRemoved"
-          }
-        ]
-      },
-      "AuthorFindInput": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id"
-        ],
-        "additionalProperties": false
-      },
-      "ReviewFindInput": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id"
-        ],
-        "additionalProperties": false
-      },
-      "CategoryTreeInput": {
-        "type": "object",
-        "properties": {},
-        "additionalProperties": false
-      },
-      "LoanCreateInput": {
-        "type": "object",
-        "properties": {
-          "isbn": {
-            "type": "string"
-          },
-          "memberId": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "isbn",
-          "memberId"
-        ],
-        "additionalProperties": false
-      },
-      "LoanCreateOutput": {
-        "type": "object",
-        "properties": {
-          "loanId": {
-            "type": "string"
-          },
-          "dueAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        },
-        "required": [
-          "loanId",
-          "dueAt"
-        ]
-      },
-      "LoanReturnInput": {
-        "type": "object",
-        "properties": {
-          "loanId": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "loanId"
-        ],
-        "additionalProperties": false
-      },
-      "Genre": {
-        "type": "string",
-        "enum": [
-          "fiction",
-          "science",
-          "history"
-        ]
-      },
-      "Book": {
-        "type": "object",
-        "properties": {
-          "isbn": {
-            "type": "string"
-          },
-          "title": {
-            "type": "string"
-          },
-          "genre": {
-            "$ref": "#/components/schemas/Genre"
-          },
-          "available": {
-            "default": true,
-            "type": "boolean"
-          },
-          "publisher": {
-            "type": "object",
-            "properties": {
-              "name": {
-                "type": "string"
-              },
-              "address": {
-                "type": "object",
-                "properties": {
-                  "street": {
-                    "type": "string"
-                  },
-                  "city": {
-                    "type": "string"
-                  },
-                  "geo": {
-                    "type": "object",
-                    "properties": {
-                      "lat": {
-                        "type": "number"
-                      },
-                      "lng": {
-                        "type": "number"
-                      }
-                    },
-                    "required": [
-                      "lat",
-                      "lng"
-                    ]
-                  }
-                },
-                "required": [
-                  "street",
-                  "city",
-                  "geo"
-                ]
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcError"
+                }
               }
             },
-            "required": [
-              "name",
-              "address"
-            ]
-          }
-        },
-        "required": [
-          "isbn",
-          "title",
-          "genre",
-          "available",
-          "publisher"
-        ]
-      },
-      "BookInput": {
-        "type": "object",
-        "properties": {
-          "isbn": {
-            "type": "string"
+            "description": "BAD_REQUEST"
           },
-          "title": {
-            "type": "string"
-          },
-          "genre": {
-            "$ref": "#/components/schemas/Genre"
-          },
-          "available": {
-            "default": true,
-            "type": "boolean"
-          },
-          "publisher": {
-            "type": "object",
-            "properties": {
-              "name": {
-                "type": "string"
-              },
-              "address": {
-                "type": "object",
-                "properties": {
-                  "street": {
-                    "type": "string"
-                  },
-                  "city": {
-                    "type": "string"
-                  },
-                  "geo": {
-                    "type": "object",
-                    "properties": {
-                      "lat": {
-                        "type": "number"
-                      },
-                      "lng": {
-                        "type": "number"
-                      }
-                    },
-                    "required": [
-                      "lat",
-                      "lng"
-                    ],
-                    "additionalProperties": false
-                  }
-                },
-                "required": [
-                  "street",
-                  "city",
-                  "geo"
-                ],
-                "additionalProperties": false
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcError"
+                }
               }
             },
-            "required": [
-              "name",
-              "address"
-            ],
-            "additionalProperties": false
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcError"
+                }
+              }
+            },
+            "description": "Already on loan"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcError"
+                }
+              }
+            },
+            "description": "PAYLOAD_TOO_LARGE"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcError"
+                }
+              }
+            },
+            "description": "VALIDATION"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcError"
+                }
+              }
+            },
+            "description": "INTERNAL"
           }
         },
-        "required": [
-          "isbn",
-          "title",
-          "genre",
-          "publisher"
+        "tags": [
+          "loan"
         ],
-        "additionalProperties": false
-      },
-      "PrintMedia": {
-        "type": "object",
-        "properties": {
-          "kind": {
-            "type": "string",
-            "const": "print"
-          },
-          "pages": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          }
-        },
-        "required": [
-          "kind",
-          "pages"
-        ]
-      },
-      "AudioMedia": {
-        "type": "object",
-        "properties": {
-          "kind": {
-            "type": "string",
-            "const": "audio"
-          },
-          "minutes": {
-            "type": "number"
-          }
-        },
-        "required": [
-          "kind",
-          "minutes"
-        ]
-      },
-      "BookReviewsOutputSchema0": {
-        "type": "object",
-        "properties": {
-          "text": {
-            "type": "string"
-          },
-          "replies": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/BookReviewsOutputSchema0"
-            }
-          }
-        },
-        "required": [
-          "text",
-          "replies"
-        ]
-      },
-      "Review": {
-        "type": "object",
-        "properties": {
-          "bookIsbn": {
-            "type": "string"
-          },
-          "rating": {
-            "type": "integer",
-            "minimum": -9007199254740991,
-            "maximum": 9007199254740991
-          },
-          "thread": {
-            "$ref": "#/components/schemas/BookReviewsOutputSchema0"
-          }
-        },
-        "required": [
-          "bookIsbn",
-          "rating",
-          "thread"
-        ]
-      },
-      "BookAdded": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "const": "added"
-          },
-          "book": {
-            "$ref": "#/components/schemas/Book"
-          }
-        },
-        "required": [
-          "type",
-          "book"
-        ]
-      },
-      "BookRemoved": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": "string",
-            "const": "removed"
-          },
-          "isbn": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "type",
-          "isbn"
-        ]
-      },
-      "Author": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "genres": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Genre"
-            }
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "genres"
-        ]
-      },
-      "Category": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "children": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Category"
-            }
-          }
-        },
-        "required": [
-          "name",
-          "children"
+        "x-ts-pf-errors": [
+          "BAD_REQUEST",
+          "FORBIDDEN",
+          "ALREADY_ON_LOAN",
+          "PAYLOAD_TOO_LARGE",
+          "VALIDATION",
+          "INTERNAL"
         ]
       }
     },
-    "parameters": {
-      "TsPfProtocol": {
-        "name": "x-ts-pf-protocol",
-        "in": "header",
-        "required": true,
-        "schema": {
-          "type": "string",
-          "enum": [
-            "1"
-          ]
-        }
+    "/rpc/loan/return": {
+      "post": {
+        "operationId": "loan.return",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TsPfProtocol"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "input": {
+                    "$ref": "#/components/schemas/LoanReturnInput"
+                  }
+                },
+                "required": [
+                  "input"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "ok": {
+                      "enum": [
+                        true
+                      ]
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "RPC success",
+            "headers": {
+              "x-ts-pf-protocol": {
+                "required": true,
+                "schema": {
+                  "enum": [
+                    "1"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcError"
+                }
+              }
+            },
+            "description": "BAD_REQUEST"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcError"
+                }
+              }
+            },
+            "description": "PAYLOAD_TOO_LARGE"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcError"
+                }
+              }
+            },
+            "description": "VALIDATION"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcError"
+                }
+              }
+            },
+            "description": "INTERNAL"
+          }
+        },
+        "tags": [
+          "loan"
+        ],
+        "x-ts-pf-errors": [
+          "BAD_REQUEST",
+          "PAYLOAD_TOO_LARGE",
+          "VALIDATION",
+          "INTERNAL"
+        ]
+      }
+    },
+    "/rpc/review/find": {
+      "post": {
+        "operationId": "review.find",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TsPfProtocol"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "input": {
+                    "$ref": "#/components/schemas/ReviewFindInput"
+                  }
+                },
+                "required": [
+                  "input"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "ok": {
+                      "enum": [
+                        true
+                      ]
+                    },
+                    "output": {
+                      "$ref": "#/components/schemas/Review"
+                    }
+                  },
+                  "required": [
+                    "ok",
+                    "output"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "RPC success",
+            "headers": {
+              "x-ts-pf-protocol": {
+                "required": true,
+                "schema": {
+                  "enum": [
+                    "1"
+                  ],
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcError"
+                }
+              }
+            },
+            "description": "BAD_REQUEST"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcError"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcError"
+                }
+              }
+            },
+            "description": "PAYLOAD_TOO_LARGE"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcError"
+                }
+              }
+            },
+            "description": "VALIDATION"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RpcError"
+                }
+              }
+            },
+            "description": "INTERNAL"
+          }
+        },
+        "tags": [
+          "review"
+        ],
+        "x-ts-pf-errors": [
+          "BAD_REQUEST",
+          "NOT_FOUND",
+          "PAYLOAD_TOO_LARGE",
+          "VALIDATION",
+          "INTERNAL"
+        ]
       }
     }
   },

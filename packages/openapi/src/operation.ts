@@ -60,31 +60,52 @@ export function toPathEntry(
   return result
 }
 
+/**
+ * Registers the procedure's `<path>.Input` / `<path>.Output` components (a
+ * stream's item schema) and returns `$ref`s to them. `emptyInput` is set
+ * when `emptyInputNull` applies, and then there is no `input`.
+ */
+export function procedureSchemas(
+  proc: CatalogProcedure,
+  options: OperationContext,
+): { input?: JsonSchema; output?: JsonSchema; emptyInput: boolean } {
+  const owner = makeOperationId(proc.path)
+  const emptyInput = options.profile.emptyInputNull && isEmptyInput(proc)
+  const result: {
+    input?: JsonSchema
+    output?: JsonSchema
+    emptyInput: boolean
+  } = { emptyInput }
+  if (hasInput(proc) && !emptyInput) {
+    result.input = options.hoister.add(
+      schemaName(proc.path, 'Input'),
+      'input',
+      owner,
+      innerFromCatalog(proc.input) ?? {},
+    )
+  }
+  if (hasOutput(proc)) {
+    result.output = options.hoister.add(
+      schemaName(proc.path, 'Output'),
+      'output',
+      owner,
+      innerFromCatalog(proc.output) ?? {},
+    )
+  }
+  return result
+}
+
 function toOperation(
   proc: CatalogProcedure,
   options: OperationContext,
 ): OpenAPIOperation {
   const requestName = schemaName(proc.path, 'Request')
   const successName = schemaName(proc.path, 'Success')
-  const owner = makeOperationId(proc.path)
-  const emptyInput = options.profile.emptyInputNull && isEmptyInput(proc)
-  const requestInner =
-    hasInput(proc) && !emptyInput
-      ? options.hoister.add(
-          schemaName(proc.path, 'Input'),
-          'input',
-          owner,
-          innerFromCatalog(proc.input) ?? {},
-        )
-      : undefined
-  const successInner = hasOutput(proc)
-    ? options.hoister.add(
-        schemaName(proc.path, 'Output'),
-        'output',
-        owner,
-        innerFromCatalog(proc.output) ?? {},
-      )
-    : undefined
+  const {
+    input: requestInner,
+    output: successInner,
+    emptyInput,
+  } = procedureSchemas(proc, options)
   const envelope = (name: string, schema: JsonSchema) =>
     options.profile.envelopes === 'inline'
       ? schema

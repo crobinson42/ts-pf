@@ -17,12 +17,13 @@ const GENERATED_COMPONENT = /^(.+)\.(__schema\d+)$/
  * `AuthVerifyCodeInput`, `Error.NOT_FOUND` → `NotFoundError`). Ids keep
  * their names, and a procedure whose input or output is just an id uses
  * the id: its `Input` / `Output` alias is dropped. Throws when two
- * different schemas end up with one name.
+ * different schemas end up with one name. Returns each renamed (or dropped
+ * alias) component's new name.
  */
 export function pascalNames(
   document: OpenAPIDocument,
   catalog: ProcedureCatalog,
-): void {
+): Map<string, string> {
   const { schemas } = document.components
   const renames = derivedNames(catalog, schemas)
   const aliases = new Map<string, string>()
@@ -65,6 +66,7 @@ export function pascalNames(
         : `${componentRef(next).$ref}${target?.rest ?? ''}`
     }),
   )
+  return targets
 }
 
 /** Dotted component name → PascalCase name, for every derived name. */

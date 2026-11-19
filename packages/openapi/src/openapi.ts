@@ -4,10 +4,11 @@ import { createHoister } from './hoist.js'
 import { toPathEntry } from './operation.js'
 import { applySchemaPasses, resolveProfile } from './profile.js'
 import { sharedErrorComponents } from './shared-errors.js'
+import { isStreamProcedure, streamEntry } from './streams.js'
 import type {
   OpenAPIDocument,
-  OpenAPIInfo,
   OpenAPIOptions,
+  OpenAPIStreamEntry,
   PathItem,
 } from './types.js'
 
@@ -15,15 +16,15 @@ const JSON_SCHEMA_DIALECT =
   'https://json-schema.org/draft/2020-12/schema' as const
 
 export function openapi(
-  catalog: ProcedureCatalog,
+  source: ProcedureCatalog,
   options: OpenAPIOptions,
 ): OpenAPIDocument {
-  if (catalog.catalogVersion !== 1) {
+  if (source.catalogVersion !== 1) {
     throw new Error(
-      `Unsupported catalogVersion: ${String(catalog.catalogVersion)}`,
+      `Unsupported catalogVersion: ${String(source.catalogVersion)}`,
     )
   }
-  if (!Array.isArray(catalog.procedures)) {
+  if (!Array.isArray(source.procedures)) {
     throw new Error('catalog.procedures must be an array')
   }
   if (options.info.title.trim() === '' || options.info.version.trim() === '') {
@@ -31,6 +32,16 @@ export function openapi(
   }
 
   const profile = resolveProfile(options)
+  // `streams: 'omit'` leaves stream procedures out as a catalog filter would.
+  const catalog: ProcedureCatalog =
+    profile.streams === 'omit'
+      ? {
+          ...source,
+          procedures: source.procedures.filter(
+            (proc) => !isStreamProcedure(proc),
+          ),
+        }
+      : source
   const schemas: Record<string, JsonSchema> = {}
   const hoister = createHoister(schemas)
   const includeProtocolErrors = options.protocolErrors !== false
@@ -50,18 +61,25 @@ export function openapi(
   const tags: string[] = []
   const seenTags = new Set<string>()
 
+  const streams: Record<string, OpenAPIStreamEntry> = {}
+  const context = {
+    catalog,
+    openapi: options,
+    schemas,
+    hoister,
+    protocolRefs,
+    sharedErrorRefs: sharedRefs,
+    includeProtocolErrors,
+    profile,
+    rpcError,
+  }
+
   for (const proc of catalog.procedures) {
-    const entry = toPathEntry(proc, {
-      catalog,
-      openapi: options,
-      schemas,
-      hoister,
-      protocolRefs,
-      sharedErrorRefs: sharedRefs,
-      includeProtocolErrors,
-      profile,
-      rpcError,
-    })
+    if (profile.streams === 'components' && isStreamProcedure(proc)) {
+      streams[proc.key] = streamEntry(proc, context)
+      continue
+    }
+    const entry = toPathEntry(proc, context)
     paths[entry.path] = entry.item
     if (entry.tags !== undefined) {
       for (const tag of entry.tags) {
@@ -73,11 +91,11 @@ export function openapi(
     }
   }
 
-  hoister.finish()
+  const dataComponents = hoister.finish()
 
   const document: OpenAPIDocument = {
     openapi: '3.1.0',
-    info: copyInfo(options.info),
+    info: copyInfo(options),
     jsonSchemaDialect: JSON_SCHEMA_DIALECT,
     paths,
     components: {
@@ -101,12 +119,21 @@ export function openapi(
   if (tags.length > 0) {
     document.tags = tags.map((name) => ({ name }))
   }
-  applySchemaPasses(document, catalog, profile)
-  return document
+  if (Object.keys(streams).length > 0) {
+    document['x-ts-pf-streams'] = streams
+  }
+  const passes =
+    options.enumNames === undefined
+      ? { dataComponents }
+      : { dataComponents, enumNames: options.enumNames }
+  return applySchemaPasses(document, catalog, profile, passes)
 }
 
-function copyInfo(info: OpenAPIInfo): OpenAPIInfo {
-  const out: OpenAPIInfo = {
+function copyInfo({
+  info,
+  catalogHash,
+}: OpenAPIOptions): OpenAPIDocument['info'] {
+  const out: OpenAPIDocument['info'] = {
     title: info.title,
     version: info.version,
   }
@@ -124,6 +151,9 @@ function copyInfo(info: OpenAPIInfo): OpenAPIInfo {
   }
   if (info.license !== undefined) {
     out.license = info.license
+  }
+  if (catalogHash !== undefined) {
+    out['x-ts-pf-catalog-hash'] = catalogHash
   }
   return out
 }

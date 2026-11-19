@@ -16,7 +16,14 @@ describe('OpenAPIOptions profile options', () => {
       constAsEnum: 'exceptTags',
       dropFormatPatterns: true,
       emptyInputNull: true,
+      discriminators: true,
+      hoist: 'objects',
+      canonical: true,
+      streams: 'components',
+      enumNames: { BookStatus: ['available', 'loaned'], Level: [1, 2] },
+      catalogHash: 'sha256-abc',
     }
+    const omit: OpenAPIOptions = { info, streams: 'omit' }
     const defaults: OpenAPIOptions = {
       info,
       profile: 'codegen',
@@ -27,9 +34,14 @@ describe('OpenAPIOptions profile options', () => {
       constAsEnum: false,
       dropFormatPatterns: false,
       emptyInputNull: false,
+      discriminators: false,
+      hoist: 'none',
+      canonical: false,
+      streams: 'operation',
     }
     expectTypeOf(codegen).toEqualTypeOf<OpenAPIOptions>()
     expectTypeOf(each).toEqualTypeOf<OpenAPIOptions>()
+    expectTypeOf(omit).toEqualTypeOf<OpenAPIOptions>()
     expectTypeOf(defaults).toEqualTypeOf<OpenAPIOptions>()
   })
 
@@ -46,6 +58,20 @@ describe('OpenAPIOptions profile options', () => {
     const constAsEnum: OpenAPIOptions = { info, constAsEnum: true }
     // @ts-expect-error closeInputs is a boolean
     const closeInputs: OpenAPIOptions = { info, closeInputs: 'yes' }
+    // @ts-expect-error unknown hoist value
+    const hoist: OpenAPIOptions = { info, hoist: 'all' }
+    // @ts-expect-error hoist takes 'none' or 'objects', not a boolean
+    const hoistBool: OpenAPIOptions = { info, hoist: true }
+    // @ts-expect-error unknown streams value
+    const streams: OpenAPIOptions = { info, streams: 'paths' }
+    // @ts-expect-error discriminators is a boolean
+    const discriminators: OpenAPIOptions = { info, discriminators: 'kind' }
+    // @ts-expect-error canonical is a boolean
+    const canonical: OpenAPIOptions = { info, canonical: 'sorted' }
+    // @ts-expect-error enumNames maps a name to its values
+    const enumNames: OpenAPIOptions = { info, enumNames: ['a', 'b'] }
+    // @ts-expect-error catalogHash is a string
+    const catalogHash: OpenAPIOptions = { info, catalogHash: 1 }
     expectTypeOf([
       profile,
       envelopes,
@@ -53,7 +79,23 @@ describe('OpenAPIOptions profile options', () => {
       naming,
       constAsEnum,
       closeInputs,
+      hoist,
+      hoistBool,
+      streams,
+      discriminators,
+      canonical,
+      enumNames,
+      catalogHash,
     ]).toBeArray()
+  })
+
+  it('types the x-ts-pf-streams map and the catalog hash', () => {
+    type Document = import('../src/index.js').OpenAPIDocument
+    type Entry = NonNullable<Document['x-ts-pf-streams']>[string]
+    expectTypeOf<Entry['errors']>().toEqualTypeOf<string[]>()
+    expectTypeOf<Document['info']['x-ts-pf-catalog-hash']>().toEqualTypeOf<
+      string | undefined
+    >()
   })
 
   it('types x-ts-pf-errors on operations', () => {
