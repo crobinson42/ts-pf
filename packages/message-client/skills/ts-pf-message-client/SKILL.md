@@ -75,7 +75,7 @@ Slow servers are handled by default (`LinkOptions.backpressure`, the same `{ hig
 
 ## Don't
 
-- Depend on the `ws` npm package — inject a `WebSocket` constructor.
+- Expect this package to bring `ws`: it has no `ws` dependency. On Node, the app installs `ws` and passes its `WebSocket` class (or an open socket).
 - Reconstruct HTTP status from `error.code`.
 - Copy the multiplexer for a new pipe — write a `Duplex` and use `DuplexLink`.
 - Retry a `Peer did not drain` failure blindly — the server stopped reading; fix the consumer or raise `drainTimeout`.

@@ -85,7 +85,7 @@ Unknown `code` values are valid JSON; clients must catch-all. A procedure may re
 
 After a stream starts, HTTP status stays 200; the same `{ ok: false, error }` object appears as a JSONL line, SSE `event: error`, or a message-transport `{ "type": "result", "ok": false, "error": … }` frame. Switch on `code`, not HTTP status.
 
-TypeScript `PFError`, `instanceof`, and `asResult` are JS conveniences. They are not required to consume the API. Any HTTP client parses this envelope.
+TypeScript `PFError`, `isPFError`, and `asResult` are JS conveniences. They are not required to consume the API. Any HTTP client parses this envelope.
 
 Contract-declared error codes use the status on the error definition when the HTTP binding sends a unary failure; a declared code with no `status` is sent as HTTP 400 (`httpStatus()` in `@ts-pf/http`).
 
