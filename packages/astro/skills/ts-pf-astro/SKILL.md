@@ -7,7 +7,7 @@ description: "Use when serving a ts-pf API from an Astro endpoint or calling it 
 
 Opt-in Astro endpoint and in-process page caller. Thin shell around `FetchHandler` and `createClient`. Not an integration, middleware mount, or Astro Actions adapter.
 
-Install: `npm i @ts-pf/astro` (peer **astro >= 4.9.0**). The app already has `@ts-pf/contract`, `@ts-pf/server`, `@ts-pf/server-http`, `@ts-pf/client`, and `@ts-pf/client-http`.
+Install: `npm i @ts-pf/astro` (peer **astro >= 7.0.0**). The app also imports `@ts-pf/contract`, `@ts-pf/server`, `@ts-pf/server-http`, `@ts-pf/client`, and `@ts-pf/client-http` directly, so it declares them too, on the same version as `@ts-pf/astro` (every `@ts-pf/*` package releases on one version; update them together).
 
 Link for agents: `npx skills experimental_sync -y`
 
@@ -47,6 +47,43 @@ export const client = createAstroClient<typeof contract>({
 ```
 
 `@ts-pf/astro` (root) exports the same client helpers. `@ts-pf/swr` works on that client for React islands.
+
+Ban server-only and Node-only entry points in island code with a lint rule scoped to island and browser-script modules, not `.astro` files (their frontmatter runs on the server and may import them). Biome (adjust `includes` to your layout):
+
+```json
+{
+  "overrides": [
+    {
+      "includes": ["src/components/**/*.tsx", "src/scripts/**/*.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@ts-pf/astro/server": "Server-only",
+                  "@ts-pf/server": "Server-only",
+                  "@ts-pf/server-http": "Server-only",
+                  "@ts-pf/message-server": "Server-only",
+                  "@ts-pf/message-server/stdio": "Server-only (Node)",
+                  "@ts-pf/mcp": "Server-only",
+                  "@ts-pf/mcp/sdk": "Server-only",
+                  "@ts-pf/message/stdio": "Node-only",
+                  "@ts-pf/message-client/stdio": "Node-only",
+                  "@ts-pf/codegen": "Node-only (build time)"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
+```
+
+ESLint: `no-restricted-imports` with the same names under `paths` (exact names; `@ts-pf/astro` and `@ts-pf/astro/client` stay allowed).
 
 `createAstroHandler(handler, { context })` checks `context` against the context type `FetchHandler` inferred from `app`; `createAstroLocalClient(app, Astro, context)` checks it against `app`'s `$context<C>()`. `createAstroClient` needs the contract type: `createAstroClient<typeof contract>({ prefix })`, or a `ContractClient<typeof contract>` annotation on the variable or return type. Without either the result is `{ readonly '~error': 'Pass createAstroClient<typeof contract>({ prefix })' }`, not an empty client.
 
