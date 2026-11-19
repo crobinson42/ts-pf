@@ -1,6 +1,11 @@
 import { procedure, router } from '@ts-pf/contract'
 import { JSONCodec, type RpcBodySource } from '@ts-pf/http'
-import { isPFError, PFError, type RpcRequest } from '@ts-pf/protocol'
+import {
+  isPFError,
+  isUnexpectedError,
+  PFError,
+  type RpcRequest,
+} from '@ts-pf/protocol'
 import { createImplementer } from '@ts-pf/server'
 import { FetchHandler, type HandlerPlugin } from '@ts-pf/server-http'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -116,6 +121,28 @@ describe('FetchHandler default error logging', () => {
     expect(errorSpy).not.toHaveBeenCalled()
   })
 
+  it('answers a hand-thrown declared PFError with its declared status', async () => {
+    const lagContract = router({
+      lag: procedure.errors({ Lagging: { status: 409 } }),
+    })
+    const lagImpl = createImplementer(lagContract)
+    const lagApp = lagImpl.router({
+      lag: lagImpl.lag.handler(async () => {
+        throw new PFError({ code: 'Lagging', cause: new Error('behind') })
+      }),
+    })
+    const { status, json } = await call(
+      new FetchHandler(lagApp),
+      post('lag', '{}'),
+    )
+    expect(status).toBe(409)
+    expect(json).toEqual({
+      ok: false,
+      error: { code: 'Lagging', message: 'Lagging' },
+    })
+    expect(errorSpy).not.toHaveBeenCalled()
+  })
+
   it('logs an output schema failure as a possible INTERNAL cause', async () => {
     const { status, json } = await call(
       new FetchHandler(app, { validation: { output: true } }),
@@ -211,6 +238,28 @@ describe('FetchHandler onError option', () => {
       'METHOD_NOT_ALLOWED',
       'BAD_REQUEST',
     ])
+  })
+
+  it('keeps the default filter with isUnexpectedError', async () => {
+    const logged: unknown[] = []
+    const handler = new FetchHandler(app, {
+      validation: { output: true },
+      onError(error) {
+        if (isUnexpectedError(error)) logged.push(error)
+      },
+    })
+    await call(handler, post('planet/find', '{"input":{"id":404}}'))
+    await call(handler, post('planet/find', '{"input":{}}'))
+    await call(handler, post('planet/teapot', '{}'))
+    await call(handler, post('planet/nope', '{}'))
+    await call(handler, post('planet/find', '', 'GET'))
+    await call(handler, post('planet/find', 'not json'))
+    await call(handler, post('planet/crash', '{"input":{"id":1}}'))
+    await call(handler, post('planet/ping', '{}'))
+    expect(logged).toHaveLength(2)
+    expect(logged[0]).toBeInstanceOf(TypeError)
+    expect(logged[1]).toMatchObject({ code: 'INTERNAL' })
+    expect(errorSpy).not.toHaveBeenCalled()
   })
 
   it('sees NOT_FOUND, not BAD_REQUEST, for an unknown path with an invalid body', async () => {
