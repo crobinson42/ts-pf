@@ -9,6 +9,7 @@ import {
   type RpcEncodedBody,
 } from '@ts-pf/http'
 import {
+  isAsyncIterable,
   isPFError,
   PFError,
   PROTOCOL_VERSION,
@@ -23,6 +24,11 @@ import {
   runProcedure,
 } from '@ts-pf/server'
 import type { HandlerPlugin } from './plugins.js'
+import {
+  closeUnsentStream,
+  isStreamProcedure,
+  streamCodecError,
+} from './streams.js'
 
 export type HandleResult =
   | { matched: false; response?: undefined }
@@ -58,6 +64,10 @@ export class FetchHandler<TCtx = unknown> {
   private readonly interceptors: readonly CallInterceptor[]
   private readonly validation: ProcedureValidation | undefined
   private readonly onError: FetchHandlerOnError | undefined
+  /** The codec says it cannot carry streams (`RpcCodec.streams === false`). */
+  private readonly rejectsStreams: boolean
+  /** The codec says it carries streams (`RpcCodec.streams === true`); its encoding is trusted. */
+  private readonly carriesStreams: boolean
 
   constructor(
     private readonly router: ImplementedRouter<unknown, TCtx>,
@@ -93,6 +103,8 @@ export class FetchHandler<TCtx = unknown> {
     this.interceptors = options?.interceptors ?? []
     this.validation = options?.validation
     this.onError = options?.onError
+    this.rejectsStreams = this.codec.streams === false
+    this.carriesStreams = this.codec.streams === true
   }
 
   /**
@@ -126,11 +138,14 @@ export class FetchHandler<TCtx = unknown> {
       if (shortCircuit !== undefined) {
         return await this.respond(state, shortCircuit)
       }
-      // 1. method, then protocol version, then procedure: a 405, 400, or 404
-      //    answers before the body is read
+      // 1. method, then protocol version, then procedure, then the codec's
+      //    stream support: a 405, 400, or 404 answers before the body is read
       assertPost(state.request)
       assertProtocolVersion(state.request)
       const procedure = this.lookup(path)
+      if (this.rejectsStreams && isStreamProcedure(procedure)) {
+        throw streamCodecError()
+      }
       // 2. decode the body
       const decoded = await this.codec.decodeRequest(bodySource(state.request))
       // 3. context factory, then HandlerPlugin.onContext
@@ -209,9 +224,23 @@ export class FetchHandler<TCtx = unknown> {
     return runProcedure(procedure, input, state.context, runOpts)
   }
 
-  /** Step 5. */
+  /**
+   * Step 5. Unless the codec declares `streams: true`, a stream output it did
+   * not encode as a `ReadableStream` (a codec that leaves `streams` unset, or
+   * a contract that does not declare `stream()`) is closed and answered like
+   * the step-1 stream check, never as a 200 with a non-stream body.
+   */
   private async successResponse(output: unknown): Promise<Response> {
-    return encodedResponse(await this.codec.encodeSuccess(output), 200)
+    const encoded = await this.codec.encodeSuccess(output)
+    if (
+      !this.carriesStreams &&
+      isAsyncIterable(output) &&
+      !(encoded.body instanceof ReadableStream)
+    ) {
+      closeUnsentStream(output)
+      throw streamCodecError()
+    }
+    return encodedResponse(encoded, 200)
   }
 
   /** Step 6, side effects: `HandlerPlugin.onError` in array order, then `onError` or the default log. */

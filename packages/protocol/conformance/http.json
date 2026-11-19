@@ -1,0 +1,641 @@
+{
+  "protocol": 1,
+  "revision": "1.2",
+  "binding": "http",
+  "description": "Unary JSON over HTTP: the request a client sends and how it classifies each response. See README.md in this directory.",
+  "cases": [
+    {
+      "id": "http-success-output",
+      "description": "A success envelope resolves the call to its output. PROTOCOL.md: HTTP Fetch binding; Classifying an HTTP response, step 2.",
+      "request": { "procedure": ["planet", "find"], "input": { "id": 1 } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/planet/find",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "id": 1 } }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": "{\"ok\":true,\"output\":{\"id\":1,\"name\":\"Earth\"}}"
+      },
+      "expect": { "kind": "success", "output": { "id": 1, "name": "Earth" } }
+    },
+    {
+      "id": "http-success-void",
+      "description": "No input: the body omits input (or sends null). A success envelope without output resolves to no value. PROTOCOL.md: Envelope; Classifying an HTTP response, step 2.",
+      "request": { "procedure": ["planet", "reset"] },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/planet/reset",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "bodyOneOf": [{}, { "input": null }]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": "{\"ok\":true}"
+      },
+      "expect": { "kind": "success" }
+    },
+    {
+      "id": "http-success-null-output",
+      "description": "output: null is a value, not an omitted output. PROTOCOL.md: Envelope; Classifying an HTTP response, step 2.",
+      "request": { "procedure": ["planet", "moon"], "input": { "id": 2 } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/planet/moon",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "id": 2 } }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": "{\"ok\":true,\"output\":null}"
+      },
+      "expect": { "kind": "success", "output": null }
+    },
+    {
+      "id": "http-declared-error-with-data",
+      "description": "A procedure-declared code with data, sent with the status on its error definition. Switch on error.code. PROTOCOL.md: Protocol errors.",
+      "request": {
+        "procedure": ["planet", "create"],
+        "input": { "name": "Earth" }
+      },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/planet/create",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "name": "Earth" } }
+      },
+      "response": {
+        "status": 409,
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": "{\"ok\":false,\"error\":{\"code\":\"PLANET_EXISTS\",\"message\":\"Planet already exists\",\"data\":{\"name\":\"Earth\"}}}"
+      },
+      "expect": {
+        "kind": "error",
+        "code": "PLANET_EXISTS",
+        "message": "Planet already exists",
+        "data": { "name": "Earth" }
+      }
+    },
+    {
+      "id": "http-declared-error-default-status",
+      "description": "A declared code whose definition has no status is sent as HTTP 400; the code, not the status, identifies it. PROTOCOL.md: Protocol errors.",
+      "request": { "procedure": ["shop", "buy"], "input": { "sku": "A1" } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/shop/buy",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "sku": "A1" } }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": "{\"ok\":false,\"error\":{\"code\":\"OUT_OF_STOCK\",\"message\":\"Out of stock\"}}"
+      },
+      "expect": {
+        "kind": "error",
+        "code": "OUT_OF_STOCK",
+        "message": "Out of stock"
+      }
+    },
+    {
+      "id": "http-unknown-code",
+      "description": "A code the client has never seen is still a failure envelope: surface it (catch-all), never drop it or read the status instead. PROTOCOL.md: Protocol errors.",
+      "request": { "procedure": ["planet", "find"], "input": { "id": 1 } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/planet/find",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "id": 1 } }
+      },
+      "response": {
+        "status": 418,
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": "{\"ok\":false,\"error\":{\"code\":\"SOMETHING_NEW\",\"message\":\"Added after this client shipped\"}}"
+      },
+      "expect": {
+        "kind": "error",
+        "code": "SOMETHING_NEW",
+        "message": "Added after this client shipped"
+      }
+    },
+    {
+      "id": "http-protocol-validation",
+      "description": "VALIDATION carries data.issues as { message, path }[]. PROTOCOL.md: Protocol errors.",
+      "request": { "procedure": ["planet", "find"], "input": { "id": "one" } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/planet/find",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "id": "one" } }
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": "{\"ok\":false,\"error\":{\"code\":\"VALIDATION\",\"message\":\"Validation failed\",\"data\":{\"issues\":[{\"message\":\"Expected number\",\"path\":[\"id\"]}]}}}"
+      },
+      "expect": {
+        "kind": "error",
+        "code": "VALIDATION",
+        "message": "Validation failed",
+        "data": { "issues": [{ "message": "Expected number", "path": ["id"] }] }
+      }
+    },
+    {
+      "id": "http-protocol-not-found",
+      "description": "NOT_FOUND from the server (the procedure is missing) is a decoded envelope, unlike a proxy's HTML 404. PROTOCOL.md: Protocol errors.",
+      "request": { "procedure": ["planet", "missing"] },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/planet/missing",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "bodyOneOf": [{}, { "input": null }]
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": "{\"ok\":false,\"error\":{\"code\":\"NOT_FOUND\",\"message\":\"Procedure not found\"}}"
+      },
+      "expect": {
+        "kind": "error",
+        "code": "NOT_FOUND",
+        "message": "Procedure not found"
+      }
+    },
+    {
+      "id": "http-protocol-bad-request",
+      "description": "BAD_REQUEST from the server (it could not read the request) is a decoded envelope, unlike a response body the client cannot read. PROTOCOL.md: Protocol errors.",
+      "request": { "procedure": ["planet", "find"], "input": { "id": 1 } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/planet/find",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "id": 1 } }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": "{\"ok\":false,\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"Request body must be a JSON object\"}}"
+      },
+      "expect": {
+        "kind": "error",
+        "code": "BAD_REQUEST",
+        "message": "Request body must be a JSON object"
+      }
+    },
+    {
+      "id": "http-headerless-envelope-trusted",
+      "description": "A response without x-ts-pf-protocol whose body decodes is trusted (a cross-origin browser may not see the header). PROTOCOL.md: Classifying an HTTP response, step 4.",
+      "request": { "procedure": ["admin", "purge"] },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/admin/purge",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "bodyOneOf": [{}, { "input": null }]
+      },
+      "response": {
+        "status": 403,
+        "headers": { "content-type": "application/json" },
+        "body": "{\"ok\":false,\"error\":{\"code\":\"FORBIDDEN\",\"message\":\"Admins only\"}}"
+      },
+      "expect": {
+        "kind": "error",
+        "code": "FORBIDDEN",
+        "message": "Admins only"
+      }
+    },
+    {
+      "id": "http-headerless-success-trusted",
+      "description": "A headerless success envelope is trusted too. PROTOCOL.md: Classifying an HTTP response, step 4.",
+      "request": { "procedure": ["planet", "find"], "input": { "id": 1 } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/planet/find",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "id": 1 } }
+      },
+      "response": {
+        "status": 200,
+        "headers": { "content-type": "application/json" },
+        "body": "{\"ok\":true,\"output\":{\"id\":1,\"name\":\"Earth\"}}"
+      },
+      "expect": { "kind": "success", "output": { "id": 1, "name": "Earth" } }
+    },
+    {
+      "id": "http-version-header-trimmed",
+      "description": "The version header is compared after trimming surrounding whitespace. PROTOCOL.md: Classifying an HTTP response, step 1.",
+      "request": { "procedure": ["planet", "find"], "input": { "id": 1 } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/planet/find",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "id": 1 } }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": " 1 "
+        },
+        "body": "{\"ok\":true,\"output\":{\"id\":1,\"name\":\"Earth\"}}"
+      },
+      "expect": { "kind": "success", "output": { "id": 1, "name": "Earth" } }
+    },
+    {
+      "id": "http-version-mismatch",
+      "description": "x-ts-pf-protocol present and not 1: fail the call without decoding the body (here a success envelope a decoding client would wrongly accept). PROTOCOL.md: Classifying an HTTP response, step 1; Versioning.",
+      "request": { "procedure": ["planet", "find"], "input": { "id": 1 } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/planet/find",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "id": 1 } }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "2"
+        },
+        "body": "{\"ok\":true,\"output\":{\"id\":1,\"name\":\"Earth\"}}"
+      },
+      "expect": { "kind": "version-mismatch" }
+    },
+    {
+      "id": "http-version-mismatch-error-body",
+      "description": "Another major's failure envelope is not decoded either: the outcome is the version mismatch, not its code. PROTOCOL.md: Classifying an HTTP response, step 1.",
+      "request": { "procedure": ["planet", "find"], "input": { "id": 1 } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/planet/find",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "id": 1 } }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "2"
+        },
+        "body": "{\"ok\":false,\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"Unsupported protocol version\"}}"
+      },
+      "expect": { "kind": "version-mismatch" }
+    },
+    {
+      "id": "http-proxy-html-404",
+      "description": "A proxy's HTML 404 is a transport failure, never NOT_FOUND. PROTOCOL.md: Classifying an HTTP response, step 3.",
+      "request": { "procedure": ["planet", "find"], "input": { "id": 1 } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/planet/find",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "id": 1 } }
+      },
+      "response": {
+        "status": 404,
+        "headers": { "content-type": "text/html" },
+        "body": "<!doctype html><title>404 Not Found</title><h1>Not Found</h1>"
+      },
+      "expect": { "kind": "transport-failure" }
+    },
+    {
+      "id": "http-proxy-html-401",
+      "description": "An auth gateway's HTML 401 is a transport failure, never an application \"unauthenticated\" outcome. PROTOCOL.md: Classifying an HTTP response, step 3.",
+      "request": { "procedure": ["planet", "find"], "input": { "id": 1 } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/planet/find",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "id": 1 } }
+      },
+      "response": {
+        "status": 401,
+        "headers": {
+          "content-type": "text/html",
+          "www-authenticate": "Basic realm=\"edge\""
+        },
+        "body": "<!doctype html><title>401 Unauthorized</title>"
+      },
+      "expect": { "kind": "transport-failure" }
+    },
+    {
+      "id": "http-proxy-502",
+      "description": "A load balancer's 502 is a transport failure (retry is optional and only for calls safe to repeat). PROTOCOL.md: Classifying an HTTP response, step 3.",
+      "request": { "procedure": ["planet", "find"], "input": { "id": 1 } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/planet/find",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "id": 1 } }
+      },
+      "response": {
+        "status": 502,
+        "headers": { "content-type": "text/html" },
+        "body": "<html><body><h1>502 Bad Gateway</h1></body></html>"
+      },
+      "expect": { "kind": "transport-failure" }
+    },
+    {
+      "id": "http-headerless-200-html",
+      "description": "A 200 that is not an envelope (an HTML fallback page) is a transport failure, not a success. PROTOCOL.md: Classifying an HTTP response, steps 2-3.",
+      "request": { "procedure": ["planet", "find"], "input": { "id": 1 } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/planet/find",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "id": 1 } }
+      },
+      "response": {
+        "status": 200,
+        "headers": { "content-type": "text/html" },
+        "body": "<!doctype html><title>App</title><div id=\"root\"></div>"
+      },
+      "expect": { "kind": "transport-failure" }
+    },
+    {
+      "id": "http-headerless-200-json-not-envelope",
+      "description": "JSON that is not an envelope (no boolean ok) is a transport failure. PROTOCOL.md: Classifying an HTTP response, steps 2-3.",
+      "request": { "procedure": ["planet", "find"], "input": { "id": 1 } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/planet/find",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "id": 1 } }
+      },
+      "response": {
+        "status": 200,
+        "headers": { "content-type": "application/json" },
+        "body": "{\"id\":1,\"name\":\"Earth\"}"
+      },
+      "expect": { "kind": "transport-failure" }
+    },
+    {
+      "id": "http-malformed-json-headerless",
+      "description": "A body that does not parse as JSON is a transport failure. PROTOCOL.md: Classifying an HTTP response, steps 2-3.",
+      "request": { "procedure": ["planet", "find"], "input": { "id": 1 } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/planet/find",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "id": 1 } }
+      },
+      "response": {
+        "status": 200,
+        "headers": { "content-type": "application/json" },
+        "body": "{\"ok\":true,\"output\":"
+      },
+      "expect": { "kind": "transport-failure" }
+    },
+    {
+      "id": "http-malformed-json-with-header",
+      "description": "A body that does not decode is a transport failure even with x-ts-pf-protocol: 1. PROTOCOL.md: Classifying an HTTP response, step 3.",
+      "request": { "procedure": ["planet", "find"], "input": { "id": 1 } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/planet/find",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "id": 1 } }
+      },
+      "response": {
+        "status": 500,
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": "{\"ok\":false,"
+      },
+      "expect": { "kind": "transport-failure" }
+    },
+    {
+      "id": "http-ok-false-without-error",
+      "description": "ok: false requires error; without it the body is not an envelope. PROTOCOL.md: Classifying an HTTP response, step 2.",
+      "request": { "procedure": ["planet", "find"], "input": { "id": 1 } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/planet/find",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "id": 1 } }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": "{\"ok\":false}"
+      },
+      "expect": { "kind": "transport-failure" }
+    },
+    {
+      "id": "http-ok-false-error-null",
+      "description": "error: null is not an error. PROTOCOL.md: Classifying an HTTP response, step 2.",
+      "request": { "procedure": ["planet", "find"], "input": { "id": 1 } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/planet/find",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "id": 1 } }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": "{\"ok\":false,\"error\":null}"
+      },
+      "expect": { "kind": "transport-failure" }
+    },
+    {
+      "id": "http-ok-false-error-primitive",
+      "description": "An error that is a JSON primitive is not an error. PROTOCOL.md: Classifying an HTTP response, step 2.",
+      "request": { "procedure": ["planet", "find"], "input": { "id": 1 } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/planet/find",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "id": 1 } }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": "{\"ok\":false,\"error\":\"boom\"}"
+      },
+      "expect": { "kind": "transport-failure" }
+    },
+    {
+      "id": "http-ok-not-boolean",
+      "description": "ok must be the JSON boolean true or false; the string \"true\" is not an envelope. PROTOCOL.md: Classifying an HTTP response, step 2.",
+      "request": { "procedure": ["planet", "find"], "input": { "id": 1 } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/planet/find",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "id": 1 } }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": "{\"ok\":\"true\",\"output\":1}"
+      },
+      "expect": { "kind": "transport-failure" }
+    },
+    {
+      "id": "http-body-array",
+      "description": "The body must parse to an object, not an array. PROTOCOL.md: Classifying an HTTP response, step 2.",
+      "request": { "procedure": ["planet", "find"], "input": { "id": 1 } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/planet/find",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "id": 1 } }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": "[{\"ok\":true}]"
+      },
+      "expect": { "kind": "transport-failure" }
+    },
+    {
+      "id": "http-body-null",
+      "description": "The body must parse to an object, not null. PROTOCOL.md: Classifying an HTTP response, step 2.",
+      "request": { "procedure": ["planet", "find"], "input": { "id": 1 } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/planet/find",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "id": 1 } }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": "null"
+      },
+      "expect": { "kind": "transport-failure" }
+    }
+  ]
+}

@@ -41,25 +41,59 @@ export function encodeJsonl(
 ): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder()
   const iterator = items[Symbol.asyncIterator]()
+  let returned = false
+  // The producer is still live (consumer cancel, or an item that could not
+  // be written): close it once.
+  const stopProducer = (): void => {
+    if (!returned) {
+      returned = true
+      returnQuietly(iterator)
+    }
+  }
+  const fail = (
+    controller: ReadableStreamDefaultController<Uint8Array>,
+    error: unknown,
+  ): void => {
+    controller.enqueue(encoder.encode(`${onError(error)}\n`))
+    controller.close()
+  }
   return new ReadableStream<Uint8Array>({
     async pull(controller) {
+      let next: IteratorResult<unknown>
       try {
-        const next = await iterator.next()
-        if (next.done) {
-          controller.close()
-          return
-        }
+        next = await iterator.next()
+      } catch (error) {
+        fail(controller, error)
+        return
+      }
+      if (next.done) {
+        controller.close()
+        return
+      }
+      try {
         const line = await writeLine(next.value)
         controller.enqueue(encoder.encode(`${line}\n`))
       } catch (error) {
-        controller.enqueue(encoder.encode(`${onError(error)}\n`))
-        controller.close()
+        stopProducer()
+        fail(controller, error)
       }
     },
     cancel() {
-      void iterator.return?.()
+      stopProducer()
     },
   })
+}
+
+/**
+ * `iterator.return()` as cleanup: a sync throw or a rejection is dropped, not
+ * left as an unhandled rejection. The stream has already ended for the reader.
+ */
+function returnQuietly(iterator: AsyncIterator<unknown>): void {
+  try {
+    Promise.resolve(iterator.return?.()).catch(() => {})
+  } catch {
+    // Cleanup only.
+  }
 }
 
 export function badRequest(message: string): PFError {

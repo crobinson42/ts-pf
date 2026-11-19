@@ -48,6 +48,33 @@ new DuplexHandler(app).bind(duplex, { context: { db } })
 
 User owns listen / upgrade / spawn / Worker bootstrap. This package never depends on `@ts-pf/client`.
 
+## Connections: credentials, refusing, closing
+
+The context factory on `bind()` runs once per connection, when the client's `hello` arrives, and is the place to authenticate. By convention the client sends its credential as hello `meta.authorization`, with the same value an HTTP client puts in `Authorization` (browsers cannot set headers on a WebSocket upgrade). Throw a `PFError` from the factory to refuse the connection: the client receives it as the `hello-error` and every call on that link rejects with its `code` / `message` / `data`. Any other throw still sends the fixed `INTERNAL` / `Internal server error` (no message leaks) and goes to `onError`; a `PFError` does not reach `onError`, as with handler errors. The credential is fixed for the connection; a new one means a new connection.
+
+`WsHandler.bind()` returns a handle whose `close(code?, reason?)` closes the socket with that WebSocket close code (default `1000`) and reason, then tears down the session. ts-pf itself only sends `1000` and `1002`; use 4400–4499 for application reasons (`4401` unauthenticated, `4403` forbidden, `4429` rate limited), never 4900–4999 (reserved for the protocol). The socket validates both: if it rejects the code (the WHATWG rule allows only `1000` and 3000–4999) or a reason over 123 UTF-8 bytes, the session closes it with `1000` instead. On the client, calls fail with a local `Connection closed`; the code itself is on the client socket's `close` event. `PortHandler`, `StdioHandler`, and `DuplexHandler` handles take `close()`: those pipes have no close codes.
+
+```ts
+import { type WebSocketLike, WsHandler } from '@ts-pf/message-server'
+import { PFError } from '@ts-pf/protocol'
+
+declare const socket: WebSocketLike
+
+const connection = new WsHandler(app).bind(socket, {
+  // Clients send their credential as hello meta: { authorization: 'Bearer …' }
+  context: async ({ meta }: { meta?: unknown }) => {
+    const header = (meta as { authorization?: unknown } | undefined)?.authorization
+    const user = await auth(header)
+    // Refuse the connection: the client's calls reject with this code
+    if (!user) throw new PFError({ code: 'UNAUTHORIZED', message: 'Sign in again' })
+    return { db, user }
+  },
+})
+
+// Later: end a live connection for an app reason (4400–4499 mirror HTTP)
+connection.close(4401, 'Session ended')
+```
+
 ## Backpressure
 
 On by default, so a slow client cannot make the server accumulate memory or hold a handler forever. An output stream's producer is pulled one item at a time and parked at its `yield` while the duplex is above its write high-water mark (WebSocket `bufferedAmount` over 1 MiB, stdio `write()` refused). If the client still has not drained after `drainTimeout` (30 s), that call is aborted: the handler's `signal` fires, the iterator's `return()` runs once, the remaining frames are dropped, and the client receives a terminal `result` error `INTERNAL` / `Peer did not drain within 30000 ms` if the socket still accepts it. The connection stays open and other calls on it continue. It is not a handler failure, so `onError` is not called; `onStall` is (default: one `console.warn` on `aborted` only; a `paused` is normal flow control and is passed to a custom hook but not logged). On the input side, a `stream: true` call's `in-item` queue is bounded by the same mark (measured as frame text length) and the handler pauses reading the duplex (connection-wide) until the handler catches up, where the duplex can pause. `WsHandler` over npm `ws` 8.x is bounded in both directions (it exposes `bufferedAmount`, `pause()`, and `resume()`); so is `StdioHandler`. A `MessagePort` can neither report nor pause; server sockets that are not `ws` (Bun `ServerWebSocket`, uWebSockets.js, Deno) report `bufferedAmount` so producers park, but cannot pause reads, so the receive-side bound there rests on the peer.

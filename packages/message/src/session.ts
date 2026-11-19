@@ -1,4 +1,4 @@
-import { PROTOCOL_MAJOR } from '@ts-pf/protocol'
+import { PROTOCOL_MAJOR, toWireError } from '@ts-pf/protocol'
 import type { Duplex } from './duplex.js'
 import { errorFromEnvelope, localFailure } from './error.js'
 import {
@@ -6,6 +6,7 @@ import {
   encodeFrame,
   type HelloFrame,
   type MessageFrame,
+  type WireError,
 } from './frame.js'
 
 /**
@@ -305,11 +306,14 @@ export class MessageSession {
       typeof parsed.v === 'number' &&
       parsed.v !== PROTOCOL_MAJOR
     ) {
-      this.failHandshake('BAD_REQUEST', 'Unsupported protocol version')
+      this.failHandshake({
+        code: 'BAD_REQUEST',
+        message: 'Unsupported protocol version',
+      })
       return
     }
     const message = parsed.type === 'hello' ? 'Invalid hello' : 'Expected hello'
-    this.failHandshake('BAD_REQUEST', message)
+    this.failHandshake({ code: 'BAD_REQUEST', message })
   }
 
   private async acceptHello(frame: HelloFrame): Promise<void> {
@@ -321,11 +325,13 @@ export class MessageSession {
       } else {
         await this.onHello()
       }
-    } catch {
+    } catch (error) {
       if (this.state === 'closed' || generation !== this.helloGeneration) {
         return
       }
-      this.failHandshake('INTERNAL', 'Internal server error')
+      // A `PFError` is a deliberate refusal and goes out as `{ code, message,
+      // data? }`; anything else is the fixed `INTERNAL` (no stack, no message).
+      this.failHandshake(toWireError(error))
       return
     }
     if (this.state === 'closed' || generation !== this.helloGeneration) {
@@ -367,15 +373,12 @@ export class MessageSession {
     this.onFrame(decoded.frame, text.length)
   }
 
-  private failHandshake(code: string, message: string): void {
+  private failHandshake(error: WireError): void {
     if (this.state === 'closed') {
       return
     }
-    this.failReady(errorFromEnvelope({ code, message }))
-    this.send({
-      type: 'hello-error',
-      error: { code, message },
-    })
+    this.failReady(errorFromEnvelope(error))
+    this.send({ type: 'hello-error', error })
     this.close()
   }
 

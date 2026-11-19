@@ -7,6 +7,7 @@ import {
   resolveBackpressure,
   type WireError,
 } from '@ts-pf/message'
+import { isPFError } from '@ts-pf/protocol'
 import type {
   CallInterceptor,
   ImplementedRouter,
@@ -94,7 +95,9 @@ export function attachRouter<TCtx = unknown>(
           context = options.context
         }
       } catch (error) {
-        if (options.onError !== undefined) {
+        // A `PFError` is a deliberate refusal (it reaches the client as the
+        // `hello-error`); like a handler's, only other throws reach `onError`.
+        if (!isPFError(error) && options.onError !== undefined) {
           await options.onError(error)
         }
         throw error

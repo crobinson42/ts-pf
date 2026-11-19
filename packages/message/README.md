@@ -11,6 +11,10 @@ import { createPortDuplex, createWsDuplex, type WebSocketLike } from '@ts-pf/mes
 import { createStdioDuplex } from '@ts-pf/message/stdio'
 ```
 
+`WebSocketLike` is the WHATWG subset the adapter needs; its `close(code?, reason?)` matches both a browser `WebSocket` and an npm `ws` socket. `createWsDuplex` itself closes with `1000`, or `1002` on a binary / non-string message; application close codes (4400–4499) come from `WsHandler`'s bind handle in `@ts-pf/message-server`.
+
+`MessageSession` runs the handshake. On the server role, `onHello(meta)` accepts the hello; if it throws, the session sends `hello-error` with `toWireError(thrown)` from `@ts-pf/protocol` — a `PFError` goes out as its `{ code, message, data? }` (so a server can refuse with, for example, `UNAUTHORIZED`), anything else as the fixed `INTERNAL` / `Internal server error` — and closes. The client role rejects `ready` with that error (`errorFromEnvelope`, no `status`).
+
 `createPushQueue()` is the primitive a transport adapter uses to turn frames into an `AsyncIterable`: `push(value)` from a frame callback, `end()` to complete, `fail(error)` to reject the next pull. Both closes are one-shot. `@ts-pf/message-server` (streamed input) and `@ts-pf/message-client` (streamed output) use it; so can a custom `Duplex` binding. A custom `Duplex` does not need it directly: `DuplexHandler` (`@ts-pf/message-server`) and `DuplexLink` (`@ts-pf/message-client`) own the queues and multiplexing.
 
 ```ts

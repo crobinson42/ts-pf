@@ -1,0 +1,1045 @@
+{
+  "protocol": 1,
+  "revision": "1.2",
+  "binding": "ws",
+  "description": "Multiplexed JSON frames over one WebSocket connection, as scripts from the client's side. The same scripts apply to stdio and MessagePort, minus receiveBinary and close codes. See README.md in this directory.",
+  "cases": [
+    {
+      "id": "ws-handshake-ready",
+      "description": "The client sends hello first and no call until hello-ok; a call made before hello-ok goes out after it. PROTOCOL.md: Handshake.",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "call": "a", "path": ["planet", "find"], "input": { "id": 1 } },
+        { "receive": { "type": "hello-ok", "v": 1 } },
+        {
+          "send": {
+            "type": "call",
+            "id": "1",
+            "path": ["planet", "find"],
+            "input": { "id": 1 }
+          }
+        },
+        {
+          "receive": {
+            "type": "result",
+            "id": "1",
+            "ok": true,
+            "output": { "id": 1, "name": "Earth" }
+          }
+        },
+        {
+          "expect": {
+            "call": "a",
+            "outcome": "value",
+            "output": { "id": 1, "name": "Earth" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "ws-hello-meta",
+      "description": "Connect metadata travels as hello.meta (the recommended credential carrier is meta.authorization). PROTOCOL.md: Handshake; Authenticating with hello.meta.",
+      "options": { "meta": { "authorization": "Bearer token-1" } },
+      "steps": [
+        {
+          "send": {
+            "type": "hello",
+            "v": 1,
+            "meta": { "authorization": "Bearer token-1" }
+          }
+        },
+        { "receive": { "type": "hello-ok", "v": 1 } },
+        { "call": "a", "path": ["me"] },
+        { "send": { "type": "call", "id": "1", "path": ["me"] } },
+        {
+          "receive": {
+            "type": "result",
+            "id": "1",
+            "ok": true,
+            "output": { "user": "u1" }
+          }
+        },
+        {
+          "expect": {
+            "call": "a",
+            "outcome": "value",
+            "output": { "user": "u1" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "ws-hello-ok-other-version",
+      "description": "hello-ok whose v is a number other than 1 fails the connect locally (no hello-error is sent) and closes. Do not retry. PROTOCOL.md: Handshake.",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "receive": { "type": "hello-ok", "v": 2 } },
+        {
+          "expect": {
+            "handshake": "local-failure",
+            "reference": "Invalid response"
+          }
+        },
+        { "expect": { "closed": {} } }
+      ]
+    },
+    {
+      "id": "ws-hello-ok-v-not-number",
+      "description": "hello-ok whose v is not a JSON number (\"1\") fails the connect locally and closes. PROTOCOL.md: Handshake; Frame types (v).",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "receive": { "type": "hello-ok", "v": "1" } },
+        {
+          "expect": {
+            "handshake": "local-failure",
+            "reference": "Invalid response"
+          }
+        },
+        { "expect": { "closed": {} } }
+      ]
+    },
+    {
+      "id": "ws-hello-error-version",
+      "description": "hello-error fails the connect with its error, not as a local failure, then the client closes (1000). Do not retry Unsupported protocol version. PROTOCOL.md: Handshake; Close codes; Reconnecting.",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        {
+          "receive": {
+            "type": "hello-error",
+            "error": {
+              "code": "BAD_REQUEST",
+              "message": "Unsupported protocol version"
+            }
+          }
+        },
+        {
+          "expect": {
+            "handshake": "error",
+            "error": {
+              "code": "BAD_REQUEST",
+              "message": "Unsupported protocol version"
+            }
+          }
+        },
+        { "expect": { "closed": { "code": 1000 } } }
+      ]
+    },
+    {
+      "id": "ws-hello-error-app-code",
+      "description": "A server refuses a connection with an application code in hello-error; the client receives that code. PROTOCOL.md: Handshake.",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        {
+          "receive": {
+            "type": "hello-error",
+            "error": {
+              "code": "UNAUTHORIZED",
+              "message": "Session expired",
+              "data": { "reason": "expired" }
+            }
+          }
+        },
+        {
+          "expect": {
+            "handshake": "error",
+            "error": {
+              "code": "UNAUTHORIZED",
+              "message": "Session expired",
+              "data": { "reason": "expired" }
+            }
+          }
+        },
+        { "expect": { "closed": { "code": 1000 } } }
+      ]
+    },
+    {
+      "id": "ws-handshake-unexpected-frame",
+      "description": "Any parsed frame other than hello-ok / hello-error while handshaking fails the connect locally and closes. PROTOCOL.md: Handshake.",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "receive": { "type": "result", "id": "1", "ok": true } },
+        {
+          "expect": {
+            "handshake": "local-failure",
+            "reference": "Invalid response"
+          }
+        },
+        { "expect": { "closed": {} } }
+      ]
+    },
+    {
+      "id": "ws-handshake-peer-close",
+      "description": "The server closing before hello-ok fails the connect locally. PROTOCOL.md: Handshake.",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "serverClose": {} },
+        {
+          "expect": {
+            "handshake": "local-failure",
+            "reference": "Connection closed"
+          }
+        }
+      ]
+    },
+    {
+      "id": "ws-abort-before-ready",
+      "description": "Aborting a call that is still waiting for hello-ok fails it locally without sending cancel (it has no id) and leaves the connection up for other calls. PROTOCOL.md: Cancel and mid-stream errors.",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "call": "a", "path": ["planet", "slow"] },
+        { "abort": "a" },
+        {
+          "expect": {
+            "call": "a",
+            "outcome": "local-failure",
+            "reference": "Request aborted"
+          }
+        },
+        { "receive": { "type": "hello-ok", "v": 1 } },
+        { "call": "b", "path": ["ping"] },
+        { "send": { "type": "call", "id": "1", "path": ["ping"] } },
+        {
+          "receive": {
+            "type": "result",
+            "id": "1",
+            "ok": true,
+            "output": "pong"
+          }
+        },
+        { "expect": { "call": "b", "outcome": "value", "output": "pong" } }
+      ]
+    },
+    {
+      "id": "ws-unary-result",
+      "description": "Unary call: string id, path as an array, result ok: true resolves to output. PROTOCOL.md: Unary call; Frame types.",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "receive": { "type": "hello-ok", "v": 1 } },
+        { "call": "a", "path": ["planet", "find"], "input": { "id": 1 } },
+        {
+          "send": {
+            "type": "call",
+            "id": "1",
+            "path": ["planet", "find"],
+            "input": { "id": 1 }
+          }
+        },
+        {
+          "receive": {
+            "type": "result",
+            "id": "1",
+            "ok": true,
+            "output": { "id": 1, "name": "Earth" }
+          }
+        },
+        {
+          "expect": {
+            "call": "a",
+            "outcome": "value",
+            "output": { "id": 1, "name": "Earth" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "ws-unary-void",
+      "description": "No input: the call frame omits input. A result without output resolves to no value. PROTOCOL.md: Frame types (omit keys with no value).",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "receive": { "type": "hello-ok", "v": 1 } },
+        { "call": "a", "path": ["planet", "reset"] },
+        { "send": { "type": "call", "id": "1", "path": ["planet", "reset"] } },
+        { "receive": { "type": "result", "id": "1", "ok": true } },
+        { "expect": { "call": "a", "outcome": "value" } }
+      ]
+    },
+    {
+      "id": "ws-unary-error-data",
+      "description": "result ok: false rejects with that error; data survives. PROTOCOL.md: Unary call; First frame (client).",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "receive": { "type": "hello-ok", "v": 1 } },
+        { "call": "a", "path": ["planet", "find"], "input": { "id": 9 } },
+        {
+          "send": {
+            "type": "call",
+            "id": "1",
+            "path": ["planet", "find"],
+            "input": { "id": 9 }
+          }
+        },
+        {
+          "receive": {
+            "type": "result",
+            "id": "1",
+            "ok": false,
+            "error": {
+              "code": "NOT_FOUND",
+              "message": "No planet 9",
+              "data": { "id": 9 }
+            }
+          }
+        },
+        {
+          "expect": {
+            "call": "a",
+            "outcome": "error",
+            "error": {
+              "code": "NOT_FOUND",
+              "message": "No planet 9",
+              "data": { "id": 9 }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "ws-unary-unknown-code",
+      "description": "An unknown code is surfaced as-is (catch-all). PROTOCOL.md: Protocol errors.",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "receive": { "type": "hello-ok", "v": 1 } },
+        { "call": "a", "path": ["planet", "find"], "input": { "id": 1 } },
+        {
+          "send": {
+            "type": "call",
+            "id": "1",
+            "path": ["planet", "find"],
+            "input": { "id": 1 }
+          }
+        },
+        {
+          "receive": {
+            "type": "result",
+            "id": "1",
+            "ok": false,
+            "error": {
+              "code": "SOMETHING_NEW",
+              "message": "Added after this client shipped"
+            }
+          }
+        },
+        {
+          "expect": {
+            "call": "a",
+            "outcome": "error",
+            "error": {
+              "code": "SOMETHING_NEW",
+              "message": "Added after this client shipped"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "ws-multiplex",
+      "description": "Two in-flight calls complete independently, in any order. PROTOCOL.md: Multiplex.",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "receive": { "type": "hello-ok", "v": 1 } },
+        { "call": "a", "path": ["planet", "find"], "input": { "id": 1 } },
+        {
+          "send": {
+            "type": "call",
+            "id": "1",
+            "path": ["planet", "find"],
+            "input": { "id": 1 }
+          }
+        },
+        { "call": "b", "path": ["planet", "find"], "input": { "id": 2 } },
+        {
+          "send": {
+            "type": "call",
+            "id": "2",
+            "path": ["planet", "find"],
+            "input": { "id": 2 }
+          }
+        },
+        {
+          "receive": {
+            "type": "result",
+            "id": "2",
+            "ok": true,
+            "output": { "id": 2, "name": "Mars" }
+          }
+        },
+        {
+          "expect": {
+            "call": "b",
+            "outcome": "value",
+            "output": { "id": 2, "name": "Mars" }
+          }
+        },
+        {
+          "receive": {
+            "type": "result",
+            "id": "1",
+            "ok": true,
+            "output": { "id": 1, "name": "Earth" }
+          }
+        },
+        {
+          "expect": {
+            "call": "a",
+            "outcome": "value",
+            "output": { "id": 1, "name": "Earth" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "ws-stream-items-done",
+      "description": "A first frame of item resolves the call as a stream (not an error); items follow and done completes it. PROTOCOL.md: First frame (client); streaming-out; Output streams.",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "receive": { "type": "hello-ok", "v": 1 } },
+        { "call": "a", "path": ["chat"], "input": { "prompt": "hi" } },
+        {
+          "send": {
+            "type": "call",
+            "id": "1",
+            "path": ["chat"],
+            "input": { "prompt": "hi" }
+          }
+        },
+        {
+          "receive": { "type": "item", "id": "1", "output": { "token": "Hel" } }
+        },
+        { "expect": { "call": "a", "outcome": "stream" } },
+        {
+          "expect": {
+            "stream": "a",
+            "outcome": "item",
+            "output": { "token": "Hel" }
+          }
+        },
+        {
+          "receive": { "type": "item", "id": "1", "output": { "token": "lo" } }
+        },
+        {
+          "expect": {
+            "stream": "a",
+            "outcome": "item",
+            "output": { "token": "lo" }
+          }
+        },
+        { "receive": { "type": "done", "id": "1" } },
+        { "expect": { "stream": "a", "outcome": "done" } }
+      ]
+    },
+    {
+      "id": "ws-stream-item-without-output",
+      "description": "An item without output yields no value. PROTOCOL.md: streaming-out.",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "receive": { "type": "hello-ok", "v": 1 } },
+        { "call": "a", "path": ["ticks"] },
+        { "send": { "type": "call", "id": "1", "path": ["ticks"] } },
+        { "receive": { "type": "item", "id": "1" } },
+        { "expect": { "call": "a", "outcome": "stream" } },
+        { "expect": { "stream": "a", "outcome": "item" } },
+        { "receive": { "type": "done", "id": "1" } },
+        { "expect": { "stream": "a", "outcome": "done" } }
+      ]
+    },
+    {
+      "id": "ws-stream-empty",
+      "description": "A first frame of done resolves the call as an empty, already complete stream. PROTOCOL.md: First frame (client); Legal sequences.",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "receive": { "type": "hello-ok", "v": 1 } },
+        { "call": "a", "path": ["chat"], "input": { "prompt": "" } },
+        {
+          "send": {
+            "type": "call",
+            "id": "1",
+            "path": ["chat"],
+            "input": { "prompt": "" }
+          }
+        },
+        { "receive": { "type": "done", "id": "1" } },
+        { "expect": { "call": "a", "outcome": "stream" } },
+        { "expect": { "stream": "a", "outcome": "done" } }
+      ]
+    },
+    {
+      "id": "ws-stream-mid-error",
+      "description": "In a stream, result ok: false ends the stream with that failure; no done follows. PROTOCOL.md: streaming-out; Output streams.",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "receive": { "type": "hello-ok", "v": 1 } },
+        { "call": "a", "path": ["chat"], "input": { "prompt": "hi" } },
+        {
+          "send": {
+            "type": "call",
+            "id": "1",
+            "path": ["chat"],
+            "input": { "prompt": "hi" }
+          }
+        },
+        {
+          "receive": { "type": "item", "id": "1", "output": { "token": "Hel" } }
+        },
+        { "expect": { "call": "a", "outcome": "stream" } },
+        {
+          "expect": {
+            "stream": "a",
+            "outcome": "item",
+            "output": { "token": "Hel" }
+          }
+        },
+        {
+          "receive": {
+            "type": "result",
+            "id": "1",
+            "ok": false,
+            "error": { "code": "UPSTREAM_FAILED", "message": "upstream died" }
+          }
+        },
+        {
+          "expect": {
+            "stream": "a",
+            "outcome": "error",
+            "error": { "code": "UPSTREAM_FAILED", "message": "upstream died" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "ws-stream-illegal-frames-ignored",
+      "description": "While streaming, result ok: true and unknown types are illegal and ignored; after done, a late item or done is for an id no longer in flight and ignored. PROTOCOL.md: streaming-out; Legal sequences.",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "receive": { "type": "hello-ok", "v": 1 } },
+        { "call": "a", "path": ["count"] },
+        { "send": { "type": "call", "id": "1", "path": ["count"] } },
+        { "receive": { "type": "item", "id": "1", "output": 1 } },
+        { "expect": { "call": "a", "outcome": "stream" } },
+        { "expect": { "stream": "a", "outcome": "item", "output": 1 } },
+        {
+          "receive": { "type": "result", "id": "1", "ok": true, "output": 99 }
+        },
+        { "receive": { "type": "progress", "id": "1", "percent": 50 } },
+        { "receive": { "type": "item", "id": "1", "output": 2 } },
+        { "expect": { "stream": "a", "outcome": "item", "output": 2 } },
+        { "receive": { "type": "done", "id": "1" } },
+        { "expect": { "stream": "a", "outcome": "done" } },
+        { "receive": { "type": "item", "id": "1", "output": 3 } },
+        { "receive": { "type": "done", "id": "1" } },
+        { "call": "b", "path": ["ping"] },
+        { "send": { "type": "call", "id": "2", "path": ["ping"] } },
+        {
+          "receive": {
+            "type": "result",
+            "id": "2",
+            "ok": true,
+            "output": "pong"
+          }
+        },
+        { "expect": { "call": "b", "outcome": "value", "output": "pong" } }
+      ]
+    },
+    {
+      "id": "ws-stream-peer-close",
+      "description": "The server closing the connection mid-stream ends the stream with a local failure. PROTOCOL.md: streaming-out.",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "receive": { "type": "hello-ok", "v": 1 } },
+        { "call": "a", "path": ["chat"], "input": { "prompt": "hi" } },
+        {
+          "send": {
+            "type": "call",
+            "id": "1",
+            "path": ["chat"],
+            "input": { "prompt": "hi" }
+          }
+        },
+        {
+          "receive": { "type": "item", "id": "1", "output": { "token": "Hel" } }
+        },
+        { "expect": { "call": "a", "outcome": "stream" } },
+        {
+          "expect": {
+            "stream": "a",
+            "outcome": "item",
+            "output": { "token": "Hel" }
+          }
+        },
+        { "serverClose": {} },
+        {
+          "expect": {
+            "stream": "a",
+            "outcome": "local-failure",
+            "reference": "Connection closed"
+          }
+        }
+      ]
+    },
+    {
+      "id": "ws-late-frames-after-result",
+      "description": "item / done after a unary result are for an id no longer in flight: ignored, and the connection stays open. PROTOCOL.md: Multiplex; Legal sequences.",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "receive": { "type": "hello-ok", "v": 1 } },
+        { "call": "a", "path": ["planet", "find"], "input": { "id": 1 } },
+        {
+          "send": {
+            "type": "call",
+            "id": "1",
+            "path": ["planet", "find"],
+            "input": { "id": 1 }
+          }
+        },
+        {
+          "receive": {
+            "type": "result",
+            "id": "1",
+            "ok": true,
+            "output": { "id": 1, "name": "Earth" }
+          }
+        },
+        {
+          "expect": {
+            "call": "a",
+            "outcome": "value",
+            "output": { "id": 1, "name": "Earth" }
+          }
+        },
+        { "receive": { "type": "item", "id": "1", "output": { "id": 1 } } },
+        { "receive": { "type": "done", "id": "1" } },
+        {
+          "receive": {
+            "type": "result",
+            "id": "1",
+            "ok": false,
+            "error": { "code": "INTERNAL", "message": "Internal server error" }
+          }
+        },
+        { "call": "b", "path": ["ping"] },
+        { "send": { "type": "call", "id": "2", "path": ["ping"] } },
+        {
+          "receive": {
+            "type": "result",
+            "id": "2",
+            "ok": true,
+            "output": "pong"
+          }
+        },
+        { "expect": { "call": "b", "outcome": "value", "output": "pong" } }
+      ]
+    },
+    {
+      "id": "ws-unknown-id-ignored",
+      "description": "Frames for an id the client never used are ignored, valid or not; they do not settle another call. PROTOCOL.md: Multiplex.",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "receive": { "type": "hello-ok", "v": 1 } },
+        { "call": "a", "path": ["planet", "find"], "input": { "id": 1 } },
+        {
+          "send": {
+            "type": "call",
+            "id": "1",
+            "path": ["planet", "find"],
+            "input": { "id": 1 }
+          }
+        },
+        {
+          "receive": {
+            "type": "result",
+            "id": "99",
+            "ok": true,
+            "output": "not yours"
+          }
+        },
+        { "receive": { "type": "item", "id": "99", "output": "not yours" } },
+        { "receive": { "type": "nope", "id": "99" } },
+        {
+          "receive": {
+            "type": "result",
+            "id": "1",
+            "ok": true,
+            "output": { "id": 1, "name": "Earth" }
+          }
+        },
+        {
+          "expect": {
+            "call": "a",
+            "outcome": "value",
+            "output": { "id": 1, "name": "Earth" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "ws-unknown-type-in-flight-ignored",
+      "description": "An unknown or invalid frame whose id is in flight is ignored: it does not settle the call or close the connection. PROTOCOL.md: Multiplex.",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "receive": { "type": "hello-ok", "v": 1 } },
+        { "call": "a", "path": ["planet", "find"], "input": { "id": 1 } },
+        {
+          "send": {
+            "type": "call",
+            "id": "1",
+            "path": ["planet", "find"],
+            "input": { "id": 1 }
+          }
+        },
+        { "receive": { "type": "progress", "id": "1", "percent": 50 } },
+        {
+          "receive": {
+            "type": "result",
+            "id": "1",
+            "ok": true,
+            "output": 1,
+            "extra": true
+          }
+        },
+        { "receive": { "type": "result", "id": "1", "ok": "yes" } },
+        {
+          "receive": {
+            "type": "result",
+            "id": "1",
+            "ok": true,
+            "output": { "id": 1, "name": "Earth" }
+          }
+        },
+        {
+          "expect": {
+            "call": "a",
+            "outcome": "value",
+            "output": { "id": 1, "name": "Earth" }
+          }
+        }
+      ]
+    },
+    {
+      "id": "ws-first-frame-illegal",
+      "description": "A first frame for an id that is not result / item / done (here a wrong-direction cancel) fails that call locally; the connection stays open. PROTOCOL.md: First frame (client); Frame types (direction).",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "receive": { "type": "hello-ok", "v": 1 } },
+        { "call": "a", "path": ["planet", "find"], "input": { "id": 1 } },
+        {
+          "send": {
+            "type": "call",
+            "id": "1",
+            "path": ["planet", "find"],
+            "input": { "id": 1 }
+          }
+        },
+        { "receive": { "type": "cancel", "id": "1" } },
+        {
+          "expect": {
+            "call": "a",
+            "outcome": "local-failure",
+            "reference": "Invalid response"
+          }
+        },
+        {
+          "receive": {
+            "type": "result",
+            "id": "1",
+            "ok": true,
+            "output": "late"
+          }
+        },
+        { "call": "b", "path": ["ping"] },
+        { "send": { "type": "call", "id": "2", "path": ["ping"] } },
+        {
+          "receive": {
+            "type": "result",
+            "id": "2",
+            "ok": true,
+            "output": "pong"
+          }
+        },
+        { "expect": { "call": "b", "outcome": "value", "output": "pong" } }
+      ]
+    },
+    {
+      "id": "ws-peer-close-before-first-frame",
+      "description": "The server closing the connection before any frame for an in-flight id fails that call locally. PROTOCOL.md: First frame (client).",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "receive": { "type": "hello-ok", "v": 1 } },
+        { "call": "a", "path": ["planet", "find"], "input": { "id": 1 } },
+        {
+          "send": {
+            "type": "call",
+            "id": "1",
+            "path": ["planet", "find"],
+            "input": { "id": 1 }
+          }
+        },
+        { "serverClose": {} },
+        {
+          "expect": {
+            "call": "a",
+            "outcome": "local-failure",
+            "reference": "Connection closed"
+          }
+        }
+      ]
+    },
+    {
+      "id": "ws-cancel-unary",
+      "description": "Aborting an in-flight call sends cancel and fails it locally. No frame acknowledges cancel; a late result for that id is ignored (and a client SHOULD NOT reuse the id). PROTOCOL.md: Unary call; Cancel and mid-stream errors.",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "receive": { "type": "hello-ok", "v": 1 } },
+        { "call": "a", "path": ["planet", "slow"] },
+        { "send": { "type": "call", "id": "1", "path": ["planet", "slow"] } },
+        { "abort": "a" },
+        { "send": { "type": "cancel", "id": "1" } },
+        {
+          "expect": {
+            "call": "a",
+            "outcome": "local-failure",
+            "reference": "Request aborted"
+          }
+        },
+        {
+          "receive": {
+            "type": "result",
+            "id": "1",
+            "ok": true,
+            "output": "too late"
+          }
+        },
+        { "call": "b", "path": ["ping"] },
+        { "send": { "type": "call", "id": "2", "path": ["ping"] } },
+        {
+          "receive": {
+            "type": "result",
+            "id": "2",
+            "ok": true,
+            "output": "pong"
+          }
+        },
+        { "expect": { "call": "b", "outcome": "value", "output": "pong" } }
+      ]
+    },
+    {
+      "id": "ws-cancel-stream",
+      "description": "Stopping a stream early sends cancel (not done or in-done); later item / done for that id are ignored. PROTOCOL.md: streaming-out; Cancel and mid-stream errors.",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "receive": { "type": "hello-ok", "v": 1 } },
+        { "call": "a", "path": ["chat"], "input": { "prompt": "hi" } },
+        {
+          "send": {
+            "type": "call",
+            "id": "1",
+            "path": ["chat"],
+            "input": { "prompt": "hi" }
+          }
+        },
+        {
+          "receive": { "type": "item", "id": "1", "output": { "token": "Hel" } }
+        },
+        { "expect": { "call": "a", "outcome": "stream" } },
+        {
+          "expect": {
+            "stream": "a",
+            "outcome": "item",
+            "output": { "token": "Hel" }
+          }
+        },
+        { "abort": "a" },
+        { "send": { "type": "cancel", "id": "1" } },
+        {
+          "receive": { "type": "item", "id": "1", "output": { "token": "lo" } }
+        },
+        { "receive": { "type": "done", "id": "1" } },
+        { "call": "b", "path": ["ping"] },
+        { "send": { "type": "call", "id": "2", "path": ["ping"] } },
+        {
+          "receive": {
+            "type": "result",
+            "id": "2",
+            "ok": true,
+            "output": "pong"
+          }
+        },
+        { "expect": { "call": "b", "outcome": "value", "output": "pong" } }
+      ]
+    },
+    {
+      "id": "ws-input-stream",
+      "description": "A streamed input sends call with stream: true and no input, then one in-item per value and in-done. PROTOCOL.md: Input-stream send path; Input streams.",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "receive": { "type": "hello-ok", "v": 1 } },
+        {
+          "call": "a",
+          "path": ["planet", "ingest"],
+          "inputStream": [{ "chunk": 1 }, { "chunk": 2 }]
+        },
+        {
+          "send": {
+            "type": "call",
+            "id": "1",
+            "path": ["planet", "ingest"],
+            "stream": true
+          }
+        },
+        { "send": { "type": "in-item", "id": "1", "input": { "chunk": 1 } } },
+        { "send": { "type": "in-item", "id": "1", "input": { "chunk": 2 } } },
+        { "send": { "type": "in-done", "id": "1" } },
+        {
+          "receive": {
+            "type": "result",
+            "id": "1",
+            "ok": true,
+            "output": { "received": 2 }
+          }
+        },
+        {
+          "expect": {
+            "call": "a",
+            "outcome": "value",
+            "output": { "received": 2 }
+          }
+        }
+      ]
+    },
+    {
+      "id": "ws-non-json-text",
+      "description": "A text message that is not JSON closes the connection (1000); in-flight calls fail locally. PROTOCOL.md: Multiplex; Close codes.",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "receive": { "type": "hello-ok", "v": 1 } },
+        { "call": "a", "path": ["planet", "find"], "input": { "id": 1 } },
+        {
+          "send": {
+            "type": "call",
+            "id": "1",
+            "path": ["planet", "find"],
+            "input": { "id": 1 }
+          }
+        },
+        { "receiveText": "this is not json" },
+        { "expect": { "closed": { "code": 1000 } } },
+        {
+          "expect": {
+            "call": "a",
+            "outcome": "local-failure",
+            "reference": "Connection closed"
+          }
+        }
+      ]
+    },
+    {
+      "id": "ws-non-object-json",
+      "description": "A text message that parses to a non-object closes the connection (1000). PROTOCOL.md: Multiplex; Close codes.",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "receive": { "type": "hello-ok", "v": 1 } },
+        { "call": "a", "path": ["planet", "find"], "input": { "id": 1 } },
+        {
+          "send": {
+            "type": "call",
+            "id": "1",
+            "path": ["planet", "find"],
+            "input": { "id": 1 }
+          }
+        },
+        { "receiveText": "[{\"type\":\"result\",\"id\":\"1\",\"ok\":true}]" },
+        { "expect": { "closed": { "code": 1000 } } },
+        {
+          "expect": {
+            "call": "a",
+            "outcome": "local-failure",
+            "reference": "Connection closed"
+          }
+        }
+      ]
+    },
+    {
+      "id": "ws-invalid-frame-without-id",
+      "description": "An invalid frame with no usable id after ready closes the connection. PROTOCOL.md: Multiplex; Close codes.",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "receive": { "type": "hello-ok", "v": 1 } },
+        { "call": "a", "path": ["planet", "find"], "input": { "id": 1 } },
+        {
+          "send": {
+            "type": "call",
+            "id": "1",
+            "path": ["planet", "find"],
+            "input": { "id": 1 }
+          }
+        },
+        { "receive": { "type": "result", "ok": true, "output": 1 } },
+        { "expect": { "closed": { "code": 1000 } } },
+        {
+          "expect": {
+            "call": "a",
+            "outcome": "local-failure",
+            "reference": "Connection closed"
+          }
+        }
+      ]
+    },
+    {
+      "id": "ws-numeric-id",
+      "description": "Ids are non-empty strings: a frame whose id is the number 1 has no usable id, so it closes the connection instead of settling call \"1\". PROTOCOL.md: Frame types (id); Multiplex; Close codes.",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "receive": { "type": "hello-ok", "v": 1 } },
+        { "call": "a", "path": ["planet", "find"], "input": { "id": 1 } },
+        {
+          "send": {
+            "type": "call",
+            "id": "1",
+            "path": ["planet", "find"],
+            "input": { "id": 1 }
+          }
+        },
+        {
+          "receive": {
+            "type": "result",
+            "id": 1,
+            "ok": true,
+            "output": { "id": 1, "name": "Earth" }
+          }
+        },
+        { "expect": { "closed": { "code": 1000 } } },
+        {
+          "expect": {
+            "call": "a",
+            "outcome": "local-failure",
+            "reference": "Connection closed"
+          }
+        }
+      ]
+    },
+    {
+      "id": "ws-binary-message",
+      "description": "A binary WebSocket message closes the connection with 1002 without parsing it; in-flight calls fail locally. PROTOCOL.md: Framing; Close codes.",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "receive": { "type": "hello-ok", "v": 1 } },
+        { "call": "a", "path": ["planet", "find"], "input": { "id": 1 } },
+        {
+          "send": {
+            "type": "call",
+            "id": "1",
+            "path": ["planet", "find"],
+            "input": { "id": 1 }
+          }
+        },
+        { "receiveBinary": "eyJ0eXBlIjoicmVzdWx0IiwiaWQiOiIxIiwib2siOnRydWV9" },
+        { "expect": { "closed": { "code": 1002 } } },
+        {
+          "expect": {
+            "call": "a",
+            "outcome": "local-failure",
+            "reference": "Connection closed"
+          }
+        }
+      ]
+    }
+  ]
+}

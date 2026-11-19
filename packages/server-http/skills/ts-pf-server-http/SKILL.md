@@ -62,9 +62,11 @@ new FetchHandler(app, {
 
 Errors thrown after a streamed response has started (`StreamCodec` / `SseCodec` output) are written in-band by the codec as `INTERNAL` items; they do not reach `onError` or the default log.
 
-`FetchHandler` checks the method, then the protocol version, then looks the procedure up, all before it reads the body. A non-POST is `405 METHOD_NOT_ALLOWED`. A request whose `x-ts-pf-protocol` header is present and not `1` (surrounding whitespace ignored) is `400 BAD_REQUEST` `Unsupported protocol version`; a missing header is accepted, so curl and non-ts-pf clients work as before. An unknown path under the prefix is `404 NOT_FOUND`. In all three cases the body is never buffered or decoded, whatever it holds (invalid JSON, a multipart upload, an oversized stream). `RequestLimitPlugin`'s `Content-Length` check runs earlier, in `onRequest`, so a declared oversize body is still `413 PAYLOAD_TOO_LARGE` on any path and for any method; only its streamed-body cap is skipped on a 404 because nothing reads the stream.
+`FetchHandler` checks the method, then the protocol version, then looks the procedure up, all before it reads the body. A non-POST is `405 METHOD_NOT_ALLOWED`. A request whose `x-ts-pf-protocol` header is present and not `1` (surrounding whitespace ignored) is `400 BAD_REQUEST` `Unsupported protocol version`; a missing header is accepted, so curl and non-ts-pf clients work as before. An unknown path under the prefix is `404 NOT_FOUND`. A procedure whose contract input or output is `stream()` on a codec that declares `streams: false` (the default `JSONCodec`, `MultipartCodec`) is `400 BAD_REQUEST` `Stream procedure requires a streaming codec` — use `StreamCodec` / `SseCodec`. In all four cases the body is never buffered or decoded, whatever it holds (invalid JSON, a multipart upload, an oversized stream). `RequestLimitPlugin`'s `Content-Length` check runs earlier, in `onRequest`, so a declared oversize body is still `413 PAYLOAD_TOO_LARGE` on any path and for any method; only its streamed-body cap is skipped on a 404 or a stream-codec 400 because nothing reads the stream.
 
 A JSON envelope object with keys but no `input` key (`{"id":1}` instead of `{"input":{"id":1}}`) is `400 BAD_REQUEST` `Request body must be {"input": ...}`, whichever codec carries it (plain JSON, the multipart `rpc` part, or a JSONL input line). `{}` and `{"input":null}` still mean no input.
+
+A handler that returns an `AsyncIterable` the codec did not encode as a stream (a custom codec with `streams` unset, or a procedure whose contract does not declare `stream()`) also answers `400 BAD_REQUEST` `Stream procedure requires a streaming codec`, never a 200 with a JSON body; `FetchHandler` calls the iterator's `return()` once and drops its rejection.
 
 ## Cacheable reads and public REST (userland)
 
@@ -129,3 +131,4 @@ export async function getPlanet(id: string): Promise<Response> {
 - Bridge GET for a procedure with side effects, or mark per-user data `public`.
 - Port `HandlerPlugin` onto WS / stdio / MessagePort.
 - Put file size caps here — those are `MultipartCodec` options.
+- Serve `stream()` procedures through the default `JSONCodec` — they answer `400 BAD_REQUEST`.

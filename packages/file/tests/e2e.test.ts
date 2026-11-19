@@ -4,7 +4,7 @@ import { procedure, router } from '@ts-pf/contract'
 import { MultipartCodec } from '@ts-pf/file'
 import { createImplementer, createLocalClient } from '@ts-pf/server'
 import { FetchHandler } from '@ts-pf/server-http'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 
 const contract = router({
@@ -113,4 +113,60 @@ describe('MultipartCodec e2e', () => {
     expect(pdf).toBeInstanceOf(File)
     expect(await pdf.text()).toBe('pdf-bytes')
   })
+})
+
+describe('MultipartCodec and stream procedures', () => {
+  // The brand `stream()` from `@ts-pf/stream` sets; file does not depend on it.
+  const streamSchema = {
+    '~standard': {
+      version: 1 as const,
+      vendor: 'test',
+      types: {
+        input: undefined as unknown as AsyncIterable<string>,
+        output: undefined as unknown as AsyncIterable<string>,
+      },
+      validate: (value: unknown) => ({ value: value as AsyncIterable<string> }),
+    },
+    '~pfStream': { item: undefined },
+  }
+  const streamContract = router({
+    chat: procedure.output(streamSchema),
+    ingest: procedure.input(streamSchema),
+  })
+
+  it('declares that it cannot carry streams', () => {
+    expect(new MultipartCodec().streams).toBe(false)
+  })
+
+  it.each(['chat', 'ingest'] as const)(
+    'answers %s with 400 BAD_REQUEST before the handler runs',
+    async (path) => {
+      const handlerFn = vi.fn(async () => undefined as never)
+      const streamImpl = createImplementer(streamContract)
+      const streamApp = streamImpl.router({
+        chat: streamImpl.chat.handler(handlerFn),
+        ingest: streamImpl.ingest.handler(handlerFn),
+      })
+      const result = await new FetchHandler(streamApp, { codec }).handle(
+        new Request(`http://localhost/rpc/${path}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: '{"input":null}',
+        }),
+        { prefix: '/rpc', context: {} },
+      )
+      if (!result.matched) {
+        throw new Error('expected match')
+      }
+      expect(result.response.status).toBe(400)
+      expect(await result.response.json()).toEqual({
+        ok: false,
+        error: {
+          code: 'BAD_REQUEST',
+          message: 'Stream procedure requires a streaming codec',
+        },
+      })
+      expect(handlerFn).not.toHaveBeenCalled()
+    },
+  )
 })

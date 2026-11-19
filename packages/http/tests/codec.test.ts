@@ -26,6 +26,10 @@ function bytes(body: string): ReadableStream<Uint8Array> | null {
 describe('JSONCodec', () => {
   const codec = new JSONCodec()
 
+  it('declares that it cannot carry streams', () => {
+    expect(codec.streams).toBe(false)
+  })
+
   it('encodeSuccess returns JSON body and content-type', () => {
     const encoded = codec.encodeSuccess({ id: 1 })
     expect(encoded.contentType).toBe('application/json')

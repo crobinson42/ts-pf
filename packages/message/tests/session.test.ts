@@ -1,4 +1,4 @@
-import { isPFError } from '@ts-pf/protocol'
+import { isPFError, PFError } from '@ts-pf/protocol'
 import { describe, expect, it, vi } from 'vitest'
 import { createMemoryDuplex } from '../src/duplex.js'
 import { encodeFrame, type MessageFrame } from '../src/frame.js'
@@ -135,6 +135,73 @@ describe('MessageSession', () => {
     }
     expect(serverError.code).toBe('INTERNAL')
     expect(serverError.message).toBe('Internal server error')
+  })
+
+  it('onHello PFError throw sends hello-error with its code, message, and data (no status), then closes', async () => {
+    const { a, b } = createMemoryDuplex()
+    const received: string[] = []
+    b.onMessage((text) => {
+      received.push(text)
+    })
+    const server = new MessageSession({
+      duplex: a,
+      role: 'server',
+      onHello: () => {
+        throw new PFError({
+          code: 'UNAUTHORIZED',
+          status: 401,
+          message: 'Session expired',
+          data: { reason: 'expired' },
+          cause: new Error('secret cause'),
+        })
+      },
+      onFrame: noopFrame(),
+    })
+    const serverReady = server.ready.then(
+      () => {
+        throw new Error('server ready should reject')
+      },
+      (reason: unknown) => reason,
+    )
+    const client = new MessageSession({
+      duplex: b,
+      role: 'client',
+      onFrame: noopFrame(),
+    })
+
+    const error = await client.ready.then(
+      () => {
+        throw new Error('client ready should reject')
+      },
+      (reason: unknown) => reason,
+    )
+    expect(received).toEqual([
+      encodeFrame({
+        type: 'hello-error',
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'Session expired',
+          data: { reason: 'expired' },
+        },
+      }),
+    ])
+    expect(received[0]).not.toContain('secret')
+    expect(received[0]).not.toContain('status')
+    expect(isPFError(error)).toBe(true)
+    if (!isPFError(error)) {
+      throw new Error('expected PFError')
+    }
+    expect(error.code).toBe('UNAUTHORIZED')
+    expect(error.message).toBe('Session expired')
+    expect(error.data).toEqual({ reason: 'expired' })
+    expect(error.status).toBeUndefined()
+    expect(error.local).toBeUndefined()
+
+    const serverError = await serverReady
+    expect(serverError).toMatchObject({
+      code: 'UNAUTHORIZED',
+      message: 'Session expired',
+    })
   })
 
   it('version mismatch hello v: 2 sends hello-error BAD_REQUEST then closes', async () => {

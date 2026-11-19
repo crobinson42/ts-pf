@@ -1,0 +1,308 @@
+{
+  "protocol": 1,
+  "revision": "1.2",
+  "binding": "http-stream",
+  "description": "Output streams over HTTP as application/jsonl: one envelope per line, success at EOF. The request is the same JSON request as http.json. See README.md in this directory.",
+  "cases": [
+    {
+      "id": "stream-items-then-eof",
+      "description": "An application/jsonl response resolves the call to a stream at once; each line is an item and EOF ends it successfully. PROTOCOL.md: Message streams; Classifying an HTTP response, step 5.",
+      "request": { "procedure": ["chat"], "input": { "prompt": "hi" } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/chat",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "prompt": "hi" } }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/jsonl",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": "{\"ok\":true,\"output\":{\"token\":\"Hel\"}}\n{\"ok\":true,\"output\":{\"token\":\"lo\"}}\n"
+      },
+      "expect": {
+        "kind": "stream",
+        "items": [
+          { "output": { "token": "Hel" } },
+          { "output": { "token": "lo" } }
+        ],
+        "end": { "kind": "eof" }
+      }
+    },
+    {
+      "id": "stream-empty",
+      "description": "An empty body is a stream with zero items that ends successfully. PROTOCOL.md: Message streams.",
+      "request": { "procedure": ["chat"], "input": { "prompt": "" } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/chat",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "prompt": "" } }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/jsonl",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": ""
+      },
+      "expect": { "kind": "stream", "items": [], "end": { "kind": "eof" } }
+    },
+    {
+      "id": "stream-blank-lines-ignored",
+      "description": "Blank JSONL lines are ignored; they are not items. PROTOCOL.md: Classifying an HTTP response, step 5.",
+      "request": { "procedure": ["count"] },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/count",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "bodyOneOf": [{}, { "input": null }]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/jsonl",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": "{\"ok\":true,\"output\":1}\n\n{\"ok\":true,\"output\":2}\n\n"
+      },
+      "expect": {
+        "kind": "stream",
+        "items": [{ "output": 1 }, { "output": 2 }],
+        "end": { "kind": "eof" }
+      }
+    },
+    {
+      "id": "stream-item-without-output",
+      "description": "A success line without output is an item with no value. PROTOCOL.md: Message streams; Classifying an HTTP response, step 2.",
+      "request": { "procedure": ["ticks"] },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/ticks",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "bodyOneOf": [{}, { "input": null }]
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/jsonl",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": "{\"ok\":true}\n{\"ok\":true,\"output\":null}\n"
+      },
+      "expect": {
+        "kind": "stream",
+        "items": [{}, { "output": null }],
+        "end": { "kind": "eof" }
+      }
+    },
+    {
+      "id": "stream-mid-stream-error",
+      "description": "An ok: false line ends the stream with that failure (HTTP status is already 200). PROTOCOL.md: Message streams; Protocol errors.",
+      "request": { "procedure": ["chat"], "input": { "prompt": "hi" } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/chat",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "prompt": "hi" } }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/jsonl",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": "{\"ok\":true,\"output\":{\"token\":\"Hel\"}}\n{\"ok\":false,\"error\":{\"code\":\"UPSTREAM_FAILED\",\"message\":\"upstream died\",\"data\":{\"retryAfter\":5}}}\n"
+      },
+      "expect": {
+        "kind": "stream",
+        "items": [{ "output": { "token": "Hel" } }],
+        "end": {
+          "kind": "error",
+          "code": "UPSTREAM_FAILED",
+          "message": "upstream died",
+          "data": { "retryAfter": 5 }
+        }
+      }
+    },
+    {
+      "id": "stream-error-first-line",
+      "description": "A failure line before any item still ends a stream: the call already resolved when the content type was read. PROTOCOL.md: Classifying an HTTP response, step 5.",
+      "request": { "procedure": ["chat"], "input": { "prompt": "hi" } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/chat",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "prompt": "hi" } }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/jsonl",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": "{\"ok\":false,\"error\":{\"code\":\"INTERNAL\",\"message\":\"Internal server error\"}}\n"
+      },
+      "expect": {
+        "kind": "stream",
+        "items": [],
+        "end": {
+          "kind": "error",
+          "code": "INTERNAL",
+          "message": "Internal server error"
+        }
+      }
+    },
+    {
+      "id": "stream-malformed-line",
+      "description": "A line that does not parse ends the stream with a transport failure; it is never skipped, and later lines are not delivered. PROTOCOL.md: Classifying an HTTP response, step 5.",
+      "request": { "procedure": ["chat"], "input": { "prompt": "hi" } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/chat",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "prompt": "hi" } }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/jsonl",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": "{\"ok\":true,\"output\":{\"token\":\"Hel\"}}\n{\"ok\":true,\"outp\n{\"ok\":true,\"output\":{\"token\":\"lo\"}}\n"
+      },
+      "expect": {
+        "kind": "stream",
+        "items": [{ "output": { "token": "Hel" } }],
+        "end": { "kind": "transport-failure" }
+      }
+    },
+    {
+      "id": "stream-line-not-envelope",
+      "description": "A JSON line that is not an envelope ends the stream with a transport failure; it is not delivered as an item. PROTOCOL.md: Classifying an HTTP response, step 5.",
+      "request": { "procedure": ["chat"], "input": { "prompt": "hi" } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/chat",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "prompt": "hi" } }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/jsonl",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": "{\"ok\":true,\"output\":{\"token\":\"Hel\"}}\n{\"token\":\"lo\"}\n"
+      },
+      "expect": {
+        "kind": "stream",
+        "items": [{ "output": { "token": "Hel" } }],
+        "end": { "kind": "transport-failure" }
+      }
+    },
+    {
+      "id": "stream-version-mismatch",
+      "description": "The version header is checked before the content type: an application/jsonl response from another wire major is not read as a stream. PROTOCOL.md: Classifying an HTTP response, steps 1-5.",
+      "request": { "procedure": ["chat"], "input": { "prompt": "hi" } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/chat",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "prompt": "hi" } }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/jsonl",
+          "x-ts-pf-protocol": "2"
+        },
+        "body": "{\"ok\":true,\"output\":{\"token\":\"Hel\"}}\n{\"ok\":true,\"output\":{\"token\":\"lo\"}}\n"
+      },
+      "expect": { "kind": "version-mismatch" }
+    },
+    {
+      "id": "stream-pre-stream-failure",
+      "description": "A failure before the stream starts is a plain application/json failure envelope with its HTTP status: the call fails, no stream. PROTOCOL.md: Message streams.",
+      "request": { "procedure": ["chat"], "input": { "prompt": 1 } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/chat",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "prompt": 1 } }
+      },
+      "response": {
+        "status": 422,
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": "{\"ok\":false,\"error\":{\"code\":\"VALIDATION\",\"message\":\"Validation failed\",\"data\":{\"issues\":[{\"message\":\"Expected string\",\"path\":[\"prompt\"]}]}}}"
+      },
+      "expect": {
+        "kind": "error",
+        "code": "VALIDATION",
+        "message": "Validation failed",
+        "data": {
+          "issues": [{ "message": "Expected string", "path": ["prompt"] }]
+        }
+      }
+    },
+    {
+      "id": "stream-client-unary-json",
+      "description": "A stream-capable client classifies an application/json response as in http.json (steps 2-4): here a unary success. PROTOCOL.md: Classifying an HTTP response, step 5.",
+      "request": { "procedure": ["planet", "find"], "input": { "id": 1 } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/planet/find",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "id": 1 } }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": "{\"ok\":true,\"output\":{\"id\":1,\"name\":\"Earth\"}}"
+      },
+      "expect": { "kind": "success", "output": { "id": 1, "name": "Earth" } }
+    }
+  ]
+}

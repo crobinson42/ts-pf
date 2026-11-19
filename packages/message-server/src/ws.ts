@@ -28,6 +28,12 @@ export class WsHandler<TCtx = unknown> {
     ).highWaterMark
   }
 
+  /**
+   * The handle's `close(code?, reason?)` closes the socket with that WebSocket
+   * close code (default `1000`) and reason, then tears the session down.
+   * Application codes belong in 4400–4499 (`4401` unauthenticated, `4403`
+   * forbidden, `4429` rate limited); 4900–4999 are reserved for the protocol.
+   */
   bind(
     socket: WebSocketLike,
     opts: {
@@ -38,7 +44,7 @@ export class WsHandler<TCtx = unknown> {
             meta?: unknown
           }) => TCtx | Promise<TCtx>)
     },
-  ): { close(): void } {
+  ): { close(code?: number, reason?: string): void } {
     const duplex = createWsDuplex(socket, { highWaterMark: this.highWaterMark })
     const attached = this.handler.bind(duplex, {
       context: contextWithInfo(opts.context, { socket }),
@@ -46,17 +52,20 @@ export class WsHandler<TCtx = unknown> {
 
     let closed = false
     return {
-      close() {
+      close(code = 1000, reason) {
         if (closed) {
           return
         }
         closed = true
-        attached.close()
+        // The socket first, so this code and reason win: the session's own
+        // close then calls `socket.close(1000)` on a closing socket, which
+        // browser `WebSocket` and npm `ws` both ignore.
         try {
-          socket.close(1000)
+          socket.close(code, reason)
         } catch {
           // already disconnected
         }
+        attached.close()
       },
     }
   }
