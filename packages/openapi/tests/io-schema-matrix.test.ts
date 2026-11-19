@@ -67,16 +67,17 @@ describe('io schema matrix (openapi)', () => {
     ).children?.items
     expect(items?.$ref).toBe('#/components/schemas/zod.recursive.lazy.Input')
 
+    // A named def (TypeBox Cyclic key) is hoisted to its own component.
     const cyclic = schema('typebox.cyclic.Input')
-    expect(cyclic.$ref).toBe(
-      '#/components/schemas/typebox.cyclic.Input/$defs/Node',
+    expect(cyclic.$ref).toBe('#/components/schemas/Node')
+    expect(schema('typebox.cyclic.Output').$ref).toBe(
+      '#/components/schemas/Node',
     )
-    const node = resolvePointer(spec, cyclic.$ref as string) as {
-      properties?: { children?: { items?: { $ref?: string } } }
-    }
-    expect(node?.properties?.children?.items?.$ref).toBe(
-      '#/components/schemas/typebox.cyclic.Input/$defs/Node',
-    )
+    expect(schema('Node')).toMatchObject({
+      properties: {
+        children: { items: { $ref: '#/components/schemas/Node' } },
+      },
+    })
   })
 
   it('keeps combinators on the hoisted inner schema', () => {
@@ -138,21 +139,28 @@ describe('io schema matrix (openapi)', () => {
   })
 
   it('hoists error data so recursive error $refs resolve', () => {
-    const data = schema('slots.errorRecursive.Error.CYCLE.Data')
+    const data = schema('Error.CYCLE.Data')
     expect(data).toMatchObject({
       type: 'object',
-      properties: { name: { type: 'string' } },
+      properties: {
+        name: { type: 'string' },
+        child: { $ref: '#/components/schemas/Error.CYCLE.Data' },
+      },
     })
-    const failure = schema('slots.errorRecursive.Error.CYCLE')
+    const failure = schema('Error.CYCLE')
     expect(
       deref((failure.properties as { error?: unknown }).error),
     ).toMatchObject({
       properties: {
-        data: {
-          $ref: '#/components/schemas/slots.errorRecursive.Error.CYCLE.Data',
-        },
+        data: { $ref: '#/components/schemas/Error.CYCLE.Data' },
       },
     })
+  })
+
+  it('leaves no $defs or nested $schema in components', () => {
+    const dumped = JSON.stringify(spec.components.schemas)
+    expect(dumped).not.toContain('"$defs"')
+    expect(dumped).not.toContain('"$schema"')
   })
 
   it('advertises JSONL for stream slots', () => {

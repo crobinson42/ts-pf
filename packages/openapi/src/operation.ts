@@ -10,6 +10,7 @@ import {
   successEnvelope,
 } from './envelope.js'
 import { operationErrorResponses } from './errors.js'
+import type { Hoister } from './hoist.js'
 import {
   operationId as makeOperationId,
   operationPath,
@@ -24,15 +25,19 @@ import type {
   PathItem,
 } from './types.js'
 
+export type OperationContext = {
+  catalog: ProcedureCatalog
+  openapi: OpenAPIOptions
+  schemas: Record<string, JsonSchema>
+  hoister: Hoister
+  protocolRefs: Map<string, JsonSchema>
+  sharedErrorRefs: Map<string, JsonSchema>
+  includeProtocolErrors: boolean
+}
+
 export function toPathEntry(
   proc: CatalogProcedure,
-  options: {
-    catalog: ProcedureCatalog
-    openapi: OpenAPIOptions
-    schemas: Record<string, JsonSchema>
-    protocolRefs: Map<string, JsonSchema>
-    includeProtocolErrors: boolean
-  },
+  options: OperationContext,
 ): { path: string; item: PathItem; tags?: string[] } {
   const operation = toOperation(proc, options)
   const item: PathItem = { post: operation }
@@ -48,27 +53,24 @@ export function toPathEntry(
 
 function toOperation(
   proc: CatalogProcedure,
-  options: {
-    catalog: ProcedureCatalog
-    openapi: OpenAPIOptions
-    schemas: Record<string, JsonSchema>
-    protocolRefs: Map<string, JsonSchema>
-    includeProtocolErrors: boolean
-  },
+  options: OperationContext,
 ): OpenAPIOperation {
   const requestName = schemaName(proc.path, 'Request')
   const successName = schemaName(proc.path, 'Success')
+  const owner = makeOperationId(proc.path)
   const requestInner = hasInput(proc)
-    ? putSchema(
-        options.schemas,
+    ? options.hoister.add(
         schemaName(proc.path, 'Input'),
+        'input',
+        owner,
         innerFromCatalog(proc.input) ?? {},
       )
     : undefined
   const successInner = hasOutput(proc)
-    ? putSchema(
-        options.schemas,
+    ? options.hoister.add(
         schemaName(proc.path, 'Output'),
+        'output',
+        owner,
         innerFromCatalog(proc.output) ?? {},
       )
     : undefined

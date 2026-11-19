@@ -29,6 +29,19 @@ Every path is `POST {prefix}/{router keys}`. Serve JSON in userland (`GET /opena
 
 Typed split-repo clients: `ts-pf-codegen`, not OpenAPI-TS.
 
+## Component names and schema normalizations
+
+Same schemas as the catalog, normalized for code generators:
+
+- No nested `$schema` (the document's `jsonSchemaDialect` declares it).
+- Output and error `data` schemas are open (no `additionalProperties: false`). Inputs and the `{ ok, … }` envelopes are unchanged.
+- Root `$defs` are hoisted: `.meta({ id: 'Book' })` → `components.schemas.Book`, one component across procedures. `<path>.Input` / `<path>.Output` stay; a bare named type is a `$ref` to it.
+- Input shape differs from output (e.g. a field with a default) → output `Book`, input `BookInput`. Two shapes for one id on the same side, a taken `<id>Input`, or an id equal to another component name throws: give one schema a distinct `.meta({ id })`.
+- Zod's unnamed recursion (`__schema0`) → `<host>.__schema0`; give it an id for a stable name.
+- Declared errors: one `Error.<CODE>` (+ `Error.<CODE>.Data`) when every procedure's `data` shape matches (or none), else `<path>.Error.<CODE>` per procedure. Protocol errors: `TsPf.Error.<CODE>`.
+
+Post-processing by component name? Use these names; older versions emitted `<path>.Error.<CODE>` and `$defs` under each procedure component.
+
 ## Documenting a GET bridge or REST facade
 
 `openapi()` stays POST only. If you serve the userland GET bridge (`ts-pf-server-http`, "Cacheable reads"), add the `get` operations to the returned document yourself. Each opted-in catalog entry carries its contract meta, and the GET reuses the POST's responses:
@@ -53,8 +66,12 @@ for (const proc of cat.procedures) {
         name: 'input',
         in: 'query',
         content: {
+          // The hoisted input component (its $refs resolve in this document).
           'application/json': {
-            schema: proc.input?.kind === 'json' ? proc.input.jsonSchema : {},
+            schema:
+              proc.input === undefined
+                ? {}
+                : { $ref: `#/components/schemas/${item.post.operationId}.Input` },
           },
         },
       }],
@@ -64,7 +81,7 @@ for (const proc of cat.procedures) {
 }
 ```
 
-A REST facade has its own paths and bodies, so it documents them by hand (or with your REST framework's generator). Reuse the schemas from `catalog()` entries instead of redeclaring them.
+A REST facade has its own paths and bodies, so it documents them by hand (or with your REST framework's generator). Reference the components `openapi()` already emitted (`#/components/schemas/<id>`, `<path>.Input`, `<path>.Output`) instead of redeclaring them.
 
 ## API
 

@@ -96,8 +96,8 @@ describe('openapi', () => {
     expect(find?.responses['404']?.description).toBe('Missing')
     expect(
       find?.responses['404']?.content?.['application/json']?.schema,
-    ).toEqual({ $ref: '#/components/schemas/planet.find.Error.NOT_FOUND' })
-    const errorSchema = spec.components.schemas['planet.find.Error.NOT_FOUND']
+    ).toEqual({ $ref: '#/components/schemas/Error.NOT_FOUND' })
+    const errorSchema = spec.components.schemas['Error.NOT_FOUND']
     expect(JSON.stringify(errorSchema)).toContain('"const":"NOT_FOUND"')
     expect(JSON.stringify(errorSchema)).toContain('"data"')
   })

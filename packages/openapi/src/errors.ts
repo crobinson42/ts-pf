@@ -1,10 +1,17 @@
 import type {
+  CatalogError,
   CatalogProcedure,
   JsonSchema,
   ProcedureCatalog,
 } from '@ts-pf/docs'
 import { failureEnvelope, innerFromCatalog } from './envelope.js'
-import { protocolErrorSchemaName, schemaName } from './names.js'
+import { type Hoister, shapeKey } from './hoist.js'
+import {
+  operationId,
+  protocolErrorSchemaName,
+  schemaName,
+  sharedErrorSchemaName,
+} from './names.js'
 import { putSchema } from './refs.js'
 
 const SKIP_PROTOCOL = new Set(['METHOD_NOT_ALLOWED', 'NOT_FOUND'])
@@ -18,13 +25,19 @@ type StatusEntry = {
 export function protocolErrorRefs(
   catalog: ProcedureCatalog,
   schemas: Record<string, JsonSchema>,
+  hoister: Hoister,
 ): Map<string, JsonSchema> {
   const refs = new Map<string, JsonSchema>()
   for (const err of catalog.protocolErrors) {
     const name = protocolErrorSchemaName(err.code)
     const data =
       err.data !== undefined
-        ? putSchema(schemas, `${name}.Data`, innerFromCatalog(err.data) ?? {})
+        ? hoister.add(
+            `${name}.Data`,
+            'output',
+            'protocol errors',
+            innerFromCatalog(err.data) ?? {},
+          )
         : undefined
     refs.set(
       err.code,
@@ -34,13 +47,73 @@ export function protocolErrorRefs(
   return refs
 }
 
+/**
+ * One `Error.<code>` component (and `Error.<code>.Data`) for each declared
+ * code whose data shape is the same on every procedure that declares it.
+ * Codes whose data differs stay per procedure (see `operationErrorResponses`).
+ */
+export function sharedErrorRefs(
+  catalog: ProcedureCatalog,
+  schemas: Record<string, JsonSchema>,
+  hoister: Hoister,
+): Map<string, JsonSchema> {
+  const byCode = new Map<
+    string,
+    {
+      shape: string
+      data: JsonSchema | undefined
+      owners: string[]
+      shared: boolean
+    }
+  >()
+  for (const proc of catalog.procedures) {
+    for (const err of proc.errors) {
+      const data = errorData(err)
+      const shape = shapeKey(data, 'output')
+      const owner = operationId(proc.path)
+      const entry = byCode.get(err.code)
+      if (entry === undefined) {
+        byCode.set(err.code, { shape, data, owners: [owner], shared: true })
+        continue
+      }
+      entry.owners.push(owner)
+      entry.shared &&= entry.shape === shape
+    }
+  }
+
+  const refs = new Map<string, JsonSchema>()
+  for (const [code, entry] of byCode) {
+    if (!entry.shared) {
+      continue
+    }
+    const name = sharedErrorSchemaName(code)
+    const data =
+      entry.data !== undefined
+        ? hoister.add(
+            `${name}.Data`,
+            'output',
+            entry.owners.join(', '),
+            entry.data,
+          )
+        : undefined
+    refs.set(code, putSchema(schemas, name, failureEnvelope(code, data)))
+  }
+  return refs
+}
+
+function errorData(err: CatalogError): JsonSchema | undefined {
+  return err.data !== undefined ? (innerFromCatalog(err.data) ?? {}) : undefined
+}
+
 export function operationErrorResponses(
   proc: CatalogProcedure,
   options: {
     includeProtocolErrors: boolean
     catalog: ProcedureCatalog
     schemas: Record<string, JsonSchema>
+    hoister: Hoister
     protocolRefs: Map<string, JsonSchema>
+    sharedErrorRefs: Map<string, JsonSchema>
   },
 ): Record<
   string,
@@ -61,20 +134,12 @@ export function operationErrorResponses(
   }
 
   for (const err of proc.errors) {
-    const status = err.status ?? 400
-    const name = schemaName(proc.path, `Error.${err.code}`)
-    const data =
-      err.data !== undefined
-        ? putSchema(
-            options.schemas,
-            schemaName(proc.path, `Error.${err.code}.Data`),
-            innerFromCatalog(err.data) ?? {},
-          )
-        : undefined
-    add(status, {
+    add(err.status ?? 400, {
       code: err.code,
       description: err.message ?? err.code,
-      schema: putSchema(options.schemas, name, failureEnvelope(err.code, data)),
+      schema:
+        options.sharedErrorRefs.get(err.code) ??
+        procedureErrorRef(proc, err, options),
     })
   }
 
@@ -131,4 +196,23 @@ export function operationErrorResponses(
     }
   }
   return responses
+}
+
+function procedureErrorRef(
+  proc: CatalogProcedure,
+  err: CatalogError,
+  options: { schemas: Record<string, JsonSchema>; hoister: Hoister },
+): JsonSchema {
+  const name = schemaName(proc.path, `Error.${err.code}`)
+  const data = errorData(err)
+  const dataRef =
+    data !== undefined
+      ? options.hoister.add(
+          `${name}.Data`,
+          'output',
+          operationId(proc.path),
+          data,
+        )
+      : undefined
+  return putSchema(options.schemas, name, failureEnvelope(err.code, dataRef))
 }

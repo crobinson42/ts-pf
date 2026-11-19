@@ -144,7 +144,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/book.find.Error.NOT_FOUND"
+                  "$ref": "#/components/schemas/Error.NOT_FOUND"
                 }
               }
             }
@@ -238,7 +238,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/book.create.Error.FORBIDDEN"
+                  "$ref": "#/components/schemas/Error.FORBIDDEN"
                 }
               }
             }
@@ -594,7 +594,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/author.find.Error.NOT_FOUND"
+                  "$ref": "#/components/schemas/Error.NOT_FOUND"
                 }
               }
             }
@@ -688,7 +688,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/review.find.Error.NOT_FOUND"
+                  "$ref": "#/components/schemas/Error.NOT_FOUND"
                 }
               }
             }
@@ -866,7 +866,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/loan.create.Error.FORBIDDEN"
+                  "$ref": "#/components/schemas/Error.FORBIDDEN"
                 }
               }
             }
@@ -1105,7 +1105,6 @@
       },
       "TsPf.Error.VALIDATION.Data": {
         "type": "object",
-        "additionalProperties": false,
         "required": [
           "issues"
         ],
@@ -1114,7 +1113,6 @@
             "type": "array",
             "items": {
               "type": "object",
-              "additionalProperties": false,
               "required": [
                 "message",
                 "path"
@@ -1286,112 +1284,91 @@
           }
         }
       },
+      "Error.NOT_FOUND.Data": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "Error.NOT_FOUND": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ok",
+          "error"
+        ],
+        "properties": {
+          "ok": {
+            "const": false
+          },
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message",
+              "data"
+            ],
+            "properties": {
+              "code": {
+                "const": "NOT_FOUND"
+              },
+              "message": {
+                "type": "string"
+              },
+              "data": {
+                "$ref": "#/components/schemas/Error.NOT_FOUND.Data"
+              }
+            }
+          }
+        }
+      },
+      "Error.FORBIDDEN": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ok",
+          "error"
+        ],
+        "properties": {
+          "ok": {
+            "const": false
+          },
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "const": "FORBIDDEN"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
       "book.list.Input": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": {
           "genre": {
-            "$ref": "#/components/schemas/book.list.Input/$defs/Genre"
-          }
-        },
-        "$defs": {
-          "Genre": {
-            "type": "string",
-            "enum": [
-              "fiction",
-              "science",
-              "history"
-            ]
+            "$ref": "#/components/schemas/Genre"
           }
         }
       },
       "book.list.Output": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "array",
         "items": {
-          "$ref": "#/components/schemas/book.list.Output/$defs/Book"
-        },
-        "$defs": {
-          "Book": {
-            "type": "object",
-            "properties": {
-              "isbn": {
-                "type": "string"
-              },
-              "title": {
-                "type": "string"
-              },
-              "genre": {
-                "$ref": "#/components/schemas/book.list.Output/$defs/Genre"
-              },
-              "available": {
-                "default": true,
-                "type": "boolean"
-              },
-              "publisher": {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "type": "string"
-                  },
-                  "address": {
-                    "type": "object",
-                    "properties": {
-                      "street": {
-                        "type": "string"
-                      },
-                      "city": {
-                        "type": "string"
-                      },
-                      "geo": {
-                        "type": "object",
-                        "properties": {
-                          "lat": {
-                            "type": "number"
-                          },
-                          "lng": {
-                            "type": "number"
-                          }
-                        },
-                        "required": [
-                          "lat",
-                          "lng"
-                        ],
-                        "additionalProperties": false
-                      }
-                    },
-                    "required": [
-                      "street",
-                      "city",
-                      "geo"
-                    ],
-                    "additionalProperties": false
-                  }
-                },
-                "required": [
-                  "name",
-                  "address"
-                ],
-                "additionalProperties": false
-              }
-            },
-            "required": [
-              "isbn",
-              "title",
-              "genre",
-              "available",
-              "publisher"
-            ],
-            "additionalProperties": false
-          },
-          "Genre": {
-            "type": "string",
-            "enum": [
-              "fiction",
-              "science",
-              "history"
-            ]
-          }
+          "$ref": "#/components/schemas/Book"
         }
       },
       "book.list.Request": {
@@ -1423,7 +1400,6 @@
         }
       },
       "book.find.Input": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": {
           "isbn": {
@@ -1435,90 +1411,7 @@
         ]
       },
       "book.find.Output": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$ref": "#/components/schemas/book.find.Output/$defs/Book",
-        "$defs": {
-          "Book": {
-            "type": "object",
-            "properties": {
-              "isbn": {
-                "type": "string"
-              },
-              "title": {
-                "type": "string"
-              },
-              "genre": {
-                "$ref": "#/components/schemas/book.find.Output/$defs/Genre"
-              },
-              "available": {
-                "default": true,
-                "type": "boolean"
-              },
-              "publisher": {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "type": "string"
-                  },
-                  "address": {
-                    "type": "object",
-                    "properties": {
-                      "street": {
-                        "type": "string"
-                      },
-                      "city": {
-                        "type": "string"
-                      },
-                      "geo": {
-                        "type": "object",
-                        "properties": {
-                          "lat": {
-                            "type": "number"
-                          },
-                          "lng": {
-                            "type": "number"
-                          }
-                        },
-                        "required": [
-                          "lat",
-                          "lng"
-                        ],
-                        "additionalProperties": false
-                      }
-                    },
-                    "required": [
-                      "street",
-                      "city",
-                      "geo"
-                    ],
-                    "additionalProperties": false
-                  }
-                },
-                "required": [
-                  "name",
-                  "address"
-                ],
-                "additionalProperties": false
-              }
-            },
-            "required": [
-              "isbn",
-              "title",
-              "genre",
-              "available",
-              "publisher"
-            ],
-            "additionalProperties": false
-          },
-          "Genre": {
-            "type": "string",
-            "enum": [
-              "fiction",
-              "science",
-              "history"
-            ]
-          }
-        }
+        "$ref": "#/components/schemas/Book"
       },
       "book.find.Request": {
         "type": "object",
@@ -1548,218 +1441,11 @@
           }
         }
       },
-      "book.find.Error.NOT_FOUND.Data": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id"
-        ],
-        "additionalProperties": false
-      },
-      "book.find.Error.NOT_FOUND": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "ok",
-          "error"
-        ],
-        "properties": {
-          "ok": {
-            "const": false
-          },
-          "error": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "code",
-              "message",
-              "data"
-            ],
-            "properties": {
-              "code": {
-                "const": "NOT_FOUND"
-              },
-              "message": {
-                "type": "string"
-              },
-              "data": {
-                "$ref": "#/components/schemas/book.find.Error.NOT_FOUND.Data"
-              }
-            }
-          }
-        }
-      },
       "book.create.Input": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$ref": "#/components/schemas/book.create.Input/$defs/Book",
-        "$defs": {
-          "Book": {
-            "type": "object",
-            "properties": {
-              "isbn": {
-                "type": "string"
-              },
-              "title": {
-                "type": "string"
-              },
-              "genre": {
-                "$ref": "#/components/schemas/book.create.Input/$defs/Genre"
-              },
-              "available": {
-                "default": true,
-                "type": "boolean"
-              },
-              "publisher": {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "type": "string"
-                  },
-                  "address": {
-                    "type": "object",
-                    "properties": {
-                      "street": {
-                        "type": "string"
-                      },
-                      "city": {
-                        "type": "string"
-                      },
-                      "geo": {
-                        "type": "object",
-                        "properties": {
-                          "lat": {
-                            "type": "number"
-                          },
-                          "lng": {
-                            "type": "number"
-                          }
-                        },
-                        "required": [
-                          "lat",
-                          "lng"
-                        ]
-                      }
-                    },
-                    "required": [
-                      "street",
-                      "city",
-                      "geo"
-                    ]
-                  }
-                },
-                "required": [
-                  "name",
-                  "address"
-                ]
-              }
-            },
-            "required": [
-              "isbn",
-              "title",
-              "genre",
-              "publisher"
-            ]
-          },
-          "Genre": {
-            "type": "string",
-            "enum": [
-              "fiction",
-              "science",
-              "history"
-            ]
-          }
-        }
+        "$ref": "#/components/schemas/BookInput"
       },
       "book.create.Output": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$ref": "#/components/schemas/book.create.Output/$defs/Book",
-        "$defs": {
-          "Book": {
-            "type": "object",
-            "properties": {
-              "isbn": {
-                "type": "string"
-              },
-              "title": {
-                "type": "string"
-              },
-              "genre": {
-                "$ref": "#/components/schemas/book.create.Output/$defs/Genre"
-              },
-              "available": {
-                "default": true,
-                "type": "boolean"
-              },
-              "publisher": {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "type": "string"
-                  },
-                  "address": {
-                    "type": "object",
-                    "properties": {
-                      "street": {
-                        "type": "string"
-                      },
-                      "city": {
-                        "type": "string"
-                      },
-                      "geo": {
-                        "type": "object",
-                        "properties": {
-                          "lat": {
-                            "type": "number"
-                          },
-                          "lng": {
-                            "type": "number"
-                          }
-                        },
-                        "required": [
-                          "lat",
-                          "lng"
-                        ],
-                        "additionalProperties": false
-                      }
-                    },
-                    "required": [
-                      "street",
-                      "city",
-                      "geo"
-                    ],
-                    "additionalProperties": false
-                  }
-                },
-                "required": [
-                  "name",
-                  "address"
-                ],
-                "additionalProperties": false
-              }
-            },
-            "required": [
-              "isbn",
-              "title",
-              "genre",
-              "available",
-              "publisher"
-            ],
-            "additionalProperties": false
-          },
-          "Genre": {
-            "type": "string",
-            "enum": [
-              "fiction",
-              "science",
-              "history"
-            ]
-          }
-        }
+        "$ref": "#/components/schemas/Book"
       },
       "book.create.Request": {
         "type": "object",
@@ -1790,7 +1476,6 @@
         }
       },
       "book.create.Error.CONFLICT.Data": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": {
           "isbn": {
@@ -1799,8 +1484,7 @@
         },
         "required": [
           "isbn"
-        ],
-        "additionalProperties": false
+        ]
       },
       "book.create.Error.CONFLICT": {
         "type": "object",
@@ -1835,37 +1519,7 @@
           }
         }
       },
-      "book.create.Error.FORBIDDEN": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "ok",
-          "error"
-        ],
-        "properties": {
-          "ok": {
-            "const": false
-          },
-          "error": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "code",
-              "message"
-            ],
-            "properties": {
-              "code": {
-                "const": "FORBIDDEN"
-              },
-              "message": {
-                "type": "string"
-              }
-            }
-          }
-        }
-      },
       "book.media.Input": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": {
           "isbn": {
@@ -1877,53 +1531,14 @@
         ]
       },
       "book.media.Output": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "oneOf": [
           {
-            "$ref": "#/components/schemas/book.media.Output/$defs/PrintMedia"
+            "$ref": "#/components/schemas/PrintMedia"
           },
           {
-            "$ref": "#/components/schemas/book.media.Output/$defs/AudioMedia"
+            "$ref": "#/components/schemas/AudioMedia"
           }
-        ],
-        "$defs": {
-          "PrintMedia": {
-            "type": "object",
-            "properties": {
-              "kind": {
-                "type": "string",
-                "const": "print"
-              },
-              "pages": {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              }
-            },
-            "required": [
-              "kind",
-              "pages"
-            ],
-            "additionalProperties": false
-          },
-          "AudioMedia": {
-            "type": "object",
-            "properties": {
-              "kind": {
-                "type": "string",
-                "const": "audio"
-              },
-              "minutes": {
-                "type": "number"
-              }
-            },
-            "required": [
-              "kind",
-              "minutes"
-            ],
-            "additionalProperties": false
-          }
-        }
+        ]
       },
       "book.media.Request": {
         "type": "object",
@@ -1954,7 +1569,6 @@
         }
       },
       "book.reviews.Input": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": {
           "isbn": {
@@ -1966,53 +1580,9 @@
         ]
       },
       "book.reviews.Output": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "array",
         "items": {
-          "$ref": "#/components/schemas/book.reviews.Output/$defs/Review"
-        },
-        "$defs": {
-          "Review": {
-            "type": "object",
-            "properties": {
-              "bookIsbn": {
-                "type": "string"
-              },
-              "rating": {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              "thread": {
-                "$ref": "#/components/schemas/book.reviews.Output/$defs/__schema0"
-              }
-            },
-            "required": [
-              "bookIsbn",
-              "rating",
-              "thread"
-            ],
-            "additionalProperties": false
-          },
-          "__schema0": {
-            "type": "object",
-            "properties": {
-              "text": {
-                "type": "string"
-              },
-              "replies": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/book.reviews.Output/$defs/__schema0"
-                }
-              }
-            },
-            "required": [
-              "text",
-              "replies"
-            ],
-            "additionalProperties": false
-          }
+          "$ref": "#/components/schemas/Review"
         }
       },
       "book.reviews.Request": {
@@ -2044,153 +1614,25 @@
         }
       },
       "book.watch.Input": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": {
           "genre": {
-            "$ref": "#/components/schemas/book.watch.Input/$defs/Genre"
+            "$ref": "#/components/schemas/Genre"
           }
         },
         "required": [
           "genre"
-        ],
-        "$defs": {
-          "Genre": {
-            "type": "string",
-            "enum": [
-              "fiction",
-              "science",
-              "history"
-            ]
-          }
-        }
+        ]
       },
       "book.watch.Output": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "oneOf": [
           {
-            "$ref": "#/components/schemas/book.watch.Output/$defs/BookAdded"
+            "$ref": "#/components/schemas/BookAdded"
           },
           {
-            "$ref": "#/components/schemas/book.watch.Output/$defs/BookRemoved"
+            "$ref": "#/components/schemas/BookRemoved"
           }
-        ],
-        "$defs": {
-          "BookAdded": {
-            "type": "object",
-            "properties": {
-              "type": {
-                "type": "string",
-                "const": "added"
-              },
-              "book": {
-                "$ref": "#/components/schemas/book.watch.Output/$defs/Book"
-              }
-            },
-            "required": [
-              "type",
-              "book"
-            ],
-            "additionalProperties": false
-          },
-          "Book": {
-            "type": "object",
-            "properties": {
-              "isbn": {
-                "type": "string"
-              },
-              "title": {
-                "type": "string"
-              },
-              "genre": {
-                "$ref": "#/components/schemas/book.watch.Output/$defs/Genre"
-              },
-              "available": {
-                "default": true,
-                "type": "boolean"
-              },
-              "publisher": {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "type": "string"
-                  },
-                  "address": {
-                    "type": "object",
-                    "properties": {
-                      "street": {
-                        "type": "string"
-                      },
-                      "city": {
-                        "type": "string"
-                      },
-                      "geo": {
-                        "type": "object",
-                        "properties": {
-                          "lat": {
-                            "type": "number"
-                          },
-                          "lng": {
-                            "type": "number"
-                          }
-                        },
-                        "required": [
-                          "lat",
-                          "lng"
-                        ],
-                        "additionalProperties": false
-                      }
-                    },
-                    "required": [
-                      "street",
-                      "city",
-                      "geo"
-                    ],
-                    "additionalProperties": false
-                  }
-                },
-                "required": [
-                  "name",
-                  "address"
-                ],
-                "additionalProperties": false
-              }
-            },
-            "required": [
-              "isbn",
-              "title",
-              "genre",
-              "available",
-              "publisher"
-            ],
-            "additionalProperties": false
-          },
-          "Genre": {
-            "type": "string",
-            "enum": [
-              "fiction",
-              "science",
-              "history"
-            ]
-          },
-          "BookRemoved": {
-            "type": "object",
-            "properties": {
-              "type": {
-                "type": "string",
-                "const": "removed"
-              },
-              "isbn": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "type",
-              "isbn"
-            ],
-            "additionalProperties": false
-          }
-        }
+        ]
       },
       "book.watch.Request": {
         "type": "object",
@@ -2221,7 +1663,6 @@
         }
       },
       "author.find.Input": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": {
           "id": {
@@ -2233,41 +1674,7 @@
         ]
       },
       "author.find.Output": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$ref": "#/components/schemas/author.find.Output/$defs/Author",
-        "$defs": {
-          "Author": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string"
-              },
-              "name": {
-                "type": "string"
-              },
-              "genres": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/author.find.Output/$defs/Genre"
-                }
-              }
-            },
-            "required": [
-              "id",
-              "name",
-              "genres"
-            ],
-            "additionalProperties": false
-          },
-          "Genre": {
-            "type": "string",
-            "enum": [
-              "fiction",
-              "science",
-              "history"
-            ]
-          }
-        }
+        "$ref": "#/components/schemas/Author"
       },
       "author.find.Request": {
         "type": "object",
@@ -2297,54 +1704,7 @@
           }
         }
       },
-      "author.find.Error.NOT_FOUND.Data": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id"
-        ],
-        "additionalProperties": false
-      },
-      "author.find.Error.NOT_FOUND": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "ok",
-          "error"
-        ],
-        "properties": {
-          "ok": {
-            "const": false
-          },
-          "error": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "code",
-              "message",
-              "data"
-            ],
-            "properties": {
-              "code": {
-                "const": "NOT_FOUND"
-              },
-              "message": {
-                "type": "string"
-              },
-              "data": {
-                "$ref": "#/components/schemas/author.find.Error.NOT_FOUND.Data"
-              }
-            }
-          }
-        }
-      },
       "review.find.Input": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": {
           "id": {
@@ -2356,51 +1716,7 @@
         ]
       },
       "review.find.Output": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$ref": "#/components/schemas/review.find.Output/$defs/Review",
-        "$defs": {
-          "Review": {
-            "type": "object",
-            "properties": {
-              "bookIsbn": {
-                "type": "string"
-              },
-              "rating": {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              "thread": {
-                "$ref": "#/components/schemas/review.find.Output/$defs/__schema0"
-              }
-            },
-            "required": [
-              "bookIsbn",
-              "rating",
-              "thread"
-            ],
-            "additionalProperties": false
-          },
-          "__schema0": {
-            "type": "object",
-            "properties": {
-              "text": {
-                "type": "string"
-              },
-              "replies": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/review.find.Output/$defs/__schema0"
-                }
-              }
-            },
-            "required": [
-              "text",
-              "replies"
-            ],
-            "additionalProperties": false
-          }
-        }
+        "$ref": "#/components/schemas/Review"
       },
       "review.find.Request": {
         "type": "object",
@@ -2430,81 +1746,12 @@
           }
         }
       },
-      "review.find.Error.NOT_FOUND.Data": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id"
-        ],
-        "additionalProperties": false
-      },
-      "review.find.Error.NOT_FOUND": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "ok",
-          "error"
-        ],
-        "properties": {
-          "ok": {
-            "const": false
-          },
-          "error": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "code",
-              "message",
-              "data"
-            ],
-            "properties": {
-              "code": {
-                "const": "NOT_FOUND"
-              },
-              "message": {
-                "type": "string"
-              },
-              "data": {
-                "$ref": "#/components/schemas/review.find.Error.NOT_FOUND.Data"
-              }
-            }
-          }
-        }
-      },
       "category.tree.Input": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": {}
       },
       "category.tree.Output": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "$ref": "#/components/schemas/category.tree.Output/$defs/Category",
-        "$defs": {
-          "Category": {
-            "type": "object",
-            "properties": {
-              "name": {
-                "type": "string"
-              },
-              "children": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/category.tree.Output/$defs/Category"
-                }
-              }
-            },
-            "required": [
-              "name",
-              "children"
-            ],
-            "additionalProperties": false
-          }
-        }
+        "$ref": "#/components/schemas/Category"
       },
       "category.tree.Request": {
         "type": "object",
@@ -2535,7 +1782,6 @@
         }
       },
       "loan.create.Input": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": {
           "isbn": {
@@ -2551,7 +1797,6 @@
         ]
       },
       "loan.create.Output": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": {
           "loanId": {
@@ -2566,8 +1811,7 @@
         "required": [
           "loanId",
           "dueAt"
-        ],
-        "additionalProperties": false
+        ]
       },
       "loan.create.Request": {
         "type": "object",
@@ -2598,7 +1842,6 @@
         }
       },
       "loan.create.Error.CONFLICT.Data": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": {
           "isbn": {
@@ -2613,8 +1856,7 @@
         "required": [
           "isbn",
           "dueAt"
-        ],
-        "additionalProperties": false
+        ]
       },
       "loan.create.Error.CONFLICT": {
         "type": "object",
@@ -2649,37 +1891,7 @@
           }
         }
       },
-      "loan.create.Error.FORBIDDEN": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "ok",
-          "error"
-        ],
-        "properties": {
-          "ok": {
-            "const": false
-          },
-          "error": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "code",
-              "message"
-            ],
-            "properties": {
-              "code": {
-                "const": "FORBIDDEN"
-              },
-              "message": {
-                "type": "string"
-              }
-            }
-          }
-        }
-      },
       "loan.return.Input": {
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": {
           "loanId": {
@@ -2734,6 +1946,294 @@
             "const": true
           }
         }
+      },
+      "Genre": {
+        "type": "string",
+        "enum": [
+          "fiction",
+          "science",
+          "history"
+        ]
+      },
+      "Book": {
+        "type": "object",
+        "properties": {
+          "isbn": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "genre": {
+            "$ref": "#/components/schemas/Genre"
+          },
+          "available": {
+            "default": true,
+            "type": "boolean"
+          },
+          "publisher": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "address": {
+                "type": "object",
+                "properties": {
+                  "street": {
+                    "type": "string"
+                  },
+                  "city": {
+                    "type": "string"
+                  },
+                  "geo": {
+                    "type": "object",
+                    "properties": {
+                      "lat": {
+                        "type": "number"
+                      },
+                      "lng": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "lat",
+                      "lng"
+                    ]
+                  }
+                },
+                "required": [
+                  "street",
+                  "city",
+                  "geo"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "address"
+            ]
+          }
+        },
+        "required": [
+          "isbn",
+          "title",
+          "genre",
+          "available",
+          "publisher"
+        ]
+      },
+      "BookInput": {
+        "type": "object",
+        "properties": {
+          "isbn": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "genre": {
+            "$ref": "#/components/schemas/Genre"
+          },
+          "available": {
+            "default": true,
+            "type": "boolean"
+          },
+          "publisher": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "address": {
+                "type": "object",
+                "properties": {
+                  "street": {
+                    "type": "string"
+                  },
+                  "city": {
+                    "type": "string"
+                  },
+                  "geo": {
+                    "type": "object",
+                    "properties": {
+                      "lat": {
+                        "type": "number"
+                      },
+                      "lng": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "lat",
+                      "lng"
+                    ]
+                  }
+                },
+                "required": [
+                  "street",
+                  "city",
+                  "geo"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "address"
+            ]
+          }
+        },
+        "required": [
+          "isbn",
+          "title",
+          "genre",
+          "publisher"
+        ]
+      },
+      "PrintMedia": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "print"
+          },
+          "pages": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "kind",
+          "pages"
+        ]
+      },
+      "AudioMedia": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "audio"
+          },
+          "minutes": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "kind",
+          "minutes"
+        ]
+      },
+      "book.reviews.Output.__schema0": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "replies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/book.reviews.Output.__schema0"
+            }
+          }
+        },
+        "required": [
+          "text",
+          "replies"
+        ]
+      },
+      "Review": {
+        "type": "object",
+        "properties": {
+          "bookIsbn": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "thread": {
+            "$ref": "#/components/schemas/book.reviews.Output.__schema0"
+          }
+        },
+        "required": [
+          "bookIsbn",
+          "rating",
+          "thread"
+        ]
+      },
+      "BookAdded": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "added"
+          },
+          "book": {
+            "$ref": "#/components/schemas/Book"
+          }
+        },
+        "required": [
+          "type",
+          "book"
+        ]
+      },
+      "BookRemoved": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "removed"
+          },
+          "isbn": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "isbn"
+        ]
+      },
+      "Author": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "genres": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Genre"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "genres"
+        ]
+      },
+      "Category": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Category"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "children"
+        ]
       }
     },
     "parameters": {

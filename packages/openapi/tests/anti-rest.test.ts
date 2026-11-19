@@ -62,7 +62,7 @@ describe('RPC-shaped OpenAPI (not REST)', () => {
   })
 
   it('wraps failures as { ok, error.code } without error.status', () => {
-    const failure = spec.components.schemas['planet.find.Error.NOT_FOUND'] as {
+    const failure = spec.components.schemas['Error.NOT_FOUND'] as {
       properties?: {
         ok?: unknown
         error?: { properties?: { code?: unknown; status?: unknown } }

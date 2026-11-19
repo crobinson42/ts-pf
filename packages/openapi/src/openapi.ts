@@ -1,5 +1,6 @@
 import type { JsonSchema, ProcedureCatalog } from '@ts-pf/docs'
-import { protocolErrorRefs } from './errors.js'
+import { protocolErrorRefs, sharedErrorRefs } from './errors.js'
+import { createHoister } from './hoist.js'
 import { toPathEntry } from './operation.js'
 import type {
   OpenAPIDocument,
@@ -28,10 +29,12 @@ export function openapi(
   }
 
   const schemas: Record<string, JsonSchema> = {}
+  const hoister = createHoister(schemas)
   const includeProtocolErrors = options.protocolErrors !== false
   const protocolRefs = includeProtocolErrors
-    ? protocolErrorRefs(catalog, schemas)
+    ? protocolErrorRefs(catalog, schemas, hoister)
     : new Map<string, JsonSchema>()
+  const sharedRefs = sharedErrorRefs(catalog, schemas, hoister)
 
   const paths: Record<string, PathItem> = {}
   const tags: string[] = []
@@ -42,7 +45,9 @@ export function openapi(
       catalog,
       openapi: options,
       schemas,
+      hoister,
       protocolRefs,
+      sharedErrorRefs: sharedRefs,
       includeProtocolErrors,
     })
     paths[entry.path] = entry.item
@@ -55,6 +60,8 @@ export function openapi(
       }
     }
   }
+
+  hoister.finish()
 
   const document: OpenAPIDocument = {
     openapi: '3.1.0',

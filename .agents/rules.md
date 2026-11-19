@@ -60,7 +60,7 @@ Contract-first TypeScript RPC library (`@ts-pf/*`). oRPC-like DX is the bar; oRP
 | `stream` | `StreamCodec` + `stream()`. Root `AsyncIterable` as JSONL envelopes. |
 | `sse` | `SseCodec` + `SSE_CONTENT_TYPE`. Output-only `text/event-stream`. |
 | `docs` | `catalog()`, `docs()` meta helper (keeps `tags` / `hidden` literal in its return type, for `@ts-pf/mcp`'s type-level filters; other fields stay `DocsMeta`), `getDocs`, `walkContract`, `toJsonSchema`, `registerJsonSchemaConverter` (`getDocs` / `toJsonSchema` / `walkContract` are also what `@ts-pf/mcp` builds tool definitions from). |
-| `openapi` | `openapi(catalog, options)` → OpenAPI 3.1. POST JSON RPC only. |
+| `openapi` | `openapi(catalog, options)` → OpenAPI 3.1. POST JSON RPC only. Default normalizations of the catalog's schemas (never of `toJsonSchema` / `catalog()`, which also feed mcp and `catalogHash`): no nested `$schema`; outputs and error `data` open (no `additionalProperties: false`; inputs and protocol envelopes unchanged); root `$defs` hoisted to `components.schemas.<id>` (input shape `<id>Input` when it differs; same-side conflicts throw; Zod `__schemaN` → `<host>.__schemaN`); declared errors one `Error.<CODE>` per code when every `data` shape matches, else per procedure. |
 | `codegen` | `emit(catalog)`, `emitFiles(catalog)`, `catalogHash()`, `EmitOptions`, `EmitFile`, CLI `ts-pf-codegen`. |
 | `swr` | `createSwr(client)` helpers for SWR. |
 | `mvc-kit` | `bindClient(client, host)` / `issuesToFieldErrors` / `DisposeSignalHost`. |
