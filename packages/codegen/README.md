@@ -1,6 +1,6 @@
 # @ts-pf/codegen
 
-Print a nested `Contract` `.d.ts` from a `@ts-pf/docs` `catalog()`. The frontend uses today's `createClient<Contract>(link)` — no second runtime, no `as typeof contract`, no `tsc --dts` of the backend.
+Print a nested `Contract` `.d.ts` from a `@ts-pf/docs` `catalog()`, and diff two catalogs for breaking changes. The frontend uses today's `createClient<Contract>(link)` — no second runtime, no `as typeof contract`, no `tsc --dts` of the backend.
 
 Agent skill: [`skills/ts-pf-codegen/`](skills/ts-pf-codegen/). Sync with `npx skills experimental_sync -y`. Runnable split-repo app: [`examples/codegen`](../../examples/codegen).
 
@@ -88,10 +88,11 @@ Paths are flat. A segment outside `[A-Za-z0-9_]` is UTF-8 percent-encoded, so a 
 ts-pf-codegen emit <catalog.json|-> [-o contract.d.ts | --out-dir <dir>] [--name Contract] [--fail-on-unavailable]
 ts-pf-codegen pull <url> [-o contract.d.ts | --out-dir <dir>] [--lock catalog.lock.json]
 ts-pf-codegen hash <catalog.json|->
+ts-pf-codegen diff <previous.json> <next.json> [--json]
 ts-pf-codegen --help
 ```
 
-`emit` and `hash` read stdin when the path is `-`. Omit `-o` and `--out-dir` to write the single `.d.ts` to stdout. `-o` and `--out-dir` together is an error. `--help` / `-h` print usage and exit 0; no command prints usage to stderr and exits 1. Run it as `npx ts-pf-codegen …` or from an npm script — the bin resolves through the `node_modules/.bin` symlink.
+`emit`, `hash`, and `diff` read stdin when a path is `-`. Omit `-o` and `--out-dir` to write the single `.d.ts` to stdout. `-o` and `--out-dir` together is an error. `--help` / `-h` print usage and exit 0; no command prints usage to stderr and exits 1. Run it as `npx ts-pf-codegen …` or from an npm script — the bin resolves through the `node_modules/.bin` symlink.
 
 Commit `contract.d.ts`, or CI-run `ts-pf-codegen pull` and pin `catalog.lock.json`:
 
@@ -104,6 +105,58 @@ Commit `contract.d.ts`, or CI-run `ts-pf-codegen pull` and pin `catalog.lock.jso
 ```
 
 Mismatch on pull exits non-zero. No registry in v1.
+
+## Breaking-change check
+
+Commit `catalog.json` (written from `catalog(contract)`, as in the first snippet). In CI, write the current catalog to a second file and diff the two:
+
+```sh
+npx ts-pf-codegen diff catalog.json catalog.next.json
+```
+
+`diff` prints breaking and safe changes. It exits `2` when there is a breaking change, `0` otherwise, and `1` on a usage or read error. `--json` prints the `CatalogDiff` instead (same exit codes). Either path may be `-` for stdin.
+
+Or call it from the script that writes the catalog:
+
+```ts
+import { readFileSync } from 'node:fs'
+import { type CatalogDiff, diffCatalog } from '@ts-pf/codegen'
+import { catalog, type ProcedureCatalog } from '@ts-pf/docs'
+
+const previous = JSON.parse(
+  readFileSync('catalog.json', 'utf8'),
+) as ProcedureCatalog
+const diff: CatalogDiff = diffCatalog(
+  previous,
+  catalog(contract, { prefix: '/rpc' }),
+)
+for (const change of diff.breaking) {
+  console.error(`${change.path ?? '(catalog)'} ${change.message}`)
+}
+if (diff.breaking.length > 0) process.exitCode = 2
+```
+
+`path` is the procedure key (`planet/find`); it is absent for a catalog-level change. `pointer` is the location inside that entry: `/input`, `/output`, or `/errors/<code>/data`, then the JSON Schema path (`/input/properties/id`). `kind` names the rule (`procedure-removed`, `required-property-added`, `type-changed`, …). Changes are plain JSON.
+
+Direction decides. Inputs are what an old client **sends**; outputs and error `data` are what it **receives**.
+
+| Breaking                                                                                                                                   | Safe                                                                  |
+| ------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------- |
+| procedure removed (a rename is removed + added)                                                                                            | procedure added                                                       |
+| unary ↔ stream, for input or output                                                                                                        | `docs({ deprecated: true })` added (reported)                         |
+| `protocol.version` changed                                                                                                                 |                                                                       |
+| input: required property added; optional → required                                                                                        | input: optional property added; required → optional                   |
+| input: property removed from a closed object (`additionalProperties: false`)                                                               | input: property removed from an open object                           |
+| input: type narrowed (`number` → `integer`, `string` → enum, enum value or union variant removed, `null` dropped, tighter `min*` / `max*`) | input: type widened (the reverse)                                     |
+| input: object closed; input schema added where there was none                                                                              | input: schema removed                                                 |
+| output: required property removed; required → optional                                                                                     | output: property added; optional property removed                     |
+| output: type changed or widened (`string` → `number`, `integer` → `number`, enum → `string`, now `null`, looser `min*` / `max*`)           | output: enum value or union variant added or removed; type narrowed   |
+| output / error `data` schema removed                                                                                                       | output / error `data` schema added                                    |
+|                                                                                                                                            | new error code; error code removed; error `status` changed (reported) |
+
+Error `data` is compared like output. Union variants match by a shared `const` tag (`z.discriminatedUnion`), else by equal schema; a lone unmatched variant on each side of an untagged union is compared as the same variant. Local `$ref`s resolve through `$defs` / `definitions`, so a change to a shared DTO is reported at every place that uses it.
+
+The check is conservative where it can reason and quiet where it cannot. Docs text (`description`, `title`, `examples`, `default`) and `format` are ignored. A keyword it does not model (`pattern`, `allOf`, `not`, …) is reported as a safe `unknown-change`, never as breaking. A schema that becomes `kind: 'unavailable'` (or available again) is reported as safe and not compared. It does not prove two schemas are compatible; it flags the changes that are known to break old clients.
 
 ## Serve the catalog in userland
 
@@ -119,8 +172,8 @@ const result = await handler.handle(req, { prefix: '/rpc', context })
 
 ## API
 
-- `emit`, `emitFiles`, `catalogHash`
-- `EmitOptions`, `EmitFile`
+- `emit`, `emitFiles`, `catalogHash`, `diffCatalog`
+- `EmitOptions`, `EmitFile`, `CatalogDiff`, `CatalogChange`
 - CLI `ts-pf-codegen` (not exported from `"."`)
 
 ## Not in this package

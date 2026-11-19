@@ -61,7 +61,7 @@ Contract-first TypeScript RPC library (`@ts-pf/*`). oRPC-like DX is the bar; oRP
 | `sse` | `SseCodec` + `SSE_CONTENT_TYPE`. Output-only `text/event-stream`. |
 | `docs` | `catalog()`, `docs()` meta helper (keeps `tags` / `hidden` literal in its return type, for `@ts-pf/mcp`'s type-level filters; other fields stay `DocsMeta`), `getDocs`, `walkContract`, `toJsonSchema`, `registerJsonSchemaConverter`, `canonicalize` (sorted-keys copy; runtime-neutral — no `node:` imports, so `catalogHash` and its `node:crypto` stay in `codegen`) (`getDocs` / `toJsonSchema` / `walkContract` are also what `@ts-pf/mcp` builds tool definitions from). |
 | `openapi` | `openapi(catalog, options)` → OpenAPI 3.1. POST JSON RPC only. |
-| `codegen` | `emit(catalog)`, `emitFiles(catalog)`, `catalogHash()` (sha256 of `@ts-pf/docs` `canonicalize(catalog)`), `EmitOptions`, `EmitFile`, CLI `ts-pf-codegen`. |
+| `codegen` | `emit(catalog)`, `emitFiles(catalog)`, `catalogHash()` (sha256 of `@ts-pf/docs` `canonicalize(catalog)`), `diffCatalog(previous, next)` → `CatalogDiff` (`{ breaking, safe }` of `CatalogChange` `{ kind, path?, pointer?, message }`; direction-aware: inputs are what old clients send, outputs and error `data` what they receive; adding an output field / enum value / union variant / error code is safe; unmodeled JSON Schema keywords are a safe `unknown-change`, never breaking), `EmitOptions`, `EmitFile`, CLI `ts-pf-codegen` (`emit` / `pull` / `hash` / `diff`; `diff` exits 2 on a breaking change, 1 on a usage / read error). |
 | `swr` | `createSwr(client)` helpers for SWR. |
 | `mvc-kit` | `bindClient(client, host)` / `issuesToFieldErrors` / `DisposeSignalHost`. |
 | `astro` | `createAstroHandler`, `createAstroLocalClient` (`./server`); `createAstroClient`, `withBase` (`.` and `./client`). Peer `astro >= 4.9.0`. Root export is client-only. `context` on `createAstroHandler` / `createAstroLocalClient` is typed from the app's `TCtx` (`NoInfer`); `createAstroClient<T = never>` follows the `createClient` `~error` rule. |
@@ -88,7 +88,7 @@ Do not resurrect oRPC names in code, docs, or examples.
 | `createSwr` | `createSWRUtils` / `createRouterUtils` / `swrUtils` |
 | `bindClient` | `bind` as a client wrapper / `createMvc` / `createRouterUtils`. `PortHandler.bind` is unchanged. |
 | `createAstroHandler` / `createAstroLocalClient` / `createAstroClient` | `RPCHandler` |
-| `emit` / `catalogHash` | `generate` / `compile` as the only names; `digest` as the only hash name |
+| `emit` / `catalogHash` / `diffCatalog` | `generate` / `compile` as the only names; `digest` as the only hash name; `compare` / `breaking` / `compat` as the diff name |
 | `ts-pf-codegen` | `pf` |
 | generated `Contract` | `AppRouter` |
 | nested `router({ planet: planetContract })` | `mergeRouters` / `compose()` |
@@ -129,7 +129,7 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 | Fetch interceptors | client-http (Fetch `Interceptor`; do not export from `@ts-pf/client`) |
 | `docs()` / `catalog()` / `registerJsonSchemaConverter` | docs |
 | `openapi()` | openapi |
-| `emit` / `emitFiles` / `catalogHash` | codegen |
+| `emit` / `emitFiles` / `catalogHash` / `diffCatalog` | codegen |
 | `createSwr` | swr |
 | `bindClient` | mvc-kit |
 | `createToolkit` / `all` / `bindTools` / `createMcpFactory` | mcp |
