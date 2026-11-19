@@ -129,32 +129,9 @@ These come from the protocol 1.1 design spike (maintainer notes, see the top of 
 
 ### Shipped in revision 1.2
 
-#### Revision 1.2: the spec is written for implementers in any language
+- **Revision 1.2: the spec is written for implementers in any language** — Revision 1.1 described much of the wire through the TypeScript client. The non-RPC response rule sat in a paragraph about `FetchLink`, and TypeScript conventions (`local`, `status: 0`, `PFError`) were mixed into MUST-level frame rules. A client written in another language from that text could easily classify a proxy's HTML 404 by its HTTP status and treat it as an application outcome ("no access"), with destructive results. Revision 1.2 is the clarity pass. It adds a normative "Classifying an HTTP response" section, RFC 2119 keywords, one-screen HTTP and WebSocket client checklists, a "TypeScript reference client" appendix holding the TypeScript-specific behaviour, reserved close-code ranges (4900–4999 for the protocol, 4400–4499 recommended for apps), a non-normative reconnecting section, a recommended `hello.meta.authorization` key, `hello-error` from a thrown `PFError` (below), and `BAD_REQUEST` for a stream procedure called on an endpoint whose codec cannot carry streams. The normative text matches what the TypeScript client and server already do, so no 1.1 implementation becomes non-conforming. Checks stricter than `JSONCodec` (an object `error` with string `code` / `message`) and status-class retry are SHOULD / MAY. The cacheable GET binding previously earmarked as 1.2 (above) moves to revision 1.3, unchanged.
 
-Revision 1.1 described much of the wire through the TypeScript client. The non-RPC response rule sat in a paragraph about `FetchLink`, and TypeScript conventions (`local`, `status: 0`, `PFError`) were mixed into MUST-level frame rules. A client written in another language from that text could easily classify a proxy's HTML 404 by its HTTP status and treat it as an application outcome ("no access"), with destructive results.
-
-Revision 1.2 is the clarity pass. It adds:
-- a normative "Classifying an HTTP response" section;
-- RFC 2119 keywords;
-- one-screen HTTP and WebSocket client checklists;
-- a "TypeScript reference client" appendix holding the TypeScript-specific behaviour;
-- reserved close-code ranges: 4900–4999 for the protocol, 4400–4499 recommended for apps;
-- a non-normative reconnecting section;
-- a recommended `hello.meta.authorization` key;
-- `hello-error` from a thrown `PFError` (below);
-- `BAD_REQUEST` for a stream procedure called on an endpoint whose codec cannot carry streams.
-
-The normative text matches what the TypeScript client and server already do, so no 1.1 implementation becomes non-conforming. Checks stricter than `JSONCodec` (an object `error` with string `code` / `message`) and status-class retry are SHOULD / MAY. The cacheable GET binding previously earmarked as 1.2 (above) moves to revision 1.3, unchanged.
-
-#### `hello-error` carries a `PFError` thrown by `onHello` (revision 1.2)
-
-**Before.** Until revision 1.2, any throw from the per-connection context factory became the fixed `hello-error` `INTERNAL` / `Internal server error`. A server could not tell a client why it refused a connection: an expired token, a banned account, and a crashed database all looked the same. The only way left to say more was an app-private close code. The fixed literal existed to keep factory messages (stack traces, SQL errors) off the wire.
-
-**Change.** `toWireError` already gives that guarantee for every handler throw: a `PFError` is the server's deliberate, client-facing error and goes out as `{ code, message, data? }`, and anything else becomes `INTERNAL` with the fixed message. Revision 1.2 applies the same mapping to `onHello`. The `@ts-pf/message` session passes the thrown value through `toWireError` into `hello-error`. So `throw new PFError({ code: 'UNAUTHORIZED', message: 'Session expired' })` reaches the client as that code, and an unknown throw still produces exactly the old literal.
-
-**Compatibility.** No frame, key, or code changes. `hello-error.error` has always allowed any code and `data`, and a 1.0 client already fails the connect with whatever error it receives. The change is therefore additive under the Revisions rule. It is a behaviour change for servers that already throw a `PFError` from `onHello`: its message now reaches the client, which is what a `PFError` means everywhere else.
-
-**Close codes.** The WebSocket bind handle gains `close(code?, reason?)`, and `WebSocketLike.close` takes an optional `reason`. An app can then close a live connection with an application close code after hello. The socket is closed with that code before the session tears down, so the duplex's own `1000` does not win. Port and stdio handles keep `close()`: neither pipe has close codes.
+- **`hello-error` carries a `PFError` thrown by `onHello`** — Until revision 1.2, any throw from the per-connection context factory became the fixed `hello-error` `INTERNAL` / `Internal server error`. A server could not tell a client why it refused a connection: an expired token, a banned account, and a crashed database all looked the same. The only way left to say more was an app-private close code. The fixed literal existed to keep factory messages (stack traces, SQL errors) off the wire. `toWireError` already gives that guarantee for every handler throw: a `PFError` is the server's deliberate, client-facing error and goes out as `{ code, message, data? }`, and anything else becomes `INTERNAL` with the fixed message. Revision 1.2 applies the same mapping to `onHello`. The `@ts-pf/message` session passes the thrown value through `toWireError` into `hello-error`. So `throw new PFError({ code: 'UNAUTHORIZED', message: 'Session expired' })` reaches the client as that code, and an unknown throw still produces exactly the old literal. No frame, key, or code changes. `hello-error.error` has always allowed any code and `data`, and a 1.0 client already fails the connect with whatever error it receives. The change is therefore additive under the Revisions rule. It is a behaviour change for servers that already throw a `PFError` from `onHello`: its message now reaches the client, which is what a `PFError` means everywhere else. The WebSocket bind handle gains `close(code?, reason?)`, and `WebSocketLike.close` takes an optional `reason`. An app can then close a live connection with an application close code after hello. The socket is closed with that code before the session tears down, so the duplex's own `1000` does not win. Port and stdio handles keep `close()`: neither pipe has close codes.
 
 ## Process
 
