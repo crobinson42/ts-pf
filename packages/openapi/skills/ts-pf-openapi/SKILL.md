@@ -65,7 +65,7 @@ It sets these options (each settable alone; an explicit option beats the profile
 - `constAsEnum: 'exceptTags'`: `const` → one-value `enum`, except union tag properties.
 - `dropFormatPatterns: true`: drop `pattern` next to a standard `format`.
 - `emptyInputNull: true`: no input or a `null` input → inline `{ input: null }` body, no `Input` component.
-- `hoist: 'objects'` (default `'none'`): every nested inline object → a component named parent + path (`BookFindOutputAuthor`; array items `…Item`, record values `…Value`, union variants by tag value else `…Option1`; dotted under `naming: 'path'`). Identical shapes share one component (alphabetically first name). Envelopes keep their inline objects. Warns once listing the made-up names: give those objects `.meta({ id })`. One name for two shapes throws.
+- `hoist: 'objects'` (default `'none'`): nested inline objects with properties (under `properties`, `items`, record values, union variants; not tuple or `allOf` members) → a component named parent + path (`BookFindOutputAuthor`; array items `…Item`, record values `…Value`, union variants by tag value else `…Option1`; dotted under `naming: 'path'`). Identical shapes share one component (alphabetically first name). Envelopes keep their inline objects. Warns once listing the made-up names: give those objects `.meta({ id })`. One name for two shapes, or a name that is already a component, throws.
 - `discriminators: true`: `discriminator: { propertyName, mapping }` on a `oneOf` / `anyOf` of component `$ref`s that each require a different string `const` (or one-value `enum`) on one property. Anything else is left alone.
 - `canonical: true`: keys sorted at every depth (`canonicalize` from `@ts-pf/docs`), byte-stable output; `paths` and components become alphabetical.
 
@@ -73,8 +73,8 @@ Pass order (each sees the previous result): `naming` → `enumNames` → `closeI
 
 Never set by the profile:
 
-- `streams` (default `'operation'`): `'components'` gives stream procedures no path and lists their `<path>.Input` / `<path>.Output` components in `x-ts-pf-streams: { "<catalog key>": { input?, inputItem?, item?, output?, errors } }`; `'omit'` drops them like a catalog filter. The catalog cannot tell message-only streams from HTTP ones, so this is your call: use `'components'` when the streams are served over a message transport.
-- `enumNames: { BookStatus: ['available', 'loaned'] }`: every inline `enum` with that value set (any order) → `$ref` to `BookStatus`. Prefer `.meta({ id })`. Unused entries warn; a taken name, empty entry, or duplicate value set throws.
+- `streams` (default `'operation'`): `'components'` gives stream procedures no path and lists their `<path>.Input` / `<path>.Output` components in `x-ts-pf-streams: { "<catalog key>": { input?, inputItem?, item?, output?, errors } }`; `'omit'` drops them like a catalog filter. The catalog cannot tell message-only streams from HTTP ones, so this is your call: use `'components'` when the streams are served over a message transport. Pair it with `errors: 'shared'` so every code's data has a `<Code>Data` component.
+- `enumNames: { BookStatus: ['available', 'loaned'] }`: every inline `enum` with that value set (any order) → `$ref` to `BookStatus`. Prefer `.meta({ id })`. Unused entries warn; an invalid name, an entry with no values, two entries with one value set, or a name an existing component has with a different schema throws.
 - `catalogHash`: written to `info['x-ts-pf-catalog-hash']`; pass `catalogHash(cat)` from `@ts-pf/codegen`.
 
 `x-ts-pf-errors`, `x-ts-pf-streams`, and `x-ts-pf-catalog-hash` are the only `x-` extensions.
@@ -119,6 +119,8 @@ for (const proc of cat.procedures) {
   })
 }
 ```
+
+The snippet assumes the default `naming: 'path'` (under `profile: 'codegen'` the input is `<Path>Input`, or absent with `emptyInputNull`).
 
 A REST facade has its own paths and bodies, so it documents them by hand (or with your REST framework's generator). Reference the components `openapi()` already emitted (`#/components/schemas/<id>`, `<id>Input` for request bodies when the id split, `<path>.Input`, `<path>.Output`) instead of redeclaring them.
 

@@ -38,8 +38,9 @@ export type OpenAPIOptions = {
    */
   multipart?: boolean
   /**
-   * A preset for code generators. `'codegen'` sets every option below to
-   * its generator-friendly value; an option you also pass wins.
+   * A preset for code generators. `'codegen'` sets every option below,
+   * except `streams`, `enumNames`, and `catalogHash`, to its
+   * generator-friendly value; an option you also pass wins.
    */
   profile?: 'codegen'
   /**
@@ -85,9 +86,9 @@ export type OpenAPIOptions = {
    */
   discriminators?: boolean
   /**
-   * `'objects'`: every nested inline object becomes a named component
-   * (`BookPublisher`, `…Item` for array items), identical shapes shared.
-   * Protocol envelopes are never hoisted. Default `'none'`.
+   * `'objects'`: nested inline objects with properties become named
+   * components (`BookFindOutputAuthor`, `…Item` for array items), identical
+   * shapes shared. Protocol envelopes are never hoisted. Default `'none'`.
    */
   hoist?: 'none' | 'objects'
   /**
