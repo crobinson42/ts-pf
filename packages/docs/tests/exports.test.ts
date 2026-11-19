@@ -5,6 +5,7 @@ import type {
   ProcedureCatalog,
 } from '@ts-pf/docs'
 import {
+  canonicalize,
   catalog,
   DOCS_KEY,
   docs,
@@ -18,6 +19,7 @@ import { describe, expect, expectTypeOf, it } from 'vitest'
 describe('public exports', () => {
   it('exports the catalog API', () => {
     expect(typeof catalog).toBe('function')
+    expect(typeof canonicalize).toBe('function')
     expect(typeof docs).toBe('function')
     expect(typeof getDocs).toBe('function')
     expect(typeof walkContract).toBe('function')

@@ -38,7 +38,7 @@ The packages are ESM and ship `exports` only, so `tsconfig.json` needs `"moduleR
 | [`@ts-pf/sse`](packages/sse) | Opt-in `SseCodec` for SSE output framing of the same envelopes |
 | [`@ts-pf/docs`](packages/docs) | Opt-in procedure catalog from a contract (`docs()`, `catalog()`) |
 | [`@ts-pf/openapi`](packages/openapi) | Opt-in OpenAPI 3.1 from `catalog()` (POST JSON RPC) |
-| [`@ts-pf/codegen`](packages/codegen) | Opt-in `.d.ts` from `catalog()` for split repos |
+| [`@ts-pf/codegen`](packages/codegen) | Opt-in `.d.ts` from `catalog()` for split repos; catalog breaking-change check |
 | [`@ts-pf/message`](packages/message) | Opt-in JSON text frames + `MessageSession` (not an HTTP codec) |
 | [`@ts-pf/message-server`](packages/message-server) | Opt-in `PortHandler` / `WsHandler` / `StdioHandler` |
 | [`@ts-pf/message-client`](packages/message-client) | Opt-in `PortLink` / `WsLink` / `StdioLink` |

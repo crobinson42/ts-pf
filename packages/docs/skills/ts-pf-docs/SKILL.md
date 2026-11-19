@@ -37,6 +37,7 @@ if (url.pathname === '/catalog.json') {
 
 - `docs`, `getDocs`, `catalog`, `walkContract`
 - `registerJsonSchemaConverter`, `toJsonSchema`
+- `canonicalize` (sorted-keys copy for byte-stable JSON)
 
 ## Pair with
 

@@ -169,6 +169,7 @@ Changing a contract clients already use (safe vs breaking changes, catch-all bra
 | Procedure catalog | `@ts-pf/docs` | `ts-pf-docs` |
 | OpenAPI 3.1 | `@ts-pf/openapi` | `ts-pf-openapi` |
 | Split-repo `Contract` `.d.ts` | `@ts-pf/codegen` | `ts-pf-codegen` |
+| Breaking-change check on `catalog()` in CI (`diffCatalog` / `ts-pf-codegen diff`) | `@ts-pf/codegen` | `ts-pf-codegen` |
 | SWR | `@ts-pf/swr` | `ts-pf-swr` |
 | mvc-kit Resources | `@ts-pf/mvc-kit` | `ts-pf-mvc-kit` |
 | Astro endpoint / pages | `@ts-pf/astro` | `ts-pf-astro` |
@@ -346,7 +347,7 @@ Every procedure becomes a tool (`planet.find` → `planet_find`); serve with `cr
 | `createSwr` | `createSWRUtils` / `swrUtils` |
 | `bindClient` | `bind` as a client wrapper / `createMvc` |
 | `createAstroHandler` / `createAstroLocalClient` / `createAstroClient` | `RPCHandler` |
-| `emit` / `catalogHash` | `generate` / `compile`; `digest` as the only hash name |
+| `emit` / `catalogHash` / `diffCatalog` | `generate` / `compile`; `digest` as the only hash name; `compare` / `breaking` / `compat` as the diff name |
 | `ts-pf-codegen` | `pf` |
 | generated `Contract` | `AppRouter` |
 | implemented `app` | `router` (that name is the contract helper) |

@@ -11,10 +11,13 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
-import { catalogHash, emit, emitFiles } from '@ts-pf/codegen'
+import { catalogHash, diffCatalog, emit, emitFiles } from '@ts-pf/codegen'
+import { procedure } from '@ts-pf/contract'
+import { catalog } from '@ts-pf/docs'
 import { describe, expect, it } from 'vitest'
+import { z } from 'zod'
 import { type CliIo, readOutDir, runCli } from '../src/cli.js'
-import { planetCatalog } from './planet-catalog.js'
+import { planetCatalog, planetContract } from './planet-catalog.js'
 
 function memoryIo(opts: {
   files?: Map<string, string>
@@ -86,6 +89,7 @@ describe('ts-pf-codegen CLI', () => {
     expect(box.stdout).toMatch(/^Usage: ts-pf-codegen/)
     expect(box.stdout).toMatch(/--help/)
     expect(box.stdout).toMatch(/--out-dir/)
+    expect(box.stdout).toMatch(/diff <previous\.json> <next\.json>/)
     expect(box.stderr).toBe('')
   })
 
@@ -351,5 +355,126 @@ describe('ts-pf-codegen CLI', () => {
       catalogPath,
     ])
     expect(stdout).toBe(emit(spec))
+  })
+  describe('diff', () => {
+    // planet/moon is added (safe). Then planet/find gains a required input
+    // property and planet/list is removed (both breaking).
+    const { find, list, chat } = planetContract.planet
+    const write = (procedures: Record<string, unknown>) =>
+      JSON.stringify(catalog({ planet: procedures }, { prefix: '/rpc' }))
+    const addedRaw = write({ find, list, chat, moon: list })
+    const nextSpec = catalog(
+      {
+        planet: {
+          find: procedure
+            .input(z.object({ id: z.number(), system: z.string() }))
+            .output(z.object({ id: z.number(), name: z.string() }))
+            .errors({
+              NOT_FOUND: { status: 404, data: z.object({ id: z.number() }) },
+            }),
+          chat,
+          moon: list,
+        },
+      },
+      { prefix: '/rpc' },
+    )
+    const nextRaw = JSON.stringify(nextSpec)
+    const files = () =>
+      new Map<string, string>([
+        ['old.json', raw],
+        ['added.json', addedRaw],
+        ['new.json', nextRaw],
+      ])
+
+    it('exits 0 with "No changes." for identical catalogs', async () => {
+      const box = memoryIo({ files: files() })
+      const code = await runCli(['diff', 'old.json', 'old.json'], box.io)
+      expect(code).toBe(0)
+      expect(box.stdout).toBe('No changes.\n')
+    })
+
+    it('exits 0 and lists safe changes', async () => {
+      const box = memoryIo({ files: files() })
+      const code = await runCli(['diff', 'old.json', 'added.json'], box.io)
+      expect(code).toBe(0)
+      expect(box.stdout).toBe(
+        'Safe changes (1):\n  planet/moon: procedure added\n',
+      )
+    })
+
+    it('exits 2 on breaking changes and prints both sections', async () => {
+      const box = memoryIo({ files: files() })
+      const code = await runCli(['diff', 'old.json', 'new.json'], box.io)
+      expect(code).toBe(2)
+      expect(box.stdout).toBe(
+        'Breaking changes (2):\n' +
+          '  planet/find /input/properties/system: input: required property "system" added\n' +
+          '  planet/list: procedure removed\n' +
+          'Safe changes (1):\n' +
+          '  planet/moon: procedure added\n',
+      )
+      expect(box.stderr).toBe('')
+    })
+
+    it('--json prints the CatalogDiff and keeps exit 2', async () => {
+      const box = memoryIo({ files: files() })
+      const code = await runCli(
+        ['diff', 'old.json', 'new.json', '--json'],
+        box.io,
+      )
+      expect(code).toBe(2)
+      expect(JSON.parse(box.stdout)).toEqual(diffCatalog(spec, nextSpec))
+    })
+
+    it('reads one side from stdin', async () => {
+      const box = memoryIo({ files: files(), stdin: nextRaw })
+      expect(await runCli(['diff', 'old.json', '-'], box.io)).toBe(2)
+    })
+
+    it('exits 1 on missing arguments or a non-catalog file', async () => {
+      const missing = memoryIo({ files: files() })
+      expect(await runCli(['diff', 'old.json'], missing.io)).toBe(1)
+      expect(missing.stderr).toMatch(/expected <previous\.json> <next\.json>/)
+
+      const bad = memoryIo({
+        files: new Map([
+          ['old.json', raw],
+          ['bad.json', '{"hello":1}'],
+        ]),
+      })
+      expect(await runCli(['diff', 'old.json', 'bad.json'], bad.io)).toBe(1)
+      expect(bad.stderr).toMatch(/bad\.json is not a catalog\(\) document/)
+    })
+
+    it('throws on unreadable files (the bin maps it to exit 1)', async () => {
+      const box = memoryIo({ files: files() })
+      await expect(
+        runCli(['diff', 'old.json', 'missing.json'], box.io),
+      ).rejects.toThrow(/ENOENT/)
+    })
+
+    it('the bin exits 2 on breaking changes and 1 on IO errors', async () => {
+      const dir = await mkdtemp(join(tmpdir(), 'ts-pf-codegen-diff-'))
+      const link = join(dir, 'ts-pf-codegen')
+      await symlink(distCli, link)
+      await writeFile(join(dir, 'old.json'), raw)
+      await writeFile(join(dir, 'new.json'), nextRaw)
+      await expect(
+        execFileAsync(process.execPath, [
+          link,
+          'diff',
+          join(dir, 'old.json'),
+          join(dir, 'new.json'),
+        ]),
+      ).rejects.toMatchObject({ code: 2 })
+      await expect(
+        execFileAsync(process.execPath, [
+          link,
+          'diff',
+          join(dir, 'old.json'),
+          join(dir, 'missing.json'),
+        ]),
+      ).rejects.toMatchObject({ code: 1 })
+    })
   })
 })
