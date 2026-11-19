@@ -1,6 +1,6 @@
 ---
 name: ts-pf-server
-description: "Use when implementing a ts-pf contract with createImplementer, middleware, runProcedure, createLocalClient, or server DedupePlugin / CallInterceptor. Triggers: @ts-pf/server, createImplementer, .use(), .useAfter(), createLocalClient, applyPlugins, validationError."
+description: "Use when implementing a ts-pf contract with createImplementer, middleware, runProcedure, createLocalClient, or server DedupePlugin / CallInterceptor. Triggers: @ts-pf/server, createImplementer, .use(), .useAfter(), createLocalClient, applyPlugins, validationError, mapStreamErrors."
 ---
 
 # @ts-pf/server
@@ -52,12 +52,71 @@ runProcedure(proc, input, context, { validation: { input: false } })
 
 Nest finished slice apps: `impl.router({ planet: planetApp, star: starApp })`. Each slice is `createImplementer(sliceContract).$context<AppCtx>().router({ ... })` with the same `AppCtx` (a slice that needs less than the root provides also nests; one that needs other keys does not). Root `.use(mw)` prepends onto nested procedures. Procedure `path` is the composed tree (`planet.find`). Pick an implemented procedure into a smaller server: `{ list: usersApp.list }`.
 
+### Keys middleware adds
+
+Middleware does not narrow context (yet). Declare added keys optional on `$context`, set them in one `.use()` middleware (or throw), and narrow with a checking helper, never a bare cast at call sites. Context factories omit the optional keys (no placeholders):
+
+```ts
+import { PFError } from '@ts-pf/protocol'
+import { createImplementer } from '@ts-pf/server'
+
+type AppCtx = { db: Db; req: Request; user?: User }
+const impl = createImplementer(contract).$context<AppCtx>()
+
+const requireUser = impl.middleware(async ({ context, next }) => {
+  const user = await auth(context.req)
+  if (!user) throw new PFError({ code: 'UNAUTHORIZED', status: 401 })
+  return next({ context: { user } }) // merges
+})
+
+function signedIn(context: AppCtx): AppCtx & { user: User } {
+  if (!context.user) throw new PFError({ code: 'UNAUTHORIZED', status: 401 })
+  return context as AppCtx & { user: User }
+}
+
+const create = impl.planet.create.use(requireUser).handler(async ({ input, context }) => {
+  const { db, user } = signedIn(context)
+  console.log(user.id)
+  return db.planets.create(input)
+})
+// context factory: (req) => ({ db, req })
+```
+
+### Mapping domain errors
+
+`try { await next() } catch` misses throws during stream iteration (the iterable is returned first). Use one mapping middleware, first in the chain; `mapStreamErrors(value, fn)` wraps an async iterable (a throw from `next()` becomes `fn(error)`; `return()` reaches the source, even before the first item) and returns anything else unchanged:
+
+```ts
+import { isPFError } from '@ts-pf/protocol'
+import { createImplementer, mapStreamErrors } from '@ts-pf/server'
+
+declare function toPFError(error: unknown): unknown // your domain mapping
+const mapError = (error: unknown) => (isPFError(error) ? error : toPFError(error))
+
+const impl = createImplementer(contract).$context<{ db: Db }>()
+const root = impl.use(async ({ next }) => {
+  try {
+    return mapStreamErrors(await next(), mapError)
+  } catch (error) {
+    throw mapError(error)
+  }
+})
+```
+
+`fn` returns the error to throw and sees every thrown value: return `PFError`s unchanged so input / stream-item `VALIDATION` and `errors.CODE()` throws survive. Mapped errors still get the declared-error `data` check (invalid → `INTERNAL`) because middleware runs inside the procedure. Not in a call interceptor: interceptors see errors after that check.
+
+### Middleware and handler rules
+
+- `next()` at most once per `.use()` / `.useAfter()` call. Execution state (`input`, `context`) is shared: a second call re-runs inner middleware on already-parsed input with the context inner middleware added, and concurrent calls race. Retries / hedging are a `CallInterceptor` (its `next()` may run more than once; each gets a fresh execution).
+- Handler `signal` is optional: `FetchHandler` and message handlers always pass one; `createLocalClient` without `{ signal }` and direct `runProcedure` may not. Guard: `signal?.throwIfAborted()` / `signal ?? AbortSignal.timeout(ms)`.
+
 ## API
 
 - `createImplementer`, `createLocalClient`, `runProcedure`, `lookupProcedure`, `ProcedureValidation`
 - `validationError(issues)` — the `VALIDATION` `PFError` the input check throws (`Validation failed`, `data: { issues }`), for handlers that validate themselves
 - `ImplementedRouter<T, TCtx>`, `ImplementedProcedure<TContract, TCtx>`, `RouterImpl<T, TCtx>`
 - `applyPlugins`, `CallPlugin`, `CallInterceptor`, `DedupePlugin`
+- `mapStreamErrors`
 - `onStart` / `onSuccess` / `onError` / `onFinish`
 
 ## Pair with
@@ -73,3 +132,6 @@ Nest finished slice apps: `impl.router({ planet: planetApp, star: starApp })`. E
 - Attach interceptors or `validation` on `createImplementer` — they attach per caller (`createLocalClient` / handler `{ interceptors, validation }`).
 - Default `DedupePlugin` on non-idempotent writes.
 - `mergeRouters` — nest `impl.router({ planet: planetApp })`.
+- Call middleware `next()` twice (retry in a `CallInterceptor`).
+- Map domain errors only in `catch` around `await next()` (misses mid-stream throws) or in a call interceptor (skips the declared `data` check).
+- Cast `context as AppCtx & { user: User }` at call sites — narrow with a checking helper.

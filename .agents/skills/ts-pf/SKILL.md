@@ -67,6 +67,7 @@ packages/server/src/
   runtime.ts          runProcedure (output-schema INTERNAL carries the issues as `cause`), lookupProcedure (Object.hasOwn per segment), HandlerFn.signal, RunProcedureOptions.interceptors, ProcedureValidation; ImplementedProcedure<TContract, TCtx> / ImplementedRouter<T, TCtx> phantom brands (ContractShape = contract InferContractProcedure minus meta, RouterImpl, MissingProcedures / UnexpectedKeys / PresentProcedures → RouterImplCheck; IsContractProcedure is contract's)
   caller.ts           createLocalClient (context typed from the router brand via NoInfer; optional interceptors/plugins/validation; run options built once per client, only `signal` added per call)
   middleware.ts       MiddlewareFn, ErrorFactory (handler typed; middleware loose)
+  map-stream-errors.ts mapStreamErrors(value, fn) — hand-written AsyncIterable wrapper (not an async generator: return() before the first next() must reach the source; forwarded once); a throw from next() becomes fn(error); non-iterables returned as is
   call-interceptor.ts CallInterceptor (`runCallInterceptors` not exported)
   plugin.ts           CallPlugin, applyPlugins
   events.ts           onStart / onSuccess / onError / onFinish
@@ -108,7 +109,8 @@ packages/sse/src/
   codec.ts            SSE output wrap of StreamCodec (event: error via toWireError → PFError without status; local isItemStream; inner is an EnvelopeTextCodec; mimeType / jsonBodySource from http)
 packages/docs/src/
   index.ts            catalog, docs, getDocs, walkContract, toJsonSchema, registerJsonSchemaConverter
-  catalog.ts          catalog(); protocolErrors derived from ProtocolErrorCode + PROTOCOL_HTTP_STATUS (no local table)
+  docs.ts             docs() overloads: docs(description) ≡ docs({ description }); the object form's const generics keep tags / hidden literal (mcp type filters); getDocs
+  catalog.ts          catalog(); protocolErrors derived from ProtocolErrorCode + PROTOCOL_HTTP_STATUS (no local table); requireDescription (after filter; description or summary, non-blank; one Error listing every key)
 packages/openapi/src/
   index.ts            openapi, OpenAPIOptions, OpenAPIDocument
 packages/codegen/src/
@@ -278,12 +280,12 @@ Compose is nested objects. `router({ planet: planetContract })` nests slice cont
 
 ## Call pipeline
 
-0. `HandlerPlugin.onRequest` — optional `Request` wrap or `Response` short-circuit (CORS preflight). A wrap builds `new Request(request.url, { method, headers, signal, body, duplex: 'half' })`, never `new Request(request, init)` (userland bridges such as srvx pass Request-shaped objects undici cannot clone); every later step sees the wrapped request. Prefix miss skips plugins.
+0. `HandlerPlugin.onRequest` — optional `Request` wrap or `Response` short-circuit (CORS preflight). A wrap builds `new Request(request.url, { method, headers, signal, body, duplex: 'half' })`, never `new Request(request, init)` (userland bridges such as srvx pass Request-shaped objects undici cannot clone); every later step sees the wrapped request. A throw (e.g. a `PFError` `NOT_FOUND` for a path not served over HTTP) takes step 6 like any protocol error — there is no `filter` option. Prefix miss skips plugins.
 1. Method check, then protocol version, then lookup procedure. Non-POST → `METHOD_NOT_ALLOWED` (Fetch; no call interceptors). Request `x-ts-pf-protocol` present and not `PROTOCOL_VERSION` (trimmed) → `BAD_REQUEST` `Unsupported protocol version`, the message handshake's string (Fetch; no call interceptors; absent is accepted). Miss → `NOT_FOUND` (no call interceptors). All three answer before the body is read.
 2. Decode body (`RpcCodec`; JSONCodec is JSON, MultipartCodec may be multipart, StreamCodec may be JSONL, SseCodec may be JSONL input / SSE output). Runs only for a known procedure.
 3. Context factory, then `HandlerPlugin.onContext` — replace context (header bags)
 4. CallInterceptor onion around `runProcedure` (`FetchHandler({ interceptors, validation })`, `HandlerOptions.interceptors` / `HandlerOptions.validation`, `createLocalClient` `{ interceptors, plugins, validation }`). `[0]` outermost. `next()` may be called more than once, concurrently; `runProcedure` gives each `next()` its own `Execution` state object (built by its `execute(state)` thunk; the steps below are module-level functions over that object, not closures), so each run owns its `input` / `context` / `signal` (do not hoist them back to `runProcedure` scope or into shared closure variables). Inside `next()`:
-   - `.use()` middleware — `input` is unvalidated
+   - `.use()` middleware — `input` is unvalidated. `next()` is single-call (shared execution `input` / `ctx`; documented, not guarded); `next()` returns the raw handler output, before `wrapIfAsyncIterable`, so `mapStreamErrors` in the first `.use()` maps mid-stream throws and the result is still finalized
    - Input schema when `validation.input !== false` (default on; `VALIDATION` on fail). Stream input items follow this flag
    - `.useAfter()` middleware — typed `input` when the input check ran; raw value when it was skipped
    - Handler

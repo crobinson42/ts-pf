@@ -75,6 +75,8 @@ Middleware wraps the handler inside one procedure, on the implementer (`impl.use
 
 Inside middleware, `next({ context })` **merges** into the current context (`{ ...ctx, ...added }`). `next({ input })` replaces the input. The `errors` factory on middleware is the loose one (`errors.ANY_CODE(data?)`), because middleware is not tied to one procedure's declared map; the handler's `errors` is typed from the map.
 
+Call `next()` at most once per middleware call. The chain keeps one input and one context per execution, so a second `next()` re-runs inner middleware on input the first run already parsed, with context inner middleware already added, and concurrent calls race. Retries and hedging belong in a server call interceptor, whose `next()` may be called more than once (each call gets a fresh execution).
+
 ```ts
 import { createImplementer } from '@ts-pf/server'
 import { PFError } from '@ts-pf/protocol'
