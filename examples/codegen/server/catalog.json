@@ -42,9 +42,13 @@
                   "path": {
                     "type": "array",
                     "items": {
-                      "type": [
-                        "string",
-                        "number"
+                      "oneOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "number"
+                        }
                       ]
                     }
                   }

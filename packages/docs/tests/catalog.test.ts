@@ -98,6 +98,22 @@ describe('catalog', () => {
           },
         },
       })
+      const issue = (
+        validation.data.jsonSchema as {
+          properties: {
+            issues: {
+              items: {
+                properties: { path: { items: Record<string, unknown> } }
+              }
+            }
+          }
+        }
+      ).properties.issues.items
+      // oneOf, not a `type` array: some OpenAPI tooling and code generators
+      // only read single-type schemas.
+      expect(issue.properties.path.items).toEqual({
+        oneOf: [{ type: 'string' }, { type: 'number' }],
+      })
     }
     for (const err of result.protocolErrors) {
       if (err.code !== 'VALIDATION') {

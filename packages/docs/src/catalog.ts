@@ -40,7 +40,7 @@ const VALIDATION_DATA_SCHEMA: JsonSchema = {
           message: { type: 'string' },
           path: {
             type: 'array',
-            items: { type: ['string', 'number'] },
+            items: { oneOf: [{ type: 'string' }, { type: 'number' }] },
           },
         },
       },

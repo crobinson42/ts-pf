@@ -2,11 +2,15 @@
 // contract: the smoke test writes both when UPDATE=1. This wrapper sets the
 // variable in-process so `npm run generate` works on every shell.
 import { spawnSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const exampleRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
-const vitest = fileURLToPath(import.meta.resolve('vitest/vitest.mjs'))
+// The CLI is the package's `bin`; its file is not an `exports` subpath.
+const vitestPackage = fileURLToPath(import.meta.resolve('vitest/package.json'))
+const { bin } = JSON.parse(readFileSync(vitestPackage, 'utf8'))
+const vitest = join(dirname(vitestPackage), bin.vitest)
 
 const result = spawnSync(
   process.execPath,
