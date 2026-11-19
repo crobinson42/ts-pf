@@ -84,7 +84,7 @@ export class FetchLink implements Link {
         this.fetchFn(req),
       )
     } catch (error) {
-      if (error instanceof PFError) {
+      if (isPFError(error)) {
         throw error
       }
       if (isAbortFailure(error, signal)) {

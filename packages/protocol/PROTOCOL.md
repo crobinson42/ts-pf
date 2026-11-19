@@ -681,7 +681,7 @@ Each file carries `"protocol": 1` and the `"revision"` of this document it was w
 
 ## Appendix: TypeScript reference client
 
-Non-normative. These are the conventions of the TypeScript packages (`@ts-pf/client`, `@ts-pf/client-http`, `@ts-pf/message-client`, and the servers they talk to). They are not protocol fields, they are **not** on the wire, and other clients need not copy them. `PFError`, `instanceof`, and `asResult` are JavaScript conveniences; any HTTP client parses the envelope.
+Non-normative. These are the conventions of the TypeScript packages (`@ts-pf/client`, `@ts-pf/client-http`, `@ts-pf/message-client`, and the servers they talk to). They are not protocol fields, they are **not** on the wire, and other clients need not copy them. `PFError`, `isPFError`, and `asResult` are JavaScript conveniences; any HTTP client parses the envelope.
 
 ### Constants
 

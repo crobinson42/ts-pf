@@ -18,7 +18,7 @@ import { createPortDuplex, createWsDuplex, type WebSocketLike } from '@ts-pf/mes
 import { createStdioDuplex } from '@ts-pf/message/stdio'
 ```
 
-Bindings live in `@ts-pf/message-server` / `@ts-pf/message-client`. Inject a `WebSocket` constructor — do not depend on the `ws` npm package. User owns listen / upgrade / spawn / Worker bootstrap.
+Bindings live in `@ts-pf/message-server` / `@ts-pf/message-client`. These packages do not depend on `ws`: inject a `WebSocket` constructor or socket (npm `ws` 8.x, installed by the app, fits with no cast). User owns listen / upgrade / spawn / Worker bootstrap.
 
 `MessageSession` server role: a throwing `onHello(meta)` sends `hello-error` with `toWireError(thrown)` — a `PFError` keeps its `code` / `message` / `data` (refuse with `UNAUTHORIZED`), any other throw is the fixed `INTERNAL` / `Internal server error`. `WebSocketLike.close(code?, reason?)` fits browser `WebSocket` and npm `ws`; `createWsDuplex` closes with `1000` (or `1002` on a binary message).
 
@@ -50,7 +50,7 @@ Backpressure is the pipe's job, not the wire's. A `Duplex.send` may return a pro
 ## Don't
 
 - Use this as an HTTP `RpcCodec`.
-- Depend on the `ws` npm package — inject a `WebSocket` constructor.
+- Expect `@ts-pf/message*` to bring `ws` — the app installs it and injects the constructor or socket.
 - Reconstruct HTTP status from `error.code` on this pipe.
 - Share one `PushQueue` between two `for await` loops — it holds one pending pull.
 - Return a `send` promise that never settles — it must resolve on close, or a stream hangs until `drainTimeout`.

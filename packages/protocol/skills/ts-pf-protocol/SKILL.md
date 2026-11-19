@@ -23,6 +23,8 @@ new PFError({ code: 'TEAPOT' }).status // undefined — no default
 // localFailure('Request aborted') → INTERNAL, local: true, status: 0 (not on the wire)
 ```
 
+Detect failures with `isPFError(error)`, not `instanceof PFError`: it also matches a `PFError` from another installed copy of this package (version skew, a bundler that inlined one).
+
 Envelope: `{ input }`, `{ ok: true, output }`, `{ ok: false, error: { code, message, data? } }`. Discriminator is JSON `error.code`.
 
 `PFError.status?: number` is transport metadata, not identity. It is the HTTP response status on a unary Fetch failure, `undefined` on message transports and after a stream has started, and `0` on local failures. Guard it (`err.status ?? 400`); switch on `code`. The HTTP default (400 for a code with no status) is applied by `httpStatus()` in `@ts-pf/http`, not by the constructor.
@@ -46,5 +48,6 @@ Writing a codec or transport adapter: `toWireError(error)` is the failure envelo
 ## Don't
 
 - `JSONCodec`, `RpcCodec`, `PROTOCOL_HEADER`, or `FetchHandler` here.
+- `instanceof PFError` to detect a failure (misses a second copy of the package); use `isPFError`.
 - Put `status`, `cause`, or `local` in the JSON envelope (`toJSON` omits them).
 - Redeclare `VALIDATION`, `INTERNAL`, `BAD_REQUEST`, `METHOD_NOT_ALLOWED`, `PAYLOAD_TOO_LARGE` on `.errors()`.

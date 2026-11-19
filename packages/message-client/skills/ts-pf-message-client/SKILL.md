@@ -24,6 +24,8 @@ const client = createClient<typeof contract>(new PortLink({ port }), {
 new WsLink({ url: 'wss://example.com/rpc', WebSocket }) // or { socket }
 ```
 
+`WebSocket` defaults to `globalThis.WebSocket`; the npm `ws` 8.x class (`import { WebSocket } from 'ws'`, an app dependency) and its sockets fit with no cast.
+
 ```ts
 import { spawn } from 'node:child_process'
 import { StdioLink } from '@ts-pf/message-client/stdio'
@@ -75,7 +77,7 @@ Slow servers are handled by default (`LinkOptions.backpressure`, the same `{ hig
 
 ## Don't
 
-- Depend on the `ws` npm package — inject a `WebSocket` constructor.
+- Expect this package to bring `ws`: it has no `ws` dependency. On Node, the app installs `ws` and passes its `WebSocket` class (or an open socket).
 - Reconstruct HTTP status from `error.code`.
 - Copy the multiplexer for a new pipe — write a `Duplex` and use `DuplexLink`.
 - Retry a `Peer did not drain` failure blindly — the server stopped reading; fix the consumer or raise `drainTimeout`.

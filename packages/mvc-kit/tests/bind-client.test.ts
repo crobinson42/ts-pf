@@ -175,6 +175,36 @@ describe('bindClient error status for mvc-kit', () => {
     expect('status' in nodeError).toBe(false)
   })
 
+  it('recognises a PFError from another copy of @ts-pf/protocol', async () => {
+    vi.resetModules()
+    const copy = await import('@ts-pf/protocol')
+    expect(copy.PFError).not.toBe(PFError)
+    const original = new copy.PFError({ code: 'TEAPOT' })
+    const client = { brew: vi.fn(async () => Promise.reject(original)) }
+    const error = (await thrownBy(client, (rpc: { brew: () => unknown }) =>
+      rpc.brew(),
+    )) as PFError
+    expect(error).not.toBe(original)
+    expect(error.status).toBe(400)
+    expect(error.code).toBe('TEAPOT')
+  })
+
+  it('recognises any value carrying the PFError brand', async () => {
+    const original = {
+      [Symbol.for('ts-pf.PFError')]: true,
+      code: 'TEAPOT',
+      message: 'short and stout',
+    }
+    const client = { brew: vi.fn(async () => Promise.reject(original)) }
+    const error = (await thrownBy(client, (rpc: { brew: () => unknown }) =>
+      rpc.brew(),
+    )) as typeof original & { status?: number }
+    expect(error).not.toBe(original)
+    expect(error.status).toBe(400)
+    expect(error.code).toBe('TEAPOT')
+    expect('status' in original).toBe(false)
+  })
+
   it('maps a mid-stream PFError thrown by an async iterable output', async () => {
     const original = new PFError({ code: 'LIMIT', message: 'slow down' })
     async function* tokens() {

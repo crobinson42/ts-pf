@@ -13,6 +13,8 @@ const client = createClient<typeof contract>(new PortLink({ port }), {
 })
 ```
 
+`WsLink` takes `{ url, WebSocket? }` (default `globalThis.WebSocket`) or an open `{ socket }`. The npm `ws` 8.x `WebSocket` class and its sockets fit with no cast; this package does not depend on `ws`.
+
 Stdio is a subpath, not on the main index:
 
 ```ts

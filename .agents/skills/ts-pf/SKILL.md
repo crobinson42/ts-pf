@@ -35,6 +35,7 @@ skills/README.md                         consumer skill index (not published)
 packages/*/skills/ts-pf-<pkg>/SKILL.md   consumer usage (hub catalog ts-pf-app on contract)
 packages/{contract,server,client}/tests/*.test-d.ts   type tests (expectTypeOf + @ts-expect-error); Vitest typecheck + tsc --noEmit
 packages/{server-http,message-server,astro}/tests/*.test-d.ts   context-inference type tests; tsc --noEmit only (no Vitest typecheck there)
+packages/{message-server,message-client}/tests/ws*.test-d.ts   npm `ws` 8 sockets / client class fit WebSocketLike / WsLink with no cast (@types/ws devDependency, type fixture only); tsc --noEmit only
 packages/mcp/tests/toolkit.test-d.ts     toolkit / all() inject / tags / hidden / names / coverage / binding type tests; tsc --noEmit only
 packages/mcp/bench/gen.mjs               400-procedure type-cost fixture (`npm run bench:types -w @ts-pf/mcp`; manual, not in verify)
 packages/contract/src/
@@ -47,7 +48,7 @@ packages/contract/src/
   errors.ts           ErrorDef, ErrorMap, InferErrorData
   infer.ts            InferContractProcedure / IsContractProcedure (the one builder-or-ContractProcedure match; `[X] extends [never]`, never `X extends never`), InferContract*, InferContractErrors, ClientError, ContractClient, ContractResultPromise, CallOptions, ContractProtocolErrorCode (hand-written duplicate of the protocol set; no protocol import)
 packages/protocol/src/
-  error.ts            PFError (status? with no default; cause?; local?; toJSON omits status/cause/local), localFailure (status 0 + local), ProtocolErrorCode (closed set; source of truth)
+  error.ts            PFError (status? with no default; cause?; local?; toJSON omits status/cause/local; non-enumerable Symbol.for('ts-pf.PFError') brand on the prototype, never per instance), isPFError (instanceof, then the brand — holds across two copies of protocol; never raw instanceof PFError elsewhere), localFailure (status 0 + local), ProtocolErrorCode (closed set; source of truth)
   envelope.ts         RpcRequest/Response, PROTOCOL_MAJOR (1 as const) → PROTOCOL_VERSION ('1'), PFResultPromise
   wire-error.ts       toWireError (PFError → toJSON; unknown throw → fixed INTERNAL "Internal server error", no leak) — the only copy of that mapping
   is-async-iterable.ts isAsyncIterable (object or function with a Symbol.asyncIterator function; ReadableStream is NOT excluded — wire sites compose a local isItemStream)
@@ -130,7 +131,7 @@ packages/message/src/
   error.ts            errorFromEnvelope (no HTTP status table; status stays undefined); `localFailure` is a @deprecated re-export (import from protocol)
   push-queue.ts       createPushQueue(options?) / PushQueue — push(value, size = 1), one pending next(), one-shot end() / fail(error); bounded: onPause once buffered > highWaterMark, onResume once <= half or on end / fail; never drops (message-server input queues, message-client output queues; no local copies)
   port.ts             createPortDuplex — send is always sync, no pause / resume (a MessagePort has no buffer signal and cannot stop receiving); documented limitation
-  ws.ts               createWsDuplex(socket, { highWaterMark? }) — WebSocketLike gains optional bufferedAmount / pause / resume; drain promise while bufferedAmount > mark (10 ms poll, cleared on close) or while the CONNECTING queue > mark (resolved by the open flush); pause / resume forwarded only when the socket has them
+  ws.ts               createWsDuplex(socket, { highWaterMark? }) — WebSocketLike gains optional bufferedAmount / pause / resume; listener event `{ type?, data? }` (`type` keeps the parameter from being a weak type so npm `ws` 8 sockets fit; guarded by `ws*.test-d.ts`, do not drop it); drain promise while bufferedAmount > mark (10 ms poll, cleared on close) or while the CONNECTING queue > mark (resolved by the open flush); pause / resume forwarded only when the socket has them
   stdio.ts            createStdioDuplex — ./stdio only; send returns a promise when output.write() is refused (resolved on 'drain' or close); pause / resume = input.pause() / input.resume()
 packages/message-server/src/
   index.ts            DuplexHandler, PortHandler, WsHandler, HandlerOptions, type BackpressureOptions / StallInfo (re-exported from message), type WebSocketLike (no stdio; not attachRouter, not the duplex adapters)
@@ -359,7 +360,7 @@ New **published** packages: `version` `0.0.0`, `license: "MIT"`, a `LICENSE` cop
 - Folding SSE or WebSocket into `@ts-pf/server-http`
 - Putting `FetchHandler` in `@ts-pf/server` or `FetchLink` in `@ts-pf/client`
 - Putting `JSONCodec` / `RpcCodec` / `PROTOCOL_HEADER` in `@ts-pf/protocol`
-- Depending on the `ws` npm package
+- Depending on the `ws` npm package (an `@types/ws` devDependency as a `*.test-d.ts` type fixture is fine; no runtime import)
 - Awaiting `runProcedure` inside `MessageSession`; context factory on `onFrame`
 - Credit / ack frames for message backpressure (v2); a second backpressure option bag; awaiting a synchronous `send` (no `drained`) in the unary or `onHello` path; a `Duplex.send` promise that does not settle on close; reporting a drain timeout through `onError` or a new error code; dropping frames in a receive queue
 - Reconstructing HTTP status from `error.code` on message transports

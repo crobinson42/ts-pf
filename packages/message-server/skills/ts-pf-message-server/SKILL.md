@@ -54,6 +54,31 @@ const bound = new DuplexHandler(app).bind(duplex, { context: { db } })
 bound.close() // closes the session and the duplex
 ```
 
+WebSocket on Node: you own the HTTP server and the upgrade (no published upgrade helper). With npm `ws` 8.x (an app dependency), sockets fit `WebSocketLike` with no cast:
+
+```ts
+import { createServer } from 'node:http'
+import { WsHandler } from '@ts-pf/message-server'
+import { WebSocketServer } from 'ws'
+
+const wsHandler = new WsHandler(app)
+const wss = new WebSocketServer({ noServer: true })
+const server = createServer() // your HTTP app; plain requests are not this package's job
+
+server.on('upgrade', (req, socket, head) => {
+  if (req.url !== '/rpc-ws') {
+    socket.destroy()
+    return
+  }
+  wss.handleUpgrade(req, socket, head, (ws) => {
+    wsHandler.bind(ws, { context: { db } })
+  })
+})
+server.listen(3000)
+```
+
+Same under srvx or any server that exposes Node's `upgrade` event.
+
 Call interceptors are `HandlerOptions.interceptors` from `@ts-pf/server`. `HandlerOptions.validation` is the same `ProcedureValidation` for every handler: input checks default on, output and stream output items run only with `{ validation: { output: true } }`. Set it on the constructor, not on `bind()`. Pass `context` (value or `(info) => ctx`) on `bind()`, not per frame; `DuplexHandler`'s factory sees `{ meta }` only, the others add their `port` / `socket` / streams. `new PortHandler(app)` / `WsHandler` / `StdioHandler` / `DuplexHandler` infer the context type from `app` (the `$context<C>()` behind `impl.router()`), so `bind(..., { context })` is checked against it; an explicit `new PortHandler<AppCtx>(app)` still works when `AppCtx` satisfies it. A tree not produced by `impl.router()` infers `unknown`; use `impl.router()` to keep the check.
 
 Authenticate in the context factory: it runs once per connection on `hello`. Read the credential from hello `meta.authorization` (same value as an HTTP `Authorization` header). Throw a `PFError` to refuse — the client gets it as the `hello-error`, every call rejects with that `code`, and `onError` is not called (only non-`PFError` throws reach it, and those still send the fixed `INTERNAL`). `WsHandler.bind()`'s handle takes `close(code?, reason?)` (default `1000`); use 4400–4499 for app reasons (`4401` / `4403` / `4429`), never 4900–4999. Port / stdio / duplex handles take `close()`.

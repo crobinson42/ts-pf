@@ -64,6 +64,7 @@
     "@ts-pf/server": "0.4.4",
     "@ts-pf/stream": "0.2.4",
     "@types/node": "^22.15.0",
+    "@types/ws": "^8.18.2",
     "typebox": "^1.4.6",
     "zod": "^4.0.0"
   }
