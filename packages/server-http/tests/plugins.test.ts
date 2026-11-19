@@ -1,4 +1,5 @@
 import { procedure, router } from '@ts-pf/contract'
+import { PFError } from '@ts-pf/protocol'
 import { createImplementer } from '@ts-pf/server'
 import { FetchHandler, type HandlerPlugin } from '@ts-pf/server-http'
 import { describe, expect, it } from 'vitest'
@@ -200,6 +201,41 @@ describe('HandlerPlugin lifecycle', () => {
       ok: true,
       output: 'from-plugin',
     })
+  })
+
+  it('a PFError thrown from onRequest answers like a protocol error', async () => {
+    const seen: string[] = []
+    const plugin: HandlerPlugin = {
+      name: 'not-over-http',
+      onRequest({ request }) {
+        if (new URL(request.url).pathname === '/rpc/planet/find') {
+          throw new PFError({
+            code: 'NOT_FOUND',
+            message: 'Procedure not found',
+          })
+        }
+        return undefined
+      },
+      onError({ error }) {
+        seen.push(`error:${(error as PFError).code}`)
+      },
+      onResponse({ response }) {
+        seen.push(`res:${response.status}`)
+        return undefined
+      },
+    }
+    const handler = new FetchHandler(app, { plugins: [plugin] })
+    const result = await handler.handle(rpc(), { prefix: '/rpc', context: {} })
+    if (!result.matched) {
+      throw new Error('expected match')
+    }
+    expect(result.response.status).toBe(404)
+    expect(result.response.headers.get('x-ts-pf-protocol')).toBe('1')
+    expect(await result.response.json()).toEqual({
+      ok: false,
+      error: { code: 'NOT_FOUND', message: 'Procedure not found' },
+    })
+    expect(seen).toEqual(['error:NOT_FOUND', 'res:404'])
   })
 
   it('does not run plugins when the prefix does not match', async () => {

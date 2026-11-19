@@ -16,13 +16,20 @@ type TypedDocs<Tags extends string[], Hidden extends boolean> = Omit<
   ([Tags] extends [never] ? {} : { tags: Tags }) &
   ([Hidden] extends [never] ? {} : { hidden: Hidden })
 
+/** `docs('…')` is `docs({ description: '…' })`. */
+export function docs(description: string): {
+  [DOCS_KEY]: TypedDocs<never, never>
+}
 export function docs<
   const Tags extends string[] = never,
   const Hidden extends boolean = never,
 >(
   value: Omit<DocsMeta, 'tags' | 'hidden'> & { tags?: Tags; hidden?: Hidden },
-): { [DOCS_KEY]: TypedDocs<Tags, Hidden> } {
-  return { [DOCS_KEY]: value as TypedDocs<Tags, Hidden> }
+): { [DOCS_KEY]: TypedDocs<Tags, Hidden> }
+export function docs(value: string | DocsMeta): { [DOCS_KEY]: DocsMeta } {
+  return {
+    [DOCS_KEY]: typeof value === 'string' ? { description: value } : value,
+  }
 }
 
 export function getDocs(meta: Record<string, unknown>): DocsMeta | undefined {

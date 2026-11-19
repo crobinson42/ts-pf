@@ -5,7 +5,13 @@ function isStandardSchema(schema: unknown): schema is StandardSchemaV1 {
   return typeof schema === 'object' && schema !== null && '~standard' in schema
 }
 
-function toIssues(
+/**
+ * Standard Schema issues → the `ValidationIssue[]` that `validateSchema` and a
+ * `VALIDATION` error's `data.issues` carry: each path segment becomes its key
+ * (`{ key }` objects unwrapped), numbers stay numbers, other keys are strings.
+ * For handlers that validate themselves (e.g. under `validation.input: false`).
+ */
+export function toValidationIssues(
   issues: ReadonlyArray<StandardSchemaV1.Issue>,
 ): ValidationIssue[] {
   return issues.map((issue) => ({
@@ -28,7 +34,7 @@ export const standardSchemaAdapter: SchemaAdapter = {
       value,
     )
     if (result.issues) {
-      return { success: false, issues: toIssues(result.issues) }
+      return { success: false, issues: toValidationIssues(result.issues) }
     }
     return { success: true, value: result.value }
   },

@@ -56,6 +56,7 @@ Prose for humans, between this README and the wire spec. Index: [`docs/README.md
 - [Tutorial](docs/tutorial.md): install, contract, implementer, `FetchHandler`, `createClient`.
 - [Concepts](docs/concepts.md): contract vs implementer vs app, context, middleware, links, codecs, the three interceptor kinds, validation defaults.
 - [Errors](docs/errors.md): `PFError`, declared errors, the protocol code set and its JSON, `asResult`, `status` per transport, `onError`.
+- [Evolving a contract](docs/evolution.md): safe vs breaking contract changes, old clients and new codes, deprecation, error maps, catalog diffs in CI.
 - [Testing](docs/testing.md): in-process tests through a `fetch` stub or `createLocalClient`; declared errors, middleware, streams.
 - [Coming from tRPC / oRPC](docs/coming-from-trpc-orpc.md): name mapping and what is different.
 

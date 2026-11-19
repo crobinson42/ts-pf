@@ -41,6 +41,7 @@ const PACKAGE_ORDER = [
 const GUIDE_ORDER = [
   'concepts.md',
   'errors.md',
+  'evolution.md',
   'testing.md',
   'coming-from-trpc-orpc.md',
 ]
@@ -240,7 +241,7 @@ function guidesIndex(listed) {
   return `${frontmatter({
     title: 'Guides',
     description:
-      'Concepts, errors, testing, and migration. Copied from docs/*.md.',
+      'Concepts, errors, contract evolution, testing, and migration. Copied from docs/*.md.',
     label: 'Overview',
     order: 0,
   })}<!-- Generated from docs/*.md. Do not edit. -->

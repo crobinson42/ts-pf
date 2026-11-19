@@ -151,6 +151,8 @@ Browser UI code (client modules, islands) must not import a server-side or Node-
 
 ESLint: `no-restricted-imports` with the same names under `paths`. List exact names, not `patterns` globs: `@ts-pf/mcp/meta` (imported by contract files), `@ts-pf/astro`, and `@ts-pf/astro/client` stay allowed.
 
+Changing a contract clients already use (safe vs breaking changes, catch-all branches for new codes and enum values, `docs({ deprecated: true })`, shared vs per-procedure error maps, catalog diffs in CI): [Evolving a contract](https://github.com/crobinson42/ts-pf/blob/main/docs/evolution.md).
+
 ## Capabilities
 
 | I want | Install | Then load |
@@ -244,7 +246,7 @@ import { openapi } from '@ts-pf/openapi'
 import { emit, catalogHash } from '@ts-pf/codegen'
 import { writeFileSync } from 'node:fs'
 
-procedure.meta(docs({ description: 'Find a planet by id' }))
+procedure.meta(docs('Find a planet by id')) // or docs({ description?, summary?, tags?, deprecated?, hidden? })
 const spec = catalog(contract, { prefix: '/rpc' })
 openapi(spec, { info: { title: 'Planet API', version: '1.0.0' } })
 writeFileSync('contract.d.ts', emit(spec))

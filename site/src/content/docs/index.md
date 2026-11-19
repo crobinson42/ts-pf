@@ -11,7 +11,7 @@ Requires Node.js 22+.
 
 - [Getting started](/ts-pf/getting-started/) — install, the happy path, and serving `FetchHandler`. This page is the root README.
 - [Tutorial](/ts-pf/tutorial/) — build a small planet API, step by step.
-- [Guides](/ts-pf/guides/) — concepts, errors, testing, and coming from tRPC / oRPC.
+- [Guides](/ts-pf/guides/) — concepts, errors, contract evolution, testing, and coming from tRPC / oRPC.
 - [Packages](/ts-pf/packages/) — every published `@ts-pf/*` README.
 - [Protocol](/ts-pf/protocol/) — the wire spec.
 

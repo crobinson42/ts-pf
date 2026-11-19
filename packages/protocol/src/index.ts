@@ -16,4 +16,5 @@ export {
   ProtocolErrorCode,
 } from './error.js'
 export { isAsyncIterable } from './is-async-iterable.js'
+export { isUnexpectedError } from './is-unexpected-error.js'
 export { toWireError } from './wire-error.js'

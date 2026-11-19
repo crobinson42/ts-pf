@@ -7,6 +7,7 @@ export {
   type Implementer,
   type ProcedureBuilder,
 } from './implement.js'
+export { mapStreamErrors } from './map-stream-errors.js'
 export type { ErrorFactory, MiddlewareFn, NextFn } from './middleware.js'
 export { applyPlugins, type CallPlugin } from './plugin.js'
 export {
@@ -19,3 +20,4 @@ export {
   type RunProcedureOptions,
   runProcedure,
 } from './runtime.js'
+export { validationError } from './validation-error.js'

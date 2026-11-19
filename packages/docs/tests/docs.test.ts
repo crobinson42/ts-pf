@@ -53,4 +53,20 @@ describe('docs()', () => {
     // @ts-expect-error unknown keys are still rejected
     docs({ descripton: 'typo' })
   })
+
+  it('takes a description string as shorthand', () => {
+    expect(docs('Find a planet by id')).toEqual(
+      docs({ description: 'Find a planet by id' }),
+    )
+    const fragment = docs('x')
+    expectTypeOf(fragment).toEqualTypeOf(docs({ description: 'x' }))
+    expectTypeOf(fragment.docs).not.toHaveProperty('tags')
+    expectTypeOf(fragment.docs).not.toHaveProperty('hidden')
+    const proc = procedure.meta(docs('Find a planet by id'))
+    expect(getDocs(proc['~pf'].meta)).toEqual({
+      description: 'Find a planet by id',
+    })
+    // @ts-expect-error a non-string, non-object value is rejected
+    docs(1)
+  })
 })

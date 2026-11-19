@@ -48,14 +48,17 @@ A custom `HandlerPlugin` that returns a new request builds it with `new Request(
 
 Unknown throws become `500 INTERNAL` with no stack on the wire. By default `FetchHandler` logs them with `console.error` (the original thrown value, tagged `[ts-pf/server-http]` with the procedure path). It also logs `INTERNAL` `PFError`s — an output schema failure under `validation.output`, invalid declared error `data`, or an explicit `INTERNAL` throw — naming those causes. Declared errors and every other protocol code (`VALIDATION`, `NOT_FOUND`, `BAD_REQUEST`, `METHOD_NOT_ALLOWED`, `PAYLOAD_TOO_LARGE`) are expected and are not logged.
 
-Pass `onError` to route errors to your own logger. It receives the original error (before `INTERNAL` mapping) for every error response, runs after each `HandlerPlugin.onError`, cannot replace the response (a throw from it rejects `handle()`), and turns the default logging off:
+Pass `onError` to route errors to your own logger. It receives the original error (before `INTERNAL` mapping) for every error response, runs after each `HandlerPlugin.onError`, cannot replace the response (a throw from it rejects `handle()`), and turns the default logging off. To keep the default filter (unknown throws and `INTERNAL` only), use `isUnexpectedError` from `@ts-pf/protocol`:
 
 ```ts
+import { isUnexpectedError } from '@ts-pf/protocol'
 import { FetchHandler } from '@ts-pf/server-http'
 
 new FetchHandler(app, {
-  onError(error, { request, path, context }) {
-    logger.error({ err: error, path: path.join('/'), url: request.url })
+  onError(error, { request, path }) {
+    if (isUnexpectedError(error)) {
+      logger.error({ err: error, path: path.join('/'), url: request.url })
+    }
   },
 })
 ```
@@ -63,6 +66,23 @@ new FetchHandler(app, {
 Errors thrown after a streamed response has started (`StreamCodec` / `SseCodec` output) are written in-band by the codec as `INTERNAL` items; they do not reach `onError` or the default log.
 
 `FetchHandler` checks the method, then the protocol version, then looks the procedure up, all before it reads the body. A non-POST is `405 METHOD_NOT_ALLOWED`. A request whose `x-ts-pf-protocol` header is present and not `1` (surrounding whitespace ignored) is `400 BAD_REQUEST` `Unsupported protocol version`; a missing header is accepted, so curl and non-ts-pf clients work as before. An unknown path under the prefix is `404 NOT_FOUND`. A procedure whose contract input or output is `stream()` on a codec that declares `streams: false` (the default `JSONCodec`, `MultipartCodec`) is `400 BAD_REQUEST` `Stream procedure requires a streaming codec` — use `StreamCodec` / `SseCodec`. In all four cases the body is never buffered or decoded, whatever it holds (invalid JSON, a multipart upload, an oversized stream). `RequestLimitPlugin`'s `Content-Length` check runs earlier, in `onRequest`, so a declared oversize body is still `413 PAYLOAD_TOO_LARGE` on any path and for any method; only its streamed-body cap is skipped on a 404 or a stream-codec 400 because nothing reads the stream.
+
+A `HandlerPlugin.onRequest` that throws a `PFError` is answered through the same error path (plugin `onError`, the `onError` option or default log, envelope + `x-ts-pf-protocol` + `httpStatus(error)`, `onResponse`); a non-`PFError` throw is `500 INTERNAL` (logged by default). It answers before the method and protocol checks, so the plugin's code wins for every method. It runs before the method check and lookup, on every request under the prefix. There is no `filter` option — to keep a procedure off HTTP, throw `NOT_FOUND` for its path:
+
+```ts
+import { PFError } from '@ts-pf/protocol'
+import type { HandlerPlugin } from '@ts-pf/server-http'
+
+const hideAdmin: HandlerPlugin = {
+  name: 'hide-admin',
+  onRequest({ request }) {
+    if (new URL(request.url).pathname.startsWith('/rpc/admin/')) {
+      throw new PFError({ code: 'NOT_FOUND', message: 'Procedure not found' })
+    }
+    return undefined
+  },
+}
+```
 
 A JSON envelope object with keys but no `input` key (`{"id":1}` instead of `{"input":{"id":1}}`) is `400 BAD_REQUEST` `Request body must be {"input": ...}`, whichever codec carries it (plain JSON, the multipart `rpc` part, or a JSONL input line). `{}` and `{"input":null}` still mean no input.
 
