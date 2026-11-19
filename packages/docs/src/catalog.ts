@@ -22,6 +22,12 @@ export type CatalogOptions = {
     path: string[]
     procedure: { readonly '~pf': { meta: Record<string, unknown> } }
   }) => boolean
+  /**
+   * Throw when a procedure in the catalog (after `filter`; the default
+   * filter drops `hidden`) has no non-blank `docs()` `description` or
+   * `summary`. The error lists every such procedure key. Default false.
+   */
+  requireDescription?: boolean
 }
 
 // Must match packages/protocol/PROTOCOL.md (VALIDATION data.issues).
@@ -40,7 +46,7 @@ const VALIDATION_DATA_SCHEMA: JsonSchema = {
           message: { type: 'string' },
           path: {
             type: 'array',
-            items: { type: ['string', 'number'] },
+            items: { oneOf: [{ type: 'string' }, { type: 'number' }] },
           },
         },
       },
@@ -82,6 +88,9 @@ export function catalog(
       toProcedure(entry.path, entry.procedure, options.prefix, schemas),
     )
   }
+  if (options.requireDescription) {
+    assertDescribed(procedures)
+  }
 
   const result: ProcedureCatalog = {
     catalogVersion: 1,
@@ -98,6 +107,23 @@ export function catalog(
     result.prefix = options.prefix
   }
   return result
+}
+
+function assertDescribed(procedures: readonly CatalogProcedure[]): void {
+  const missing = procedures
+    .filter((proc) => !hasText(proc.docs?.description, proc.docs?.summary))
+    .map((proc) => proc.key)
+  if (missing.length > 0) {
+    throw new Error(
+      `catalog(): ${missing.length} procedure(s) have no docs() description or summary: ${missing.join(', ')}`,
+    )
+  }
+}
+
+function hasText(...values: unknown[]): boolean {
+  return values.some(
+    (value) => typeof value === 'string' && value.trim() !== '',
+  )
 }
 
 function toProcedure(

@@ -1,6 +1,10 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    // src/conformance.ts imports conformance/*.json `with { type: 'json' }`;
+    // TypeScript allows import attributes from module Node18 on.
+    "module": "Node20",
+    "resolveJsonModule": true,
     "noEmit": true
   },
   "include": ["src", "tests", "vitest.config.ts"]

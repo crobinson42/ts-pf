@@ -10,14 +10,20 @@ export interface WebSocketLike {
    */
   readonly bufferedAmount?: number
   send(data: string): void
-  close(code?: number): void
+  /** WHATWG `close(code?, reason?)`; browser `WebSocket` and npm `ws` both fit. */
+  close(code?: number, reason?: string): void
+  /**
+   * Only `data` is read. `type` is in the event shape so the parameter is not
+   * a weak type: npm `ws` 8 event classes share no other member with it, and
+   * without one `ws` sockets would not be assignable.
+   */
   addEventListener(
     type: 'message' | 'open' | 'close' | 'error',
-    handler: (ev: { data?: unknown }) => void,
+    handler: (ev: { type?: string; data?: unknown }) => void,
   ): void
   removeEventListener(
     type: 'message' | 'open' | 'close' | 'error',
-    handler: (ev: { data?: unknown }) => void,
+    handler: (ev: { type?: string; data?: unknown }) => void,
   ): void
   /** Optional (npm `ws` has them; browsers do not): stop / restart `message` events. */
   pause?(): void

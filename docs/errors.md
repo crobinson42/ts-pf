@@ -49,11 +49,13 @@ impl.planet.find.handler(async ({ input, context, errors }) => {
 Defaults worth knowing:
 
 - The default `message` is the **code string** (`'NOT_FOUND'`), not a sentence. Set `message` on the `ErrorDef` or pass a hand-built `PFError` when the text matters.
-- `status` is HTTP / OpenAPI metadata only. Omit it and `FetchHandler` sends 400; message transports never see it.
+- `status` is HTTP / OpenAPI metadata only. Omit it and `FetchHandler` sends 400; message transports never see it. A hand-built `new PFError({ code: 'ARCHIVED', cause })` for a declared code gets the declared `status` too (when it has none of its own) and keeps its `cause`; its `message` is not filled from the `ErrorDef`.
 - `data` is always validated against its schema when the error is thrown, regardless of `validation.output`. Data that fails the schema is a server bug and is sent as `INTERNAL` with no issues.
 - Do not redeclare `VALIDATION`, `INTERNAL`, `BAD_REQUEST`, `METHOD_NOT_ALLOWED`, or `PAYLOAD_TOO_LARGE`. They belong to the protocol. Reusing `NOT_FOUND` for a missing entity is fine.
 
 A `PFError` thrown directly (`throw new PFError({ code: 'UNAUTHORIZED' })`) also reaches the client at runtime, with its code as-is. It is not in the client's `ClientError` union, though, which is exactly the declared codes plus the protocol codes with no string catch-all: `result.error.code === 'UNAUTHORIZED'` fails to type-check. Declare the code on `.errors()` (on the procedure, or on every procedure a shared middleware guards) when the client needs to narrow on it.
+
+Adding, renaming, or removing codes on a live API, and choosing between one shared error map and per-procedure maps, are covered in [Evolving a contract](evolution.md).
 
 ## The protocol code set
 
@@ -137,6 +139,12 @@ Plain `try` / `catch` works too: `catch (e) { if (isPFError(e) && e.code === 'NO
 
 ## On the server
 
+### Mapping domain errors to declared codes
+
+To turn your own error classes into declared codes, use one `.use()` middleware placed first, and wrap stream results with `mapStreamErrors` from `@ts-pf/server`: a `catch` around `await next()` only sees throws that happen before the procedure returns, and a stream throws later, while it is read. The mapped error still has its `data` checked against the contract and gets the declared `status` when it has none (set the `message` on the `PFError` you return). See the [`@ts-pf/server` README](../packages/server/README.md#mapping-domain-errors) for the recipe. Do not map in a call interceptor: it sees errors after that check.
+
+When the domain layer owns its errors, keep one catalog there (code → message), a status map typed `satisfies Record<DomainCode, number | null>` where `null` means "not exposed to clients" (mapped to `INTERNAL`), and derive the contract's error map from the exposed codes. The mapping function turns a domain error into `new PFError({ code, message, cause })`, leaves every other thrown value as it is, and needs nothing from `@ts-pf/server`. The [domain error catalog](../packages/server/README.md#a-domain-error-catalog) recipe shows the whole pattern.
+
 ### `httpStatus()`
 
 `FetchHandler` picks the response status with `httpStatus(error)` from `@ts-pf/http`: protocol codes map to the table above; any other code uses `error.status ?? 400`. That is the only place the 400 default lives. If you build your own Fetch adapter or log status codes, call the same function instead of re-deriving the table.
@@ -154,16 +162,19 @@ httpStatus(new PFError({ code: 'TEAPOT' })) // 400
 
 Unknown throws become `500 INTERNAL` with no stack on the wire. By default `FetchHandler` logs them with `console.error` (the original thrown value, tagged `[ts-pf/server-http]` with the procedure path). It also logs `INTERNAL` `PFError`s: an output schema failure under `validation.output`, invalid declared error `data`, or an explicit `INTERNAL` throw. Declared errors and every other protocol code (`VALIDATION`, `NOT_FOUND`, `BAD_REQUEST`, `METHOD_NOT_ALLOWED`, `PAYLOAD_TOO_LARGE`) are expected and are not logged.
 
-Pass `onError` to route errors to your own logger. It receives the original error (before `INTERNAL` mapping) for **every** error response, runs after each `HandlerPlugin.onError`, cannot replace the response (a throw from it rejects `handle()`), and turns the default logging off:
+Pass `onError` to route errors to your own logger. It receives the original error (before `INTERNAL` mapping) for **every** error response, runs after each `HandlerPlugin.onError`, cannot replace the response (a throw from it rejects `handle()`), and turns the default logging off. `isUnexpectedError` from `@ts-pf/protocol` is the default's filter (any non-`PFError`, or a `PFError` whose code is `INTERNAL`); call it to keep that filter in your own logger:
 
 ```ts
+import { isUnexpectedError } from '@ts-pf/protocol'
 import { FetchHandler } from '@ts-pf/server-http'
 
 new FetchHandler(app, {
-  onError(error, { request, path, context }) {
-    logger.error({ err: error, path: path.join('/'), url: request.url })
+  onError(error, { request, path }) {
+    if (isUnexpectedError(error)) {
+      logger.error({ err: error, path: path.join('/'), url: request.url })
+    }
   },
 })
 ```
 
-Errors thrown after a streamed response has started (`StreamCodec` / `SseCodec` output) are written in-band by the codec as `INTERNAL` items; they do not reach `onError` or the default log. Message handlers (`PortHandler`, `WsHandler`, `StdioHandler`) take an `onError(error)` on their `HandlerOptions` that receives the error only, with no request and no HTTP status. For a hook that runs identically on every transport, use a server call interceptor (`onError` from `@ts-pf/server`) on `{ interceptors }`.
+Errors thrown after a streamed response has started (`StreamCodec` / `SseCodec` output) are written in-band by the codec as a failure item (a `PFError` keeps its code; any other throw becomes `INTERNAL`); they do not reach `onError` or the default log. Message handlers (`PortHandler`, `WsHandler`, `StdioHandler`) take an `onError(error)` on their `HandlerOptions` that receives the error only, with no request and no HTTP status; it is called for non-`PFError` throws only (not for an `INTERNAL` `PFError`), and there is no default log. For a hook that runs identically on every transport, use a server call interceptor (`onError` from `@ts-pf/server`) on `{ interceptors }`.

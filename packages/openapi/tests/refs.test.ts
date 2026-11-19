@@ -3,54 +3,53 @@ import { catalog } from '@ts-pf/docs'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import { openapi } from '../src/openapi.js'
-import { relocateRefs } from '../src/refs.js'
+import { defTarget, relocateRef, rewriteRefs } from '../src/refs.js'
 
-describe('relocateRefs', () => {
-  it('rewrites document-root $ref and $defs pointers under the component', () => {
-    const relocated = relocateRefs(
-      {
-        $ref: '#/$defs/Node',
-        $defs: {
-          Node: {
-            type: 'object',
-            properties: {
-              child: { $ref: '#/$defs/Node' },
-              self: { $ref: '#' },
-            },
-          },
-        },
-      },
-      'planet.tree.Request',
+describe('refs', () => {
+  it('reads the def key and the rest of a $defs / definitions pointer', () => {
+    expect(defTarget('#/$defs/Node')).toEqual({ key: 'Node', rest: '' })
+    expect(defTarget('#/definitions/a~1b/properties/x')).toEqual({
+      key: 'a/b',
+      rest: '/properties/x',
+    })
+    expect(defTarget('#/properties/x')).toBeUndefined()
+    expect(defTarget('#')).toBeUndefined()
+  })
+
+  it('relocates document-relative refs under a component', () => {
+    expect(relocateRef('#', 'planet.tree.Input')).toBe(
+      '#/components/schemas/planet.tree.Input',
     )
-    expect(relocated.$ref).toBe(
-      '#/components/schemas/planet.tree.Request/$defs/Node',
-    )
-    const node = (
-      relocated.$defs as {
-        Node: { properties: Record<string, { $ref: string }> }
-      }
-    ).Node
-    expect(node.properties.child?.$ref).toBe(
-      '#/components/schemas/planet.tree.Request/$defs/Node',
-    )
-    expect(node.properties.self?.$ref).toBe(
-      '#/components/schemas/planet.tree.Request',
+    expect(relocateRef('#/properties/child', 'planet.tree.Input')).toBe(
+      '#/components/schemas/planet.tree.Input/properties/child',
     )
   })
 
-  it('leaves component and external refs alone', () => {
-    expect(
-      relocateRefs(
-        { $ref: '#/components/schemas/Other' },
-        'planet.find.Request',
-      ),
-    ).toEqual({ $ref: '#/components/schemas/Other' })
-    expect(
-      relocateRefs(
-        { $ref: 'https://example.com/schema.json' },
-        'planet.find.Request',
-      ),
-    ).toEqual({ $ref: 'https://example.com/schema.json' })
+  it('leaves component refs and anchors alone', () => {
+    expect(relocateRef('#/components/schemas/Other', 'planet.find.Input')).toBe(
+      '#/components/schemas/Other',
+    )
+    expect(relocateRef('#node', 'planet.find.Input')).toBe('#node')
+  })
+
+  it('rewrites local refs in schema positions only', () => {
+    const rewritten = rewriteRefs(
+      {
+        properties: { child: { $ref: '#/$defs/Node' } },
+        items: [{ $ref: '#' }],
+        const: { $ref: '#/$defs/Node' },
+        default: { $ref: '#' },
+        allOf: [{ $ref: 'https://example.com/schema.json' }],
+      },
+      (ref) => `rewritten:${ref}`,
+    )
+    expect(rewritten).toEqual({
+      properties: { child: { $ref: 'rewritten:#/$defs/Node' } },
+      items: [{ $ref: 'rewritten:#' }],
+      const: { $ref: '#/$defs/Node' },
+      default: { $ref: '#' },
+      allOf: [{ $ref: 'https://example.com/schema.json' }],
+    })
   })
 
   it('rewrites recursive Zod $refs onto the hoisted inner schema', () => {

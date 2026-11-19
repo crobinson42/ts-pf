@@ -18,7 +18,27 @@ const handler = new FetchHandler(app, {
 const result = await handler.handle(request, { prefix: '/rpc', context: { db } })
 ```
 
-Options: `codec`, `plugins`, `interceptors`, `validation`, and `onError(error, { request, path, context })` (type `FetchHandlerOnError`). Without `onError`, unknown throws and `INTERNAL` errors are logged with `console.error`; passing it replaces that logging. Mid-stream errors are in-band codec items and reach neither. A JSON envelope object with keys but no `input` key is `400 BAD_REQUEST` from the codec; `{}` and `{"input":null}` still mean no input. A request `x-ts-pf-protocol` header that is present and not `1` is `400 BAD_REQUEST` `Unsupported protocol version` before the body is read; a missing header is accepted. `RequestLimitPlugin` rewraps any request with a body, so the context factory and plugin hooks see a plain `Request`; read host extras (srvx `request.ip`) from the request your host passed.
+Options: `codec`, `plugins`, `interceptors`, `validation`, and `onError(error, { request, path, context })` (type `FetchHandlerOnError`). Without `onError`, unknown throws and `INTERNAL` errors are logged with `console.error`; passing it replaces that logging, and `isUnexpectedError` from `@ts-pf/protocol` keeps the same filter: `onError: (e) => { if (isUnexpectedError(e)) logger.error(e) }`. Mid-stream errors are in-band codec items and reach neither. A JSON envelope object with keys but no `input` key is `400 BAD_REQUEST` from the codec; `{}` and `{"input":null}` still mean no input. A request `x-ts-pf-protocol` header that is present and not `1` is `400 BAD_REQUEST` `Unsupported protocol version` before the body is read; a missing header is accepted. A procedure whose contract input or output is `stream()` on a codec with `streams: false` (the default `JSONCodec`, `MultipartCodec`) is `400 BAD_REQUEST` `Stream procedure requires a streaming codec`, also before the body is read and before context, middleware, or the handler run; pass `StreamCodec` / `SseCodec` to serve it. A handler that returns an `AsyncIterable` the codec does not encode as a stream gets the same answer, and the iterator is closed. `RequestLimitPlugin` rewraps any request with a body, so the context factory and plugin hooks see a plain `Request`; read host extras (srvx `request.ip`) from the request your host passed.
+
+A `HandlerPlugin.onRequest` that throws answers like any protocol error: the throw takes the normal error path (`HandlerPlugin.onError`, the `onError` option or the default log, the JSON envelope with `x-ts-pf-protocol` and `httpStatus(error)`, then `onResponse`); a non-`PFError` throw is `500 INTERNAL` and logged by default. There is no `filter` option; to keep a procedure off HTTP while another transport still serves it, throw `NOT_FOUND`:
+
+```ts
+import { PFError } from '@ts-pf/protocol'
+import { FetchHandler, type HandlerPlugin } from '@ts-pf/server-http'
+
+// `admin.*` is served over a message transport only; over HTTP it answers NOT_FOUND.
+const hideAdmin: HandlerPlugin = {
+  name: 'hide-admin',
+  onRequest({ request }) {
+    if (new URL(request.url).pathname.startsWith('/rpc/admin/')) {
+      throw new PFError({ code: 'NOT_FOUND', message: 'Procedure not found' })
+    }
+    return undefined
+  },
+}
+
+new FetchHandler(app, { plugins: [hideAdmin] })
+```
 
 Do not import this package from `@ts-pf/client-http`.
 

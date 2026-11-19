@@ -20,6 +20,14 @@ export interface RpcBodySource {
 }
 
 export interface RpcCodec {
+  /**
+   * `true` when `encodeSuccess` can encode an `AsyncIterable` output and
+   * `decodeRequest` can yield an `AsyncIterable` input; `false` when it
+   * cannot; `undefined` = unknown. `FetchHandler` answers a stream procedure
+   * on a `streams: false` codec with `BAD_REQUEST` before the body is read.
+   * Custom codecs should set it.
+   */
+  readonly streams?: boolean
   encodeRequest(req: RpcRequest): RpcEncodedBody | Promise<RpcEncodedBody>
   decodeRequest(source: RpcBodySource): RpcRequest | Promise<RpcRequest>
   encodeSuccess<T>(output: T): RpcEncodedBody | Promise<RpcEncodedBody>

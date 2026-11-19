@@ -12,6 +12,7 @@ import {
 } from './call-interceptor.js'
 import { createErrorFactory, finalizeDeclaredError } from './error-factory.js'
 import type { MiddlewareFn } from './middleware.js'
+import { validationError } from './validation-error.js'
 
 export type HandlerFn = (opts: {
   input: unknown
@@ -174,7 +175,11 @@ export function isImplementedProcedure(
 }
 
 export type ProcedureValidation = {
-  /** Set false to skip the input schema. Default true. */
+  /**
+   * Set false to skip the input schema. Default true. When skipped, the
+   * handler gets the raw value although `input` is typed as parsed; throw
+   * `validationError(...)` from a handler that validates itself.
+   */
   input?: boolean
   /** Set true to check the output schema, including stream output items. Default false. */
   output?: boolean
@@ -267,11 +272,7 @@ async function runUse(run: Execution, index: number): Promise<unknown> {
     if (run.validateInput && inputSchema) {
       const result = await validateSchema(inputSchema, run.input)
       if (!result.success) {
-        throw new PFError({
-          code: 'VALIDATION',
-          message: 'Validation failed',
-          data: { issues: result.issues },
-        })
+        throw validationError(result.issues)
       }
       run.input = result.value
     }

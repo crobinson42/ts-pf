@@ -1,6 +1,6 @@
 ---
 name: ts-pf-protocol
-description: "Use when throwing or handling ts-pf PFError, localFailure, PROTOCOL_MAJOR / PROTOCOL_VERSION, or the JSON RPC envelope, or writing a codec / adapter that needs toWireError or isAsyncIterable. Triggers: @ts-pf/protocol, PFError, isPFError, localFailure, ProtocolErrorCode, PROTOCOL_MAJOR, PROTOCOL_VERSION, toWireError, isAsyncIterable."
+description: "Use when throwing or handling ts-pf PFError, localFailure, PROTOCOL_MAJOR / PROTOCOL_VERSION, or the JSON RPC envelope, filtering errors in an onError logger, or writing a codec / adapter that needs toWireError or isAsyncIterable, or testing a client in any language against the protocol conformance fixtures. Triggers: @ts-pf/protocol, PFError, isPFError, localFailure, ProtocolErrorCode, PROTOCOL_MAJOR, PROTOCOL_VERSION, toWireError, isAsyncIterable, isUnexpectedError, onError filter, @ts-pf/protocol/conformance, httpConformance, wsConformance, conformance fixtures."
 ---
 
 # @ts-pf/protocol
@@ -11,7 +11,7 @@ Install: `npm i @ts-pf/protocol`
 
 Link for agents: `npx skills experimental_sync -y`
 
-Wire spec ships as `PROTOCOL.md` in this package.
+Wire spec ships as `PROTOCOL.md` in this package (revision 1.2). Building a client in another language: start from its "HTTP client checklist" / "WebSocket client checklist" and "Classifying an HTTP response" sections; TypeScript-only conventions (`local`, `status: 0`, `isLocalFailure`) are in its appendix. Prove the client with the language-neutral fixtures in this package's `conformance/` (`http.json`, `http-stream.json`, `ws.json`; plain JSON versioned with the spec revision; `conformance/README.md` says how to replay them). TypeScript runners import them typed from `@ts-pf/protocol/conformance`.
 
 ## Do
 
@@ -23,18 +23,22 @@ new PFError({ code: 'TEAPOT' }).status // undefined — no default
 // localFailure('Request aborted') → INTERNAL, local: true, status: 0 (not on the wire)
 ```
 
+Detect failures with `isPFError(error)`, not `instanceof PFError`: it also matches a `PFError` from another installed copy of this package (version skew, a bundler that inlined one).
+
 Envelope: `{ input }`, `{ ok: true, output }`, `{ ok: false, error: { code, message, data? } }`. Discriminator is JSON `error.code`.
 
 `PFError.status?: number` is transport metadata, not identity. It is the HTTP response status on a unary Fetch failure, `undefined` on message transports and after a stream has started, and `0` on local failures. Guard it (`err.status ?? 400`); switch on `code`. The HTTP default (400 for a code with no status) is applied by `httpStatus()` in `@ts-pf/http`, not by the constructor.
 
-Writing a codec or transport adapter: `toWireError(error)` is the failure envelope's `error` for any thrown value (`PFError` → `toJSON()`; anything else → fixed `{ code: 'INTERNAL', message: 'Internal server error' }`, no stack, no message leak — log the original value yourself). `isAsyncIterable(value)` is the shared "is this a stream" predicate (object or function with a `Symbol.asyncIterator` function). A `ReadableStream` is async-iterable on Node; a site that wants bytes excludes it explicitly. `defined({ signal, headers })` is the shared way to forward optional fields under `exactOptionalPropertyTypes`: it returns a copy without the `undefined`-valued keys, typed so those keys are optional (`{ ...required, ...defined({ signal }) }`).
+Writing a codec or transport adapter: `toWireError(error)` is the failure envelope's `error` for any thrown value (`PFError` → `toJSON()`; anything else → fixed `{ code: 'INTERNAL', message: 'Internal server error' }`, no stack, no message leak — log the original value yourself). The message `hello-error` for a throwing context factory uses the same mapping. `isAsyncIterable(value)` is the shared "is this a stream" predicate (object or function with a `Symbol.asyncIterator` function). A `ReadableStream` is async-iterable on Node; a site that wants bytes excludes it explicitly. `defined({ signal, headers })` is the shared way to forward optional fields under `exactOptionalPropertyTypes`: it returns a copy without the `undefined`-valued keys, typed so those keys are optional (`{ ...required, ...defined({ signal }) }`).
 
 ## API
 
 - `PFError`, `PFErrorInit`, `isPFError`, `localFailure`, `ProtocolErrorCode`
 - `PROTOCOL_MAJOR` (`1`, the wire major: `v` on message `hello`), `PROTOCOL_VERSION` (`'1'`, its string: the `x-ts-pf-protocol` header value), `RpcRequest`, `RpcResponse`, `RpcSuccess`, `RpcFailure`, `PFResultPromise`
 - `toWireError`, `isAsyncIterable`
+- `isUnexpectedError(error)` — `true` for a non-`PFError` or an `INTERNAL` `PFError` (no `cause` unwrapping): what `FetchHandler` and `@ts-pf/mcp` log by default when no `onError` is given, for a custom `onError` that keeps the same filter
 - `defined`, `Defined` — `defined(obj)` drops the keys whose value is `undefined`, so `{ ...required, ...defined({ signal }) }` builds an `exactOptionalPropertyTypes` option bag without one spread per field
+- `@ts-pf/protocol/conformance`: `httpConformance`, `httpStreamConformance`, `wsConformance` (the `conformance/*.json` fixtures, typed) and their types `ConformanceFile`, `HttpCase`, `HttpExpect`, `HttpStreamExpect`, `HttpStreamEnd`, `WsCase`, `WsStep`, `WsExpectation`, `ConformanceRequest`, `ConformanceError`, `JsonValue`
 
 ## Pair with
 
@@ -45,5 +49,6 @@ Writing a codec or transport adapter: `toWireError(error)` is the failure envelo
 ## Don't
 
 - `JSONCodec`, `RpcCodec`, `PROTOCOL_HEADER`, or `FetchHandler` here.
+- `instanceof PFError` to detect a failure (misses a second copy of the package); use `isPFError`.
 - Put `status`, `cause`, or `local` in the JSON envelope (`toJSON` omits them).
 - Redeclare `VALIDATION`, `INTERNAL`, `BAD_REQUEST`, `METHOD_NOT_ALLOWED`, `PAYLOAD_TOO_LARGE` on `.errors()`.

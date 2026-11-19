@@ -1,6 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    // JSON import attributes in src/conformance.ts (see tsconfig.json).
+    "module": "Node20",
+    "resolveJsonModule": true,
     "outDir": "dist",
     "rootDir": "src"
   },

@@ -50,6 +50,8 @@ function assertItem(value: unknown): void {
 }
 
 export class SseCodec implements RpcCodec {
+  /** SSE output; stream input is JSONL (through `StreamCodec`). */
+  readonly streams: boolean = true
   private readonly inner: EnvelopeTextCodec
   private readonly stream: StreamCodec
   private readonly keepAliveMs: number

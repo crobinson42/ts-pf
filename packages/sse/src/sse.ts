@@ -125,6 +125,7 @@ export function encodeSse(
   const iterator = items[Symbol.asyncIterator]()
   let timer: ReturnType<typeof setInterval> | undefined
   let closed = false
+  let returned = false
 
   const comment = encoder.encode(COMMENT)
 
@@ -134,6 +135,24 @@ export function encodeSse(
       clearInterval(timer)
       timer = undefined
     }
+  }
+
+  // The producer is still live (consumer cancel, or an item that could not
+  // be written): close it once.
+  const stopProducer = (): void => {
+    if (!returned) {
+      returned = true
+      returnQuietly(iterator)
+    }
+  }
+
+  const fail = (
+    controller: ReadableStreamDefaultController<Uint8Array>,
+    error: unknown,
+  ): void => {
+    controller.enqueue(encoder.encode(encodeEvent('error', onError(error))))
+    stop()
+    controller.close()
   }
 
   return new ReadableStream<Uint8Array>({
@@ -153,25 +172,42 @@ export function encodeSse(
       }
     },
     async pull(controller) {
+      let next: IteratorResult<unknown>
       try {
-        const next = await iterator.next()
-        if (next.done) {
-          controller.enqueue(encoder.encode(CLOSE_EVENT))
-          stop()
-          controller.close()
-          return
-        }
+        next = await iterator.next()
+      } catch (error) {
+        fail(controller, error)
+        return
+      }
+      if (next.done) {
+        controller.enqueue(encoder.encode(CLOSE_EVENT))
+        stop()
+        controller.close()
+        return
+      }
+      try {
         const line = await writeLine(next.value)
         controller.enqueue(encoder.encode(encodeEvent('message', line)))
       } catch (error) {
-        controller.enqueue(encoder.encode(encodeEvent('error', onError(error))))
-        stop()
-        controller.close()
+        stopProducer()
+        fail(controller, error)
       }
     },
     cancel() {
       stop()
-      void iterator.return?.()
+      stopProducer()
     },
   })
+}
+
+/**
+ * `iterator.return()` as cleanup: a sync throw or a rejection is dropped, not
+ * left as an unhandled rejection. The stream has already ended for the reader.
+ */
+function returnQuietly(iterator: AsyncIterator<unknown>): void {
+  try {
+    Promise.resolve(iterator.return?.()).catch(() => {})
+  } catch {
+    // Cleanup only.
+  }
 }

@@ -12,7 +12,9 @@ npx changeset
 
 Pick the packages, the bump (`patch` / `minor` / `major`), and a changelog summary. Examples are private and ignored.
 
-New published packages start at `0.0.0` and need a changeset. They also ship `skills/ts-pf-<pkg>/SKILL.md` with `"files"` including `skills`, a `keywords` array (shared family terms plus package-specific), a `LICENSE` copy of the root file, and `engines.node >=22`. New examples must be added to `config.json` `ignore`.
+Every published package is in one `fixed` group in `config.json`, so they share one version: any changeset bumps every published package to the same next version (the highest bump among pending changesets wins). Changelog entries still go only to the packages a changeset names.
+
+New published packages start at `0.0.0`, need a changeset, and must be added to the `fixed` group in `config.json` (exact name; `npm run check:deps` fails otherwise). They also ship `skills/ts-pf-<pkg>/SKILL.md` with `"files"` including `skills`, a `keywords` array (shared family terms plus package-specific), a `LICENSE` copy of the root file, and `engines.node >=22`. New examples must be added to `config.json` `ignore`.
 
 ## Release
 
@@ -34,7 +36,7 @@ npm run changeset:publish   # npm dist-tag `latest`
 
 The GitHub Action does **not** run `version` / `publish` through a shell. Use npm scripts (`npm run changeset:version`, `npm run changeset:publish`), not `cmd && other`. Do not publish in a separate step after the action — that skips git tag push and GitHub Releases. `changeset:publish` must reach `changeset publish` with the environment intact: `changesets/action` v2 passes `CHANGESETS_OUTPUT` and reads the published packages from it to push tags and create Releases, and fails without it.
 
-`changeset version` rewrites internal `"*"` `@ts-pf/*` dependencies to the released version so the published tarball is installable. Do not restore `"*"` by hand after a version bump.
+Published packages' internal `@ts-pf/*` dependencies are exact versions of the current workspace package (a new package pins each one by hand). `changeset version` rewrites those exact pins to the released version; it does **not** rewrite `"*"`, so `"*"` would publish as-is. `npm run check:deps` fails on `"*"` or a range.
 
 ## Trusted publishing
 

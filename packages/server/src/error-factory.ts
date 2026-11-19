@@ -33,6 +33,12 @@ export function createErrorFactory(map: ErrorMap): ErrorFactory<ErrorMap> {
   return factory
 }
 
+/**
+ * A thrown `PFError` whose code the procedure declares leaves with the
+ * declared `status` when it has none (the same stamping as `errors.X()`, so a
+ * hand-built `new PFError({ code })` matches) and with its `data` parsed by
+ * the declared schema. Anything else is rethrown untouched.
+ */
 export async function finalizeDeclaredError(
   error: unknown,
   map: ErrorMap,
@@ -41,8 +47,12 @@ export async function finalizeDeclaredError(
     throw error
   }
   const def = map[error.code]
-  if (def?.data === undefined) {
+  if (def === undefined) {
     throw error
+  }
+  const status = error.status ?? def.status
+  if (def.data === undefined) {
+    throw status === error.status ? error : rebuild(error, status, error.data)
   }
   const result = await validateSchema(def.data, error.data)
   if (!result.success) {
@@ -54,12 +64,30 @@ export async function finalizeDeclaredError(
       cause: error,
     })
   }
+  throw rebuild(error, status, result.value)
+}
+
+// `PFError` fields are readonly, so a finalized error is a copy that keeps
+// everything the constructor takes (including `cause`). The original stack is
+// not copied: reading `error.stack` makes V8 format it, which costs more than
+// the rest of the failed call (`npm run bench`, declared-error rows).
+function rebuild(
+  error: PFError,
+  status: number | undefined,
+  data: unknown,
+): PFError {
   const init: PFErrorInit = { code: error.code, message: error.message }
-  if (error.status !== undefined) {
-    init.status = error.status
+  if (status !== undefined) {
+    init.status = status
   }
-  if (result.value !== undefined) {
-    init.data = result.value
+  if (data !== undefined) {
+    init.data = data
   }
-  throw new PFError(init)
+  if ('cause' in error) {
+    init.cause = error.cause
+  }
+  if (error.local === true) {
+    init.local = true
+  }
+  return new PFError(init)
 }

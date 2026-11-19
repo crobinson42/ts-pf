@@ -5,6 +5,7 @@ import { asResult, createClient, isLocalFailure } from '@ts-pf/client'
 import { procedure, router } from '@ts-pf/contract'
 import { createMemoryDuplex } from '@ts-pf/message'
 import { DuplexHandler } from '@ts-pf/message-server'
+import { PFError } from '@ts-pf/protocol'
 import { createImplementer } from '@ts-pf/server'
 import { stream } from '@ts-pf/stream'
 import { describe, expect, it } from 'vitest'
@@ -186,5 +187,45 @@ describe('DuplexHandler + DuplexLink over createMemoryDuplex', () => {
 
     bind.close()
     bind.close() // idempotent
+  })
+
+  it('rejects calls with the PFError a context factory refused the hello with', async () => {
+    const app = impl.router({
+      planet: {
+        find: impl.planet.find.handler(async ({ input }) => ({
+          id: input.id,
+          name: 'Earth',
+        })),
+        chat: impl.planet.chat.handler(async function* () {}),
+      },
+    })
+    const { a, b } = createMemoryDuplex()
+    const bind = new DuplexHandler(app).bind(a, {
+      context: ({ meta }) => {
+        if (
+          (meta as { authorization?: unknown } | undefined)?.authorization !==
+          'Bearer good'
+        ) {
+          throw new PFError({ code: 'UNAUTHORIZED', message: 'Bad token' })
+        }
+        return { planets: new Map() }
+      },
+    })
+    const link = new DuplexLink({
+      duplex: b,
+      meta: { authorization: 'Bearer bad' },
+    })
+    const client = createClient<typeof contract>(link)
+
+    const result = await asResult(client.planet.find({ id: 1 }))
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.error.code).toBe('UNAUTHORIZED')
+      expect(result.error.message).toBe('Bad token')
+      expect(isLocalFailure(result.error)).toBe(false)
+    }
+
+    link.close()
+    bind.close()
   })
 })

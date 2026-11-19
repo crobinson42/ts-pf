@@ -1,4 +1,11 @@
 import { pascalCase, quoteKey, quoteString } from './names.js'
+import {
+  escapePointer,
+  isRecord,
+  normalizeType,
+  resolvePointer,
+  unescapePointer,
+} from './schema-util.js'
 
 type PrintResult = {
   ts: string
@@ -449,20 +456,6 @@ function printConst(value: unknown): string {
   return 'unknown'
 }
 
-function normalizeType(type: unknown): string[] {
-  if (typeof type === 'string') {
-    return [type]
-  }
-  if (Array.isArray(type)) {
-    return type.filter((item): item is string => typeof item === 'string')
-  }
-  return []
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
 function isIgnoredKey(key: string): boolean {
   return IGNORED_KEYS.has(key) || key.startsWith('~') || key.startsWith('x-')
 }
@@ -494,31 +487,6 @@ function containsRef(
   }
   const values = Array.isArray(schema) ? schema : Object.values(schema)
   return values.some((value) => containsRef(value, target, seen))
-}
-
-function resolvePointer(root: unknown, ref: string): unknown {
-  if (ref === '#') {
-    return root
-  }
-  if (!ref.startsWith('#/')) {
-    return undefined
-  }
-  let current: unknown = root
-  for (const part of ref.slice(2).split('/').map(unescapePointer)) {
-    if (!isRecord(current) && !Array.isArray(current)) {
-      return undefined
-    }
-    current = (current as Record<string, unknown>)[part]
-  }
-  return current
-}
-
-function escapePointer(value: string): string {
-  return value.replace(/~/g, '~0').replace(/\//g, '~1')
-}
-
-function unescapePointer(value: string): string {
-  return value.replace(/~1/g, '/').replace(/~0/g, '~')
 }
 
 function pointerAlias(ref: string): string {

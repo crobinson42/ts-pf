@@ -54,8 +54,23 @@ export class PFError<
   }
 }
 
+// Cross-copy brand. Two copies of this package (version skew, a bundler that
+// inlines one) make `instanceof` fail across the boundary, so a typed error
+// would reach `toWireError` as an unknown throw. The registry symbol is the
+// same in every copy. It lives on the prototype, not on each instance, so
+// construction stays as cheap as before and instances gain no own property.
+const PF_ERROR_BRAND = Symbol.for('ts-pf.PFError')
+
+Object.defineProperty(PFError.prototype, PF_ERROR_BRAND, { value: true })
+
+/** `true` for a `PFError` from this or any other copy of `@ts-pf/protocol`. */
 export function isPFError(value: unknown): value is PFError {
-  return value instanceof PFError
+  return (
+    value instanceof PFError ||
+    (typeof value === 'object' &&
+      value !== null &&
+      (value as { [PF_ERROR_BRAND]?: unknown })[PF_ERROR_BRAND] === true)
+  )
 }
 
 export function localFailure(message: string, cause?: unknown): PFError {

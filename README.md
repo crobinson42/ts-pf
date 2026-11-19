@@ -14,6 +14,8 @@ Requires Node.js 22+.
 npm install @ts-pf/contract @ts-pf/server @ts-pf/server-http @ts-pf/client @ts-pf/client-http
 ```
 
+Every `@ts-pf/*` package releases on one version. Keep them all on that version and update them together in one install command; a mixed set installs duplicate copies of shared packages.
+
 `@ts-pf/protocol` (`PFError`) comes along as a dependency of `server` and `client`; import it directly, and add it to your own `dependencies` if your package manager blocks undeclared transitive imports.
 
 ### TypeScript setup
@@ -36,7 +38,7 @@ The packages are ESM and ship `exports` only, so `tsconfig.json` needs `"moduleR
 | [`@ts-pf/sse`](packages/sse) | Opt-in `SseCodec` for SSE output framing of the same envelopes |
 | [`@ts-pf/docs`](packages/docs) | Opt-in procedure catalog from a contract (`docs()`, `catalog()`) |
 | [`@ts-pf/openapi`](packages/openapi) | Opt-in OpenAPI 3.1 from `catalog()` (POST JSON RPC) |
-| [`@ts-pf/codegen`](packages/codegen) | Opt-in `.d.ts` from `catalog()` for split repos |
+| [`@ts-pf/codegen`](packages/codegen) | Opt-in `.d.ts` from `catalog()` for split repos; catalog breaking-change check |
 | [`@ts-pf/message`](packages/message) | Opt-in JSON text frames + `MessageSession` (not an HTTP codec) |
 | [`@ts-pf/message-server`](packages/message-server) | Opt-in `PortHandler` / `WsHandler` / `StdioHandler` |
 | [`@ts-pf/message-client`](packages/message-client) | Opt-in `PortLink` / `WsLink` / `StdioLink` |
@@ -54,6 +56,7 @@ Prose for humans, between this README and the wire spec. Index: [`docs/README.md
 - [Tutorial](docs/tutorial.md): install, contract, implementer, `FetchHandler`, `createClient`.
 - [Concepts](docs/concepts.md): contract vs implementer vs app, context, middleware, links, codecs, the three interceptor kinds, validation defaults.
 - [Errors](docs/errors.md): `PFError`, declared errors, the protocol code set and its JSON, `asResult`, `status` per transport, `onError`.
+- [Evolving a contract](docs/evolution.md): safe vs breaking contract changes, old clients and new codes, deprecation, error maps, catalog diffs in CI.
 - [Testing](docs/testing.md): in-process tests through a `fetch` stub or `createLocalClient`; declared errors, middleware, streams.
 - [Coming from tRPC / oRPC](docs/coming-from-trpc-orpc.md): name mapping and what is different.
 

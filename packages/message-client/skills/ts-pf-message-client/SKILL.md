@@ -24,6 +24,8 @@ const client = createClient<typeof contract>(new PortLink({ port }), {
 new WsLink({ url: 'wss://example.com/rpc', WebSocket }) // or { socket }
 ```
 
+`WebSocket` defaults to `globalThis.WebSocket`; the npm `ws` 8.x class (`import { WebSocket } from 'ws'`, an app dependency) and its sockets fit with no cast.
+
 ```ts
 import { spawn } from 'node:child_process'
 import { StdioLink } from '@ts-pf/message-client/stdio'
@@ -51,14 +53,16 @@ const duplex: Duplex = {
   onClose: (handler) => ipc.on('close', handler),
   close: () => ipc.close(),
 }
-const link = new DuplexLink({ duplex, meta: { token: 'abc' } })
+const link = new DuplexLink({ duplex, meta: { authorization: 'Bearer abc' } })
 const client = createClient<typeof contract>(link)
 link.close()
 ```
 
 User owns listen / upgrade / spawn / Worker bootstrap. Impls may have `close()`; do not add `close()` to `Link`.
 
-Slow servers are handled by default (`LinkOptions.backpressure`, the same `{ highWaterMark?, drainTimeout?, onStall? }` as the server; 1 MiB / 30 s / one `console.warn` on `aborted` only, and a throwing `onStall` is swallowed): an `AsyncIterable` input is pumped one item at a time and parked while the duplex is over its mark; after `drainTimeout` the call fails locally (`isLocalFailure` from `@ts-pf/client` is true; `Peer did not drain within 30000 ms`), `cancel` goes out, and the input iterator's `return()` runs once. Output streams you read are bounded by the same mark (frame text length) — the link pauses reads (connection-wide) while your `for await` lags, where the pipe can pause. A server that gives up on a slow reader ends the stream with `INTERNAL` / `Peer did not drain within …` after the buffered items; that one is not local. `drainTimeout: 0` waits forever; `highWaterMark: Infinity` disables the receive-queue bound and the WebSocket `bufferedAmount` mark (stdio's write mark is the `Writable`'s own); `onStall: false` silences; a bad value throws from the constructor.
+`meta` rides on the opening `hello` only. Put a credential in `meta.authorization` (same value as an HTTP `Authorization` header). A server that refuses the connection sends a `hello-error`: every call on that link rejects with the server's `PFError` (`code` such as `UNAUTHORIZED`, not local, not retried by `RetryPlugin`'s default). To rotate the credential, open a new link; streams do not survive a reconnect, so resubscribe after it is ready. Never retry `BAD_REQUEST` `Unsupported protocol version`. A server close code (4400–4499) is not on the `PFError` (calls fail with local `Connection closed`); pass your own `socket` to `WsLink` and listen for `close` to read it.
+
+Slow servers are handled by default (`LinkOptions.backpressure`, the same `{ highWaterMark?, drainTimeout?, onStall? }` as the server; 1 MiB / 30 s / one `console.warn` on `aborted` only, and a throwing `onStall` is swallowed): an `AsyncIterable` input is pumped one item at a time and parked while the duplex is over its mark; after `drainTimeout` the call fails locally (`isLocalFailure` from `@ts-pf/client` is true; `Peer did not drain within 30000 ms`), `cancel` goes out, and the input iterator's `return()` runs once. Output streams you read are bounded by the same mark (frame text length) — the link pauses reads (connection-wide) while your `for await` lags, where the pipe can pause. A server that gives up on a slow reader ends the stream with `INTERNAL` / `Peer did not drain within …` after the buffered items; that one is not local. A stall is always that `INTERNAL` with the fixed `Peer did not drain within <n> ms` format and no dedicated code, distinct from any error code an app declares. `drainTimeout: 0` waits forever; `highWaterMark: Infinity` disables the receive-queue bound and the WebSocket `bufferedAmount` mark (stdio's write mark is the `Writable`'s own); `onStall: false` silences; a bad value throws from the constructor.
 
 ## API
 
@@ -73,7 +77,7 @@ Slow servers are handled by default (`LinkOptions.backpressure`, the same `{ hig
 
 ## Don't
 
-- Depend on the `ws` npm package — inject a `WebSocket` constructor.
+- Expect this package to bring `ws`: it has no `ws` dependency. On Node, the app installs `ws` and passes its `WebSocket` class (or an open socket).
 - Reconstruct HTTP status from `error.code`.
 - Copy the multiplexer for a new pipe — write a `Duplex` and use `DuplexLink`.
 - Retry a `Peer did not drain` failure blindly — the server stopped reading; fix the consumer or raise `drainTimeout`.

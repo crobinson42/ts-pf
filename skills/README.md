@@ -2,7 +2,7 @@
 
 Index only. Published skills live next to the package they describe so they version with that package. Do not put `SKILL.md` files here.
 
-Hub `ts-pf-app` on `@ts-pf/contract` is the capability catalog. `npx skills experimental_sync -y` copies skills from **installed** packages. Uninstalled opt-in packages are discovered from the hub, then `npm i @ts-pf/<pkg> && npx skills experimental_sync -y`.
+Hub `ts-pf-app` on `@ts-pf/contract` is the capability catalog. `npx skills experimental_sync -y` copies skills from **installed** packages. Uninstalled opt-in packages are discovered from the hub, then `npm i @ts-pf/<pkg>@<version> && npx skills experimental_sync -y` (`<version>` = the installed `@ts-pf/contract` version: every `@ts-pf/*` package shares one version).
 
 | Skill | Path | Job |
 |---|---|---|
@@ -19,7 +19,7 @@ Hub `ts-pf-app` on `@ts-pf/contract` is the capability catalog. `npx skills expe
 | `ts-pf-sse` | `packages/sse/skills/ts-pf-sse/` | `SseCodec` |
 | `ts-pf-docs` | `packages/docs/skills/ts-pf-docs/` | `docs()` / `catalog()` |
 | `ts-pf-openapi` | `packages/openapi/skills/ts-pf-openapi/` | `openapi()` OpenAPI 3.1 |
-| `ts-pf-codegen` | `packages/codegen/skills/ts-pf-codegen/` | `emit()` / `emitFiles()` / `catalogHash()` |
+| `ts-pf-codegen` | `packages/codegen/skills/ts-pf-codegen/` | `emit()` / `emitFiles()` / `catalogHash()` / `diffCatalog()` |
 | `ts-pf-message` | `packages/message/skills/ts-pf-message/` | JSON text frames, duplex adapters |
 | `ts-pf-message-server` | `packages/message-server/skills/ts-pf-message-server/` | `DuplexHandler` / `PortHandler` / `WsHandler` / `StdioHandler` |
 | `ts-pf-message-client` | `packages/message-client/skills/ts-pf-message-client/` | `DuplexLink` / `PortLink` / `WsLink` / `StdioLink` |

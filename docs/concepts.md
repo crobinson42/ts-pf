@@ -75,6 +75,8 @@ Middleware wraps the handler inside one procedure, on the implementer (`impl.use
 
 Inside middleware, `next({ context })` **merges** into the current context (`{ ...ctx, ...added }`). `next({ input })` replaces the input. The `errors` factory on middleware is the loose one (`errors.ANY_CODE(data?)`), because middleware is not tied to one procedure's declared map; the handler's `errors` is typed from the map.
 
+Call `next()` at most once per middleware call. The chain keeps one input and one context per execution, so a second `next()` re-runs inner middleware on input the first run already parsed, with context inner middleware already added, and concurrent calls race. Retries and hedging belong in a server call interceptor, whose `next()` may be called more than once (each call gets a fresh execution).
+
 ```ts
 import { createImplementer } from '@ts-pf/server'
 import { PFError } from '@ts-pf/protocol'
@@ -104,7 +106,7 @@ const requireUser = impl.middleware(async ({ context, next }) => {
 
 Over HTTP, a **codec** decides how the envelope becomes a body. `JSONCodec` is the default and emits `application/json`. The opt-in codecs wrap it without changing the contract: `MultipartCodec` (`@ts-pf/file`) for `File` / `Blob` values, `StreamCodec` (`@ts-pf/stream`) for root `AsyncIterable` as JSONL, `SseCodec` (`@ts-pf/sse`) for SSE output framing.
 
-The handler and the link **must use the same codec**. A `FetchLink` with `StreamCodec` talking to a `FetchHandler` without it gets a JSON body where it expects JSONL frames; a handler with `MultipartCodec` behind a plain link never receives a file. The symptom is a `BAD_REQUEST` or a silently wrong shape, not a message that says "codec mismatch", so construct the codec in one shared module and pass `{ codec }` to both constructors. Message transports do not use codecs at all; they frame the same envelopes as JSON text.
+The handler and the link **must use the same codec**. A `FetchLink` with `StreamCodec` talking to a `FetchHandler` without it gets a JSON body where it expects JSONL frames; a handler with `MultipartCodec` behind a plain link never receives a file. A `stream()` procedure on a handler without `StreamCodec` / `SseCodec` answers `400 BAD_REQUEST` `Stream procedure requires a streaming codec`; other mismatches surface as a `BAD_REQUEST` or a silently wrong shape, not a message that says "codec mismatch", so construct the codec in one shared module and pass `{ codec }` to both constructors. Message transports do not use codecs at all; they frame the same envelopes as JSON text.
 
 ## Interceptors: three onions, one rule
 
@@ -116,7 +118,7 @@ There are three places to hook a call, and they see different things:
 | `CallInterceptor` / `CallPlugin` (`onStart`, `DedupePlugin`, `RetryPlugin`, `CachePlugin`) | `@ts-pf/server` and `@ts-pf/client` | `path`, `input`, result; on the server also `context` and `procedure` | Around `runProcedure` (server: `FetchHandler` / message handlers / `createLocalClient` `{ interceptors }`) or around `Link.call` (client: `createClient(link, { plugins, interceptors })`) |
 | Fetch `Interceptor` | `@ts-pf/client-http` | Raw `fetch` `Request` / `Response` / throws | `FetchLink` (`interceptors`) |
 
-The one-line rule: **if it needs a `Request` or `Response`, it is a `HandlerPlugin` (server) or a Fetch `Interceptor` (client); if it needs the procedure path, input, or result, it is a call interceptor; if it changes what the handler receives as context, it is middleware.**
+The one-line rule: **if it needs a `Request` or `Response`, it is a `HandlerPlugin` (server) or a Fetch `Interceptor` (client); if it needs the procedure path, input, or result, it is a call interceptor; if it changes what the handler receives as context, it is middleware.** Mapping domain errors to declared codes is middleware too (see [Errors](errors.md#mapping-domain-errors-to-declared-codes)): it must run before the declared-error check.
 
 Two details that bite:
 
@@ -135,6 +137,8 @@ Call interceptors are transport-neutral: the same `DedupePlugin` runs under `Fet
 | Client-side input validation | off | none; the server validates |
 
 `validation` is set on the adapter constructor (`FetchHandler`, `PortHandler`, `createLocalClient`, `runProcedure` options), not on `createImplementer`.
+
+With `validation.input: false` the handler receives the raw value while its `input` type still says parsed, so contract-only narrowing (zod `.omit()`, defaults, transforms) is not applied. A handler that validates itself answers in the built-in shape with `throw validationError(toValidationIssues(result.issues))` (`validationError` from `@ts-pf/server`, `toValidationIssues` from `@ts-pf/contract`).
 
 `validation.output: true` costs one schema walk per response (and per stream item) for the lifetime of the deployment. It catches a handler returning the wrong shape: a unary output failure is sent as `INTERNAL` with no issues (the bug is yours, and the schema's issues would leak internals); a bad stream item is `VALIDATION` with `issues`, in-band after the stream started. It also applies the parsed output (strip unknown keys, defaults, transforms), which otherwise is not applied. Turn it on in tests and staging; decide per deployment in production.
 

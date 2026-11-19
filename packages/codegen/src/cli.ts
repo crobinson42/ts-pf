@@ -9,6 +9,7 @@ import {
 } from 'node:process'
 import { fileURLToPath } from 'node:url'
 import type { ProcedureCatalog } from '@ts-pf/docs'
+import { type CatalogChange, diffCatalog } from './diff.js'
 import { emit } from './emit.js'
 import { type EmitFile, emitFiles } from './files.js'
 import { catalogHash } from './hash.js'
@@ -26,10 +27,11 @@ export type CliIo = {
 }
 
 const USAGE =
-  'Usage: ts-pf-codegen <emit|pull|hash> …\n' +
+  'Usage: ts-pf-codegen <emit|pull|hash|diff> …\n' +
   '  ts-pf-codegen emit <catalog.json|-> [-o contract.d.ts | --out-dir <dir>] [--name Contract] [--fail-on-unavailable]\n' +
   '  ts-pf-codegen pull <url> [-o contract.d.ts | --out-dir <dir>] [--lock catalog.lock.json]\n' +
   '  ts-pf-codegen hash <catalog.json|->\n' +
+  '  ts-pf-codegen diff <previous.json> <next.json> [--json]   (exit 2 on breaking changes)\n' +
   '  ts-pf-codegen --help\n'
 
 export async function runCli(argv: string[], io: CliIo): Promise<number> {
@@ -46,6 +48,9 @@ export async function runCli(argv: string[], io: CliIo): Promise<number> {
   }
   if (cmd === 'hash') {
     return hashCmd(rest, io)
+  }
+  if (cmd === 'diff') {
+    return diffCmd(rest, io)
   }
   io.stderr.write(USAGE)
   return 1
@@ -145,6 +150,63 @@ async function hashCmd(args: string[], io: CliIo): Promise<number> {
   const catalog = parseCatalog(raw)
   io.stdout.write(`${catalogHash(catalog)}\n`)
   return 0
+}
+
+/** Exit code 2 when there are breaking changes, so CI can fail on them. */
+async function diffCmd(args: string[], io: CliIo): Promise<number> {
+  const parsed = parseArgs(args, {
+    flags: new Set(['json']),
+    values: new Set(),
+  })
+  const [previousPath, nextPath] = parsed.positional
+  if (previousPath === undefined || nextPath === undefined) {
+    io.stderr.write('diff: expected <previous.json> <next.json>\n')
+    return 1
+  }
+  const previous = parseCatalog(await readInput(previousPath, io))
+  const next = parseCatalog(await readInput(nextPath, io))
+  for (const [path, catalog] of [
+    [previousPath, previous],
+    [nextPath, next],
+  ] as const) {
+    if (!isCatalogDocument(catalog)) {
+      io.stderr.write(`diff: ${path} is not a catalog() document\n`)
+      return 1
+    }
+  }
+  const diff = diffCatalog(previous, next)
+  io.stdout.write(
+    parsed.flags.has('json')
+      ? `${JSON.stringify(diff, null, 2)}\n`
+      : formatDiff(diff.breaking, diff.safe),
+  )
+  return diff.breaking.length > 0 ? 2 : 0
+}
+
+function isCatalogDocument(value: ProcedureCatalog): boolean {
+  const protocol: unknown = value.protocol
+  return (
+    Array.isArray(value.procedures) &&
+    typeof protocol === 'object' &&
+    protocol !== null &&
+    typeof (protocol as { version?: unknown }).version === 'string'
+  )
+}
+
+function formatDiff(
+  breaking: readonly CatalogChange[],
+  safe: readonly CatalogChange[],
+): string {
+  if (breaking.length === 0 && safe.length === 0) {
+    return 'No changes.\n'
+  }
+  const line = (change: CatalogChange) =>
+    `  ${change.path ?? '(catalog)'}${change.pointer === undefined ? '' : ` ${change.pointer}`}: ${change.message}\n`
+  const section = (title: string, changes: readonly CatalogChange[]) =>
+    changes.length === 0
+      ? ''
+      : `${title} (${String(changes.length)}):\n${changes.map(line).join('')}`
+  return section('Breaking changes', breaking) + section('Safe changes', safe)
 }
 
 async function readInput(path: string, io: CliIo): Promise<string> {

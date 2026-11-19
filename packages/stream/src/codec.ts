@@ -62,6 +62,7 @@ function assertNoNestedStreams(value: unknown, atRoot: boolean): void {
 }
 
 export class StreamCodec implements RpcCodec {
+  readonly streams: boolean = true
   private readonly inner: EnvelopeTextCodec
 
   constructor(options?: { inner?: EnvelopeTextCodec }) {

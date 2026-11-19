@@ -13,6 +13,8 @@ const client = createClient<typeof contract>(new PortLink({ port }), {
 })
 ```
 
+`WsLink` takes `{ url, WebSocket? }` (default `globalThis.WebSocket`) or an open `{ socket }`. The npm `ws` 8.x `WebSocket` class and its sockets fit with no cast; this package does not depend on `ws`.
+
 Stdio is a subpath, not on the main index:
 
 ```ts
@@ -46,6 +48,34 @@ const client = createClient<typeof contract>(new DuplexLink({ duplex }))
 ```
 
 User owns listen / upgrade / spawn / Worker bootstrap. Prod never depends on `@ts-pf/server`.
+
+## Credentials and refused connections
+
+`meta` is sent once, in the `hello` that opens the connection. The convention for a credential is `meta.authorization` with the same value as an HTTP `Authorization` header (browsers cannot set headers on a WebSocket upgrade). A server that refuses the connection throws a `PFError` from its context factory; every call on the link then rejects with that `code` / `message` / `data` (not a local failure, so `RetryPlugin` does not retry it by default). The credential is fixed for the connection: to rotate it, close the link and open a new one. Streams do not survive a reconnect; call the stream procedure again after the new link is ready. A server that ends a live connection with an application close code (4400–4499, e.g. `4401`) fails in-flight calls with a local `Connection closed`; the code is on the socket's `close` event, so pass your own `socket` to `WsLink` if you need it.
+
+```ts
+import { createClient } from '@ts-pf/client'
+import { WsLink } from '@ts-pf/message-client'
+import { isPFError } from '@ts-pf/protocol'
+
+declare const token: string
+
+const link = new WsLink({
+  url: 'wss://example.com/rpc',
+  WebSocket,
+  meta: { authorization: `Bearer ${token}` }, // same value as an HTTP Authorization header
+})
+const client = createClient<typeof contract>(link)
+
+try {
+  await client.planet.find({ id: 1 })
+} catch (error) {
+  // a refusal code is the server's, not the procedure's: it is not in the typed error union
+  if (isPFError(error) && error.code === 'UNAUTHORIZED') {
+    // the server refused the hello; open a new link with a fresh credential
+  }
+}
+```
 
 ## Backpressure
 

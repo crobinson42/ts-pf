@@ -29,6 +29,7 @@ function badRequest(message: string): PFError {
 }
 
 export class MultipartCodec implements RpcCodec {
+  readonly streams: boolean = false
   private readonly inner: EnvelopeTextCodec
   private readonly maxFiles: number
   private readonly maxFileSize: number

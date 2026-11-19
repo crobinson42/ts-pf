@@ -9,9 +9,11 @@ Contract-first TypeScript RPC. One procedure model; Fetch is an adapter. This sk
 
 Install: `npm i @ts-pf/contract @ts-pf/server @ts-pf/server-http @ts-pf/client @ts-pf/client-http`
 
+Keep every `@ts-pf/*` package on the same version (they release together on one version); update them together, in one install command, never one at a time. Internal dependencies are exact pins, so a mixed set installs duplicate copies (TypeScript private-member checks then fail across copies, and so does raw `instanceof PFError`; use `isPFError`).
+
 Link for agents (after install or `npm update`): `npx skills experimental_sync -y`
 
-`experimental_sync` copies skills from **installed** packages only. If `ts-pf-<pkg>` is not in the project skill dir: `npm i @ts-pf/<pkg> && npx skills experimental_sync -y`, then load that skill. Do not invent APIs from a package name. Do not assume an opt-in package is already a dependency.
+`experimental_sync` copies skills from **installed** packages only. If `ts-pf-<pkg>` is not in the project skill dir: `npm i @ts-pf/<pkg>@<version> && npx skills experimental_sync -y` (`<version>` = the installed `@ts-pf/contract` version, or upgrade every `@ts-pf/*` dependency in the same command), then load that skill. Do not invent APIs from a package name. Do not assume an opt-in package is already a dependency.
 
 ## Do
 
@@ -110,6 +112,47 @@ createClient<typeof mobileContract>(new FetchLink({ url: '/rpc' }))
 
 No `mergeRouters`. No `compose()`. No lazy routers.
 
+## Browser bundles
+
+Browser UI code (client modules, islands) must not import a server-side or Node-only entry point. Ban them with a lint rule scoped to those directories (a server hosted in a Worker or extension background is server-side code, outside this scope). Biome (`biome.json`; adjust `includes`):
+
+```json
+{
+  "overrides": [
+    {
+      "includes": ["src/client/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@ts-pf/server": "Server-side",
+                  "@ts-pf/server-http": "Server-side",
+                  "@ts-pf/message-server": "Server-side",
+                  "@ts-pf/message-server/stdio": "Server-side (Node)",
+                  "@ts-pf/astro/server": "Server-side",
+                  "@ts-pf/mcp": "Server-side",
+                  "@ts-pf/mcp/sdk": "Server-side",
+                  "@ts-pf/message/stdio": "Node-only",
+                  "@ts-pf/message-client/stdio": "Node-only",
+                  "@ts-pf/codegen": "Node-only (build time)"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
+```
+
+ESLint: `no-restricted-imports` with the same names under `paths`. List exact names, not `patterns` globs: `@ts-pf/mcp/meta` (imported by contract files), `@ts-pf/astro`, and `@ts-pf/astro/client` stay allowed.
+
+Changing a contract clients already use (safe vs breaking changes, catch-all branches for new codes and enum values, `docs({ deprecated: true })`, shared vs per-procedure error maps, catalog diffs in CI): [Evolving a contract](https://github.com/crobinson42/ts-pf/blob/main/docs/evolution.md).
+
 ## Capabilities
 
 | I want | Install | Then load |
@@ -126,6 +169,7 @@ No `mergeRouters`. No `compose()`. No lazy routers.
 | Procedure catalog | `@ts-pf/docs` | `ts-pf-docs` |
 | OpenAPI 3.1 | `@ts-pf/openapi` | `ts-pf-openapi` |
 | Split-repo `Contract` `.d.ts` | `@ts-pf/codegen` | `ts-pf-codegen` |
+| Breaking-change check on `catalog()` in CI (`diffCatalog` / `ts-pf-codegen diff`) | `@ts-pf/codegen` | `ts-pf-codegen` |
 | SWR | `@ts-pf/swr` | `ts-pf-swr` |
 | mvc-kit Resources | `@ts-pf/mvc-kit` | `ts-pf-mvc-kit` |
 | Astro endpoint / pages | `@ts-pf/astro` | `ts-pf-astro` |
@@ -203,7 +247,7 @@ import { openapi } from '@ts-pf/openapi'
 import { emit, catalogHash } from '@ts-pf/codegen'
 import { writeFileSync } from 'node:fs'
 
-procedure.meta(docs({ description: 'Find a planet by id' }))
+procedure.meta(docs('Find a planet by id')) // or docs({ description?, summary?, tags?, deprecated?, hidden? })
 const spec = catalog(contract, { prefix: '/rpc' })
 openapi(spec, { info: { title: 'Planet API', version: '1.0.0' } })
 writeFileSync('contract.d.ts', emit(spec))
@@ -303,7 +347,7 @@ Every procedure becomes a tool (`planet.find` → `planet_find`); serve with `cr
 | `createSwr` | `createSWRUtils` / `swrUtils` |
 | `bindClient` | `bind` as a client wrapper / `createMvc` |
 | `createAstroHandler` / `createAstroLocalClient` / `createAstroClient` | `RPCHandler` |
-| `emit` / `catalogHash` | `generate` / `compile`; `digest` as the only hash name |
+| `emit` / `catalogHash` / `diffCatalog` | `generate` / `compile`; `digest` as the only hash name; `compare` / `breaking` / `compat` as the diff name |
 | `ts-pf-codegen` | `pf` |
 | generated `Contract` | `AppRouter` |
 | implemented `app` | `router` (that name is the contract helper) |

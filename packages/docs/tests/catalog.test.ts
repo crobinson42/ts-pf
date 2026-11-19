@@ -64,6 +64,41 @@ describe('catalog', () => {
     expect(all.procedures.map((p) => p.key)).toContain('planet/hidden')
   })
 
+  describe('requireDescription', () => {
+    const described = router({
+      a: procedure.meta(docs('A')),
+      b: procedure.meta(docs({ summary: 'B' })),
+      internal: procedure.meta(docs({ hidden: true })),
+    })
+
+    it('is off by default', () => {
+      expect(() => catalog(contract, { schemas: false })).not.toThrow()
+    })
+
+    it('accepts a description or a summary and skips hidden procedures', () => {
+      const result = catalog(described, { requireDescription: true })
+      expect(result.procedures.map((p) => p.key)).toEqual(['a', 'b'])
+    })
+
+    it('throws listing every procedure without one', () => {
+      const bare = router({
+        ok: procedure.meta(docs('ok')),
+        none: procedure,
+        blank: procedure.meta(docs({ description: '  ', tags: ['x'] })),
+        nested: { deep: procedure.meta({ auth: true }) },
+      })
+      expect(() => catalog(bare, { requireDescription: true })).toThrow(
+        'catalog(): 3 procedure(s) have no docs() description or summary: none, blank, nested/deep',
+      )
+    })
+
+    it('checks what the filter includes', () => {
+      expect(() =>
+        catalog(described, { requireDescription: true, filter: () => true }),
+      ).toThrow(/: internal$/)
+    })
+  })
+
   it('omits href when prefix is not set', () => {
     const result = catalog(contract, { schemas: false })
     expect(result.procedures[0]).not.toHaveProperty('href')
@@ -97,6 +132,22 @@ describe('catalog', () => {
             },
           },
         },
+      })
+      const issue = (
+        validation.data.jsonSchema as {
+          properties: {
+            issues: {
+              items: {
+                properties: { path: { items: Record<string, unknown> } }
+              }
+            }
+          }
+        }
+      ).properties.issues.items
+      // oneOf, not a `type` array: some OpenAPI tooling and code generators
+      // only read single-type schemas.
+      expect(issue.properties.path.items).toEqual({
+        oneOf: [{ type: 'string' }, { type: 'number' }],
       })
     }
     for (const err of result.protocolErrors) {

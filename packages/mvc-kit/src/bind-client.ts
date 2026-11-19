@@ -107,14 +107,21 @@ function withStatus(error: unknown): unknown {
   return copy
 }
 
+// The cross-copy brand `@ts-pf/protocol` puts on `PFError.prototype`. This
+// package does not depend on protocol, and `Symbol.for` returns the same
+// symbol for the same key in every copy, so the key is repeated here.
+const PF_ERROR_BRAND = Symbol.for('ts-pf.PFError')
+
 function isPFErrorLike(
   value: unknown,
 ): value is Error & { code: string; status?: unknown } {
-  return (
-    value instanceof Error &&
-    value.name === 'PFError' &&
-    typeof (value as { code?: unknown }).code === 'string'
-  )
+  if (typeof value !== 'object' || value === null) {
+    return false
+  }
+  const branded =
+    (value instanceof Error && value.name === 'PFError') ||
+    (value as { [PF_ERROR_BRAND]?: unknown })[PF_ERROR_BRAND] === true
+  return branded && typeof (value as { code?: unknown }).code === 'string'
 }
 
 function isPromiseLike(value: unknown): value is PromiseLike<unknown> {

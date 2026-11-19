@@ -1,6 +1,6 @@
 ---
 name: ts-pf-contract
-description: "Use when defining a ts-pf contract with procedure, router, schemas, typed errors, or InferContract* types. Triggers: @ts-pf/contract, procedure, router, registerSchemaAdapter, ClientError, .errors(), .input(), .output()."
+description: "Use when defining a ts-pf contract with procedure, router, schemas, typed errors, or InferContract* types. Triggers: @ts-pf/contract, procedure, router, registerSchemaAdapter, toValidationIssues, ClientError, .errors(), .input(), .output()."
 ---
 
 # @ts-pf/contract
@@ -41,6 +41,7 @@ Nest slice routers: `router({ planet: planetContract, star: starContract })`. Pi
 ## API
 
 - `procedure`, `router`, `registerSchemaAdapter`, `validateSchema`
+- `toValidationIssues(issues)` — Standard Schema issues → `ValidationIssue[]` (the `VALIDATION` `data.issues` shape: `{ key }` path segments unwrapped, numbers kept, other keys as strings), the same normalization the built-in adapter applies; pair with `validationError` from `@ts-pf/server` in a handler that validates itself
 - `isContractProcedure`, `isContractRouter`
 - `ClientError`, `ContractClient`, `CallOptions`
 - `InferContractInputs`, `InferContractOutputs`, `InferContractErrors`, `InferErrorData`
