@@ -6,7 +6,7 @@ Human-oriented guides that sit between the root [README](../README.md) (happy pa
 |---|---|
 | [Tutorial](tutorial.md) | Install, contract, implementer, `FetchHandler`, `createClient` — the happy path as a walkthrough |
 | [Concepts](concepts.md) | Contract vs implementer vs app, `$context` and context inference, `.use()` vs `.useAfter()`, links and adapters, codec pairing, the three interceptor kinds, validation defaults |
-| [Errors](errors.md) | `PFError`, declared errors, the closed protocol code set and its JSON, `asResult` narrowing, `status` per transport, `httpStatus()`, `onError` and default logging |
+| [Errors](errors.md) | `PFError`, declared errors, the closed protocol code set and its JSON, `asResult` narrowing, `status` per transport, `httpStatus()`, mapping domain errors in middleware, `onError` and default logging |
 | [Testing](testing.md) | In-process testing through a `fetch` stub or `createLocalClient`, declared errors, middleware context, streams, running the repo's examples |
 | [Coming from tRPC / oRPC](coming-from-trpc-orpc.md) | Name mapping tables and a factual list of what is different |
 

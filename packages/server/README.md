@@ -1,6 +1,6 @@
 # @ts-pf/server
 
-`createImplementer()`, middleware, `runProcedure`, `lookupProcedure`, `createLocalClient()`, and server call interceptors / `DedupePlugin` for [ts-pf](https://github.com/crobinson42/ts-pf#readme). Implements a contract from `@ts-pf/contract`. No `Request` / `Response` — HTTP is `@ts-pf/server-http`.
+`createImplementer()`, middleware, `mapStreamErrors`, `runProcedure`, `lookupProcedure`, `createLocalClient()`, and server call interceptors / `DedupePlugin` for [ts-pf](https://github.com/crobinson42/ts-pf#readme). Implements a contract from `@ts-pf/contract`. No `Request` / `Response` — HTTP is `@ts-pf/server-http`.
 
 ## Install
 
@@ -121,7 +121,7 @@ await handler.handle(request, { prefix: '/rpc', context: (req) => ({ db, req }) 
 
 ## Mapping domain errors
 
-A `.use()` middleware that wraps `await next()` in `try` / `catch` maps errors thrown before a procedure returns. A stream procedure returns its `AsyncIterable` first and throws while it is iterated, after that `catch` has finished, so a domain error thrown mid-stream reaches the client as `INTERNAL`. `mapStreamErrors(value, fn)` wraps an async iterable so a throw from its `next()` is replaced by `fn(error)`; any other value is returned unchanged, so one middleware covers unary and stream procedures:
+A `.use()` middleware that wraps `await next()` in `try` / `catch` maps errors thrown before a procedure returns. A stream procedure returns its `AsyncIterable` first and throws while it is iterated, after that `catch` has finished, so a domain error thrown mid-stream reaches a remote client as `INTERNAL` (an in-process caller gets the raw error). `mapStreamErrors(value, fn)` wraps an async iterable so a throw from its `next()` is replaced by `fn(error)`; any other value is returned unchanged, so one middleware covers unary and stream procedures:
 
 ```ts
 import { isPFError, PFError } from '@ts-pf/protocol'
@@ -132,6 +132,7 @@ class QuotaExceeded extends Error {}
 
 // Returns the error to throw. Return PFErrors unchanged: input VALIDATION,
 // stream item VALIDATION, and errors.CODE() throws must reach the client as they are.
+// Declare RATE_LIMITED on .errors() so clients can narrow on it.
 function mapError(error: unknown): unknown {
   if (isPFError(error)) return error
   if (error instanceof QuotaExceeded) {
@@ -154,12 +155,12 @@ const mapErrors = impl.middleware(async ({ next }) => {
 export const root = impl.use(mapErrors)
 ```
 
-`fn` sees every value the iterable throws. The mapped error is still checked against the contract like any other throw (a declared code's `data` is validated; data that fails is sent as `INTERNAL`), because middleware runs inside the procedure. `return()` (a client that stops reading) reaches the source iterator, including before the first item. Server call interceptors wrap the whole procedure and see its errors after that check, so an error mapped there skips the `data` validation: map in middleware.
+`fn` sees every value the iterable throws. The mapped error is still checked against the contract like any other throw (a declared code's `data` is validated; data that fails is sent as `INTERNAL`), because middleware runs inside the procedure. Only `data` is checked: the declared `status` and `message` are not applied to an error you build, so set them on the `PFError` yourself. `return()` (a client that stops reading) reaches the source iterator, including before the first item. Server call interceptors wrap the whole procedure and see its errors after that check, so an error mapped there skips the `data` validation: map in middleware.
 
 ## Middleware and handler notes
 
 - Call `next()` at most once in a `.use()` / `.useAfter()` middleware. One call keeps one input and context: a second `next()` runs the rest of the chain on the input the first run already parsed and the context inner middleware already added, and concurrent calls race. For retries or hedging, use a `CallInterceptor`; its `next()` may be called more than once, and each call gets a fresh execution.
-- The handler's `signal` is optional. `FetchHandler` (the request's signal) and the message handlers always pass one; `createLocalClient` without `{ signal }` and a direct `runProcedure` may not. Guard it: `signal?.throwIfAborted()`, or `signal ?? AbortSignal.timeout(5_000)` when you pass it on.
+- The handler's `signal` is optional. `FetchHandler` (the request's signal) and the message handlers always pass one; `createLocalClient` without `{ signal }`, a direct `runProcedure`, and `@ts-pf/mcp` without a host signal may not. Guard it: `signal?.throwIfAborted()`, or `signal ?? AbortSignal.timeout(5_000)` when you pass it on.
 
 ## API
 

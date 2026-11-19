@@ -84,7 +84,7 @@ const create = impl.planet.create.use(requireUser).handler(async ({ input, conte
 
 ### Mapping domain errors
 
-`try { await next() } catch` misses throws during stream iteration (the iterable is returned first). Use one mapping middleware, first in the chain; `mapStreamErrors(value, fn)` wraps an async iterable (a throw from `next()` becomes `fn(error)`; `return()` reaches the source, even before the first item) and returns anything else unchanged:
+`try { await next() } catch` misses throws during stream iteration (the iterable is returned first). Use one mapping middleware, first in the chain; `mapStreamErrors(value, fn)` wraps an async iterable (a throw from the iterator's `next()` becomes `fn(error)`; `return()` reaches the source, even before the first item) and returns anything else unchanged:
 
 ```ts
 import { isPFError } from '@ts-pf/protocol'
@@ -103,12 +103,12 @@ const root = impl.use(async ({ next }) => {
 })
 ```
 
-`fn` returns the error to throw and sees every thrown value: return `PFError`s unchanged so input / stream-item `VALIDATION` and `errors.CODE()` throws survive. Mapped errors still get the declared-error `data` check (invalid → `INTERNAL`) because middleware runs inside the procedure. Not in a call interceptor: interceptors see errors after that check.
+`fn` returns the error to throw and sees every thrown value: return `PFError`s unchanged so input / stream-item `VALIDATION` and `errors.CODE()` throws survive. Mapped errors still get the declared-error `data` check (invalid → `INTERNAL`) because middleware runs inside the procedure — `data` only: set the declared `status` / `message` on the `PFError` you return. Not in a call interceptor: interceptors see errors after that check.
 
 ### Middleware and handler rules
 
 - `next()` at most once per `.use()` / `.useAfter()` call. Execution state (`input`, `context`) is shared: a second call re-runs inner middleware on already-parsed input with the context inner middleware added, and concurrent calls race. Retries / hedging are a `CallInterceptor` (its `next()` may run more than once; each gets a fresh execution).
-- Handler `signal` is optional: `FetchHandler` and message handlers always pass one; `createLocalClient` without `{ signal }` and direct `runProcedure` may not. Guard: `signal?.throwIfAborted()` / `signal ?? AbortSignal.timeout(ms)`.
+- Handler `signal` is optional: `FetchHandler` and message handlers always pass one; `createLocalClient` without `{ signal }`, direct `runProcedure`, and `@ts-pf/mcp` without a host signal may not. Guard: `signal?.throwIfAborted()` / `signal ?? AbortSignal.timeout(ms)`.
 
 ## API
 
@@ -133,5 +133,6 @@ const root = impl.use(async ({ next }) => {
 - Default `DedupePlugin` on non-idempotent writes.
 - `mergeRouters` — nest `impl.router({ planet: planetApp })`.
 - Call middleware `next()` twice (retry in a `CallInterceptor`).
-- Map domain errors only in `catch` around `await next()` (misses mid-stream throws) or in a call interceptor (skips the declared `data` check).
+- Map domain errors with only a `catch` around `await next()` — it misses mid-stream throws; add `mapStreamErrors`.
+- Map domain errors in a call interceptor — it skips the declared `data` check.
 - Cast `context as AppCtx & { user: User }` at call sites — narrow with a checking helper.

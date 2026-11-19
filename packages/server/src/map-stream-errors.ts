@@ -5,7 +5,8 @@ import { isAsyncIterable } from '@ts-pf/protocol'
  * `fn` gets every thrown value and returns the error to throw instead; return
  * the value unchanged to keep it (do that for `PFError`s, so `VALIDATION`
  * failures from `stream()` and errors thrown with `errors.CODE()` reach the
- * client as they are). A value that is not an async iterable is returned
+ * client as they are). The result is a plain async iterable (typed as `T`;
+ * no generator `throw()`). A value that is not an async iterable is returned
  * unchanged, so one `.use()` middleware covers unary and stream procedures:
  *
  * ```ts no-check

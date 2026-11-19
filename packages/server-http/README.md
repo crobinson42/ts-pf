@@ -20,13 +20,13 @@ const result = await handler.handle(request, { prefix: '/rpc', context: { db } }
 
 Options: `codec`, `plugins`, `interceptors`, `validation`, and `onError(error, { request, path, context })` (type `FetchHandlerOnError`). Without `onError`, unknown throws and `INTERNAL` errors are logged with `console.error`; passing it replaces that logging, and `isUnexpectedError` from `@ts-pf/protocol` keeps the same filter: `onError: (e) => { if (isUnexpectedError(e)) logger.error(e) }`. Mid-stream errors are in-band codec items and reach neither. A JSON envelope object with keys but no `input` key is `400 BAD_REQUEST` from the codec; `{}` and `{"input":null}` still mean no input. A request `x-ts-pf-protocol` header that is present and not `1` is `400 BAD_REQUEST` `Unsupported protocol version` before the body is read; a missing header is accepted. `RequestLimitPlugin` rewraps any request with a body, so the context factory and plugin hooks see a plain `Request`; read host extras (srvx `request.ip`) from the request your host passed.
 
-A `HandlerPlugin.onRequest` that throws answers like any protocol error: the throw takes the normal error path (`HandlerPlugin.onError`, the `onError` option or the default log, the JSON envelope with `x-ts-pf-protocol` and `httpStatus(error)`, then `onResponse`). There is no `filter` option; to keep a procedure off HTTP while another transport still serves it, throw `NOT_FOUND`:
+A `HandlerPlugin.onRequest` that throws answers like any protocol error: the throw takes the normal error path (`HandlerPlugin.onError`, the `onError` option or the default log, the JSON envelope with `x-ts-pf-protocol` and `httpStatus(error)`, then `onResponse`); a non-`PFError` throw is `500 INTERNAL` and logged by default. There is no `filter` option; to keep a procedure off HTTP while another transport still serves it, throw `NOT_FOUND`:
 
 ```ts
 import { PFError } from '@ts-pf/protocol'
 import { FetchHandler, type HandlerPlugin } from '@ts-pf/server-http'
 
-// `admin.*` is served over a message transport only; over HTTP it looks unknown.
+// `admin.*` is served over a message transport only; over HTTP it answers NOT_FOUND.
 const hideAdmin: HandlerPlugin = {
   name: 'hide-admin',
   onRequest({ request }) {

@@ -203,7 +203,7 @@ import { openapi } from '@ts-pf/openapi'
 import { emit, catalogHash } from '@ts-pf/codegen'
 import { writeFileSync } from 'node:fs'
 
-procedure.meta(docs('Find a planet by id')) // docs({ description, summary?, tags?, hidden? })
+procedure.meta(docs('Find a planet by id')) // or docs({ description?, summary?, tags?, deprecated?, hidden? })
 const spec = catalog(contract, { prefix: '/rpc' })
 openapi(spec, { info: { title: 'Planet API', version: '1.0.0' } })
 writeFileSync('contract.d.ts', emit(spec))
