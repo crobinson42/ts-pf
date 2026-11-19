@@ -1,5 +1,25 @@
 # @ts-pf/message-server
 
+## 0.5.0
+
+### Minor Changes
+
+- [#59](https://github.com/crobinson42/ts-pf/pull/59) [`bc61a88`](https://github.com/crobinson42/ts-pf/commit/bc61a888007ac05b5af65e514c1d8f24f3a9fed6) Thanks [@crobinson42](https://github.com/crobinson42)! - A server can now say why it refused a connection. When the per-connection context factory (`onHello`) throws a `PFError`, the `hello-error` carries that error's `code`, `message`, and `data`, the same mapping as a handler's error (`toWireError`), and every call on the client's link rejects with it — for example `UNAUTHORIZED` for a missing or expired credential. Any other throw still sends the fixed `INTERNAL` / `Internal server error`, with no message or stack. If you already throw a `PFError` from a context factory, its message now reaches the client. In `@ts-pf/message-server`, `HandlerOptions.onError` now sees only non-`PFError` throws from the context factory, as it already did for handlers.
+  
+  `WebSocketLike.close` takes an optional `reason` (`close(code?, reason?)`; browser `WebSocket` and npm `ws` both fit). The handle `WsHandler.bind()` returns has `close(code?, reason?)`: it closes the socket with that code (default `1000`) and reason before tearing down the session, so an application close code such as `4401` is what the peer's socket receives (the client's calls still fail with a local `Connection closed`; read the code from the socket's own `close` event). Previously the session closed the socket with `1000` first. The message READMEs and skills document the `meta.authorization` convention for credentials and the 4400–4499 close-code range.
+
+### Patch Changes
+
+- [#59](https://github.com/crobinson42/ts-pf/pull/59) [`e25f3c5`](https://github.com/crobinson42/ts-pf/commit/e25f3c5ed9da2ae13fc325edf2e9985c9a0a40db) Thanks [@crobinson42](https://github.com/crobinson42)! - A call cancelled before its handler resolved now closes the stream the handler then returns (`return()` once), instead of leaving it open. An async generator that was never pulled does not run its `finally` on `return()`; put cleanup on the handler's `signal`.
+
+- [#59](https://github.com/crobinson42/ts-pf/pull/59) [`cdf1f66`](https://github.com/crobinson42/ts-pf/commit/cdf1f66d71cf7c0a726fc44743cc4e0411307798) Thanks [@crobinson42](https://github.com/crobinson42)! - Every published `@ts-pf/*` package now releases together on one version (a Changesets `fixed` group), starting with this release; that is why this package's version jumps. Keep all `@ts-pf/*` dependencies on the same version and update them together in one install command: internal dependencies are exact pins, so a mixed set installs duplicate copies of shared packages such as `@ts-pf/protocol`.
+
+- [#59](https://github.com/crobinson42/ts-pf/pull/59) [`3a4c65b`](https://github.com/crobinson42/ts-pf/commit/3a4c65bb4eb2e75fc2c8f2cea08c1bd044423d69) Thanks [@crobinson42](https://github.com/crobinson42)! - npm `ws` 8.x sockets now type-check as `WebSocketLike` with no cast, so a `ws` server socket binds to `WsHandler` and the `ws` client class is accepted as `WsLink`'s `WebSocket` option. The listener event shape gained an optional `type`; browser `WebSocket` stays assignable. The `@ts-pf/message-server` docs add a recipe for serving `WsHandler` from a `node:http` server with npm `ws` (`noServer` + `handleUpgrade`); the app still owns listen and upgrade.
+- Updated dependencies [[`e81b871`](https://github.com/crobinson42/ts-pf/commit/e81b87125b359d488734273603bb313bdf00624a), [`d47d657`](https://github.com/crobinson42/ts-pf/commit/d47d65766943cbbc02411f27961e8da3f93d33a9), [`bc61a88`](https://github.com/crobinson42/ts-pf/commit/bc61a888007ac05b5af65e514c1d8f24f3a9fed6), [`cdf1f66`](https://github.com/crobinson42/ts-pf/commit/cdf1f66d71cf7c0a726fc44743cc4e0411307798), [`26d42ca`](https://github.com/crobinson42/ts-pf/commit/26d42ca895f73451d81f6198f659acf8fcb0e7ee), [`a603b5c`](https://github.com/crobinson42/ts-pf/commit/a603b5cfec1d52d385d5fa7eab098d9415cb90dd), [`d772f61`](https://github.com/crobinson42/ts-pf/commit/d772f61b4c8c27b134c3f7185498bb94964d8b3e), [`09140cd`](https://github.com/crobinson42/ts-pf/commit/09140cd8c927d04953479f9f56f3449b3a30459c), [`675edb7`](https://github.com/crobinson42/ts-pf/commit/675edb75df8e400dfc70474b60989b59ff464375), [`e32afd5`](https://github.com/crobinson42/ts-pf/commit/e32afd5c369fea7e9e3b2a7b772546ab134df26c), [`7de78ce`](https://github.com/crobinson42/ts-pf/commit/7de78ce883a8e24801934ef7853f32850d0644ec), [`3a4c65b`](https://github.com/crobinson42/ts-pf/commit/3a4c65bb4eb2e75fc2c8f2cea08c1bd044423d69)]:
+  - @ts-pf/server@0.5.0
+  - @ts-pf/message@0.5.0
+  - @ts-pf/protocol@0.5.0
+
 ## 0.3.4
 
 ### Patch Changes

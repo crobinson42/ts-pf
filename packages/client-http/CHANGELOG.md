@@ -1,5 +1,17 @@
 # @ts-pf/client-http
 
+## 0.5.0
+
+### Patch Changes
+
+- [#59](https://github.com/crobinson42/ts-pf/pull/59) [`cdf1f66`](https://github.com/crobinson42/ts-pf/commit/cdf1f66d71cf7c0a726fc44743cc4e0411307798) Thanks [@crobinson42](https://github.com/crobinson42)! - Every published `@ts-pf/*` package now releases together on one version (a Changesets `fixed` group), starting with this release; that is why this package's version jumps. Keep all `@ts-pf/*` dependencies on the same version and update them together in one install command: internal dependencies are exact pins, so a mixed set installs duplicate copies of shared packages such as `@ts-pf/protocol`.
+
+- [#59](https://github.com/crobinson42/ts-pf/pull/59) [`26d42ca`](https://github.com/crobinson42/ts-pf/commit/26d42ca895f73451d81f6198f659acf8fcb0e7ee) Thanks [@crobinson42](https://github.com/crobinson42)! - `isPFError` now recognises a `PFError` from another installed copy of `@ts-pf/protocol` (version skew, or a bundler that inlined one). Before, such an error failed the check, so `toWireError` sent a typed failure as `INTERNAL` and `FetchLink` wrapped one thrown by a Fetch interceptor as a local failure. `PFError.prototype` carries a non-enumerable `Symbol.for('ts-pf.PFError')` brand; instances gain no own property. `FetchLink` and `bindClient` use the same check.
+- Updated dependencies [[`cdf1f66`](https://github.com/crobinson42/ts-pf/commit/cdf1f66d71cf7c0a726fc44743cc4e0411307798), [`26d42ca`](https://github.com/crobinson42/ts-pf/commit/26d42ca895f73451d81f6198f659acf8fcb0e7ee), [`a603b5c`](https://github.com/crobinson42/ts-pf/commit/a603b5cfec1d52d385d5fa7eab098d9415cb90dd), [`d772f61`](https://github.com/crobinson42/ts-pf/commit/d772f61b4c8c27b134c3f7185498bb94964d8b3e), [`675edb7`](https://github.com/crobinson42/ts-pf/commit/675edb75df8e400dfc70474b60989b59ff464375), [`e32afd5`](https://github.com/crobinson42/ts-pf/commit/e32afd5c369fea7e9e3b2a7b772546ab134df26c)]:
+  - @ts-pf/client@0.5.0
+  - @ts-pf/http@0.5.0
+  - @ts-pf/protocol@0.5.0
+
 ## 0.2.4
 
 ### Patch Changes

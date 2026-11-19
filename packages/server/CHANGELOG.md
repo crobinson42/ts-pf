@@ -1,5 +1,33 @@
 # @ts-pf/server
 
+## 0.5.0
+
+### Minor Changes
+
+- [#59](https://github.com/crobinson42/ts-pf/pull/59) [`d47d657`](https://github.com/crobinson42/ts-pf/commit/d47d65766943cbbc02411f27961e8da3f93d33a9) Thanks [@crobinson42](https://github.com/crobinson42)! - A `PFError` thrown with a code the procedure declares on `.errors()` now gets the declared `status` when it has none, the same as `errors.CODE()`. Previously `throw new PFError({ code: 'Conflict' })` for a declared `{ Conflict: { status: 409 } }` was answered with HTTP 400. The finalized error keeps the thrown error's `cause`; an explicit `status` is kept, `message` is not filled, and undeclared codes are untouched. `status` is still transport metadata and never on the wire.
+
+- [#59](https://github.com/crobinson42/ts-pf/pull/59) [`09140cd`](https://github.com/crobinson42/ts-pf/commit/09140cd8c927d04953479f9f56f3449b3a30459c) Thanks [@crobinson42](https://github.com/crobinson42)! - Server and catalog DX improvements.
+  
+  - `@ts-pf/server`: add `mapStreamErrors(value, fn)`. Wraps an async iterable so a throw during iteration is replaced by `fn(error)`, and returns any other value unchanged, so one `.use()` middleware can map domain errors to declared codes for unary and stream procedures alike (`return mapStreamErrors(await next(), mapError)`). Mapped errors still get the declared-error `data` check. The README and skill also document that middleware `next()` must be called at most once (use a `CallInterceptor` for retries), that the handler `signal` may be absent for in-process callers, and an auth-middleware-plus-narrowing-helper pattern for context keys middleware adds.
+  - `@ts-pf/docs`: `docs('…')` is shorthand for `docs({ description: '…' })`. `catalog(contract, { requireDescription: true })` throws an error listing every catalog procedure without a `docs()` description or summary (default `false`).
+  - `@ts-pf/server-http`: document that a `HandlerPlugin.onRequest` that throws a `PFError` is answered through the normal error path, e.g. `NOT_FOUND` for a procedure that should not be served over HTTP.
+  - `@ts-pf/message-client`: the skill notes that a drain stall is always `INTERNAL` with a fixed message, distinct from app-defined error codes.
+  - `@ts-pf/contract`: the hub skill shows the `docs('…')` shorthand.
+
+- [#59](https://github.com/crobinson42/ts-pf/pull/59) [`7de78ce`](https://github.com/crobinson42/ts-pf/commit/7de78ce883a8e24801934ef7853f32850d0644ec) Thanks [@crobinson42](https://github.com/crobinson42)! - Export the pieces of the built-in input-validation failure for handlers that validate themselves (for example under `validation: { input: false }`): `toValidationIssues(issues)` from `@ts-pf/contract` turns Standard Schema issues into `ValidationIssue[]` with the same path normalization the built-in adapter applies, and `validationError(issues)` from `@ts-pf/server` builds the same `VALIDATION` `PFError` the input check throws. `runProcedure` and `@ts-pf/mcp` now build that error with `validationError` (output unchanged). The docs note that with `validation.input: false` the handler's `input` is the raw value although its type says parsed.
+
+### Patch Changes
+
+- [#59](https://github.com/crobinson42/ts-pf/pull/59) [`e81b871`](https://github.com/crobinson42/ts-pf/commit/e81b87125b359d488734273603bb313bdf00624a) Thanks [@crobinson42](https://github.com/crobinson42)! - Docs: evolving a contract and a domain error catalog recipe.
+  
+  - `@ts-pf/server`: the README and skill add a domain error catalog recipe to "Mapping domain errors": a code → message catalog owned by the domain layer, a status map where `null` means "not exposed to clients" (sent as `INTERNAL`), the client-facing error map derived from it for `procedure.errors()`, and a shared mapping middleware typed with `MiddlewareFn` that leaves non-domain errors unchanged and relies on the declared `status` being filled in.
+  - `@ts-pf/contract`: the hub skill links the new "Evolving a contract" guide (safe vs breaking changes, catch-all branches for new error codes and enum values, deprecation, shared vs per-procedure error maps, catalog diffs in CI).
+
+- [#59](https://github.com/crobinson42/ts-pf/pull/59) [`cdf1f66`](https://github.com/crobinson42/ts-pf/commit/cdf1f66d71cf7c0a726fc44743cc4e0411307798) Thanks [@crobinson42](https://github.com/crobinson42)! - Every published `@ts-pf/*` package now releases together on one version (a Changesets `fixed` group), starting with this release; that is why this package's version jumps. Keep all `@ts-pf/*` dependencies on the same version and update them together in one install command: internal dependencies are exact pins, so a mixed set installs duplicate copies of shared packages such as `@ts-pf/protocol`.
+- Updated dependencies [[`e81b871`](https://github.com/crobinson42/ts-pf/commit/e81b87125b359d488734273603bb313bdf00624a), [`82fdd63`](https://github.com/crobinson42/ts-pf/commit/82fdd63d04e6732d96f8b792627bcaf69f569cf3), [`cdf1f66`](https://github.com/crobinson42/ts-pf/commit/cdf1f66d71cf7c0a726fc44743cc4e0411307798), [`26d42ca`](https://github.com/crobinson42/ts-pf/commit/26d42ca895f73451d81f6198f659acf8fcb0e7ee), [`a603b5c`](https://github.com/crobinson42/ts-pf/commit/a603b5cfec1d52d385d5fa7eab098d9415cb90dd), [`d772f61`](https://github.com/crobinson42/ts-pf/commit/d772f61b4c8c27b134c3f7185498bb94964d8b3e), [`09140cd`](https://github.com/crobinson42/ts-pf/commit/09140cd8c927d04953479f9f56f3449b3a30459c), [`c001422`](https://github.com/crobinson42/ts-pf/commit/c001422da0b1bc8d379cab560e4b83c19bf9fa60), [`675edb7`](https://github.com/crobinson42/ts-pf/commit/675edb75df8e400dfc70474b60989b59ff464375), [`e32afd5`](https://github.com/crobinson42/ts-pf/commit/e32afd5c369fea7e9e3b2a7b772546ab134df26c), [`7de78ce`](https://github.com/crobinson42/ts-pf/commit/7de78ce883a8e24801934ef7853f32850d0644ec)]:
+  - @ts-pf/contract@0.5.0
+  - @ts-pf/protocol@0.5.0
+
 ## 0.4.4
 
 ### Patch Changes

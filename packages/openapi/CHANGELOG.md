@@ -1,5 +1,47 @@
 # @ts-pf/openapi
 
+## 0.5.0
+
+### Minor Changes
+
+- [#59](https://github.com/crobinson42/ts-pf/pull/59) [`8c065e8`](https://github.com/crobinson42/ts-pf/commit/8c065e82ef8aa1a2a99c4c90b8fadc6478be10a6) Thanks [@crobinson42](https://github.com/crobinson42)! - Complete the codegen profile. `profile: 'codegen'` now also sets:
+  
+  - `hoist: 'objects'`: nested inline objects with properties become named components (`BookFindOutputAuthor`; array items `…Item`, record values `…Value`, union variants by tag value). Identical shapes share one component. Protocol envelopes keep their inline objects. A warning lists the made-up names, so you can give those objects a `.meta({ id })`.
+  - `discriminators: true`: `discriminator: { propertyName, mapping }` on unions of components that each require a different string tag.
+  - `canonical: true`: keys sorted at every depth, using `canonicalize` from `@ts-pf/docs`, so output is byte-stable.
+  
+  New options the profile never sets:
+  
+  - `streams: 'operation' | 'components' | 'omit'`. `'components'` gives stream procedures no path and lists their schemas in a document-level `x-ts-pf-streams` map, for streams served over message transports. `'omit'` leaves them out.
+  - `enumNames`: names shared inline enums by value set (`{ BookStatus: ['available', 'loaned'] }`).
+  - `catalogHash`: written to `info['x-ts-pf-catalog-hash']`. Pass `catalogHash(catalog)` from `@ts-pf/codegen`.
+  
+  The default output is unchanged.
+
+- [#59](https://github.com/crobinson42/ts-pf/pull/59) [`0a62f9a`](https://github.com/crobinson42/ts-pf/commit/0a62f9ae40991fbb6c81997e3024c90b567c4fb3) Thanks [@crobinson42](https://github.com/crobinson42)! - Add an opt-in codegen profile. `openapi(catalog, { profile: 'codegen', info })` makes the choices that code generators (openapi-generator, Kiota, orval, swagger_parser) need, and still describes the same POST JSON RPC paths and envelopes. The profile expands to options that can each be set alone. An option you pass yourself overrides the profile's value:
+  
+  - `envelopes: 'inline'`: request and success envelopes are inline in each operation instead of `<path>.Request` / `<path>.Success` components.
+  - `errors: 'shared'`: one `RpcError` envelope, an `ErrorCode` enum, one `<Code>Data` per code with data (matched to `error.code` by name), and `x-ts-pf-errors` on each operation. Throws when one code has two `data` shapes.
+  - `naming: 'pascal'`: `AuthVerifyCodeInput` instead of `auth.verifyCode.Input`. A procedure whose input or output is a `.meta({ id })` type uses the id. Throws when two schemas would get one name.
+  - `closeInputs`, `constAsEnum: 'exceptTags'`, `dropFormatPatterns`, `emptyInputNull`.
+  
+  The default output is unchanged.
+
+- [#59](https://github.com/crobinson42/ts-pf/pull/59) [`133ad37`](https://github.com/crobinson42/ts-pf/commit/133ad37a792d3191efbc91624e583c2525b7488f) Thanks [@crobinson42](https://github.com/crobinson42)! - The default `openapi()` output changes so code generators get one model per type. It still describes the same POST JSON RPC (same paths, envelopes, and operations), but component names and schema details differ:
+  
+  - Root `$defs` are hoisted: a `.meta({ id: 'Book' })` schema becomes `components.schemas.Book` and every `$ref` points there, so a DTO used by several procedures is one component instead of a copy under each `<path>.Input` / `<path>.Output`. Those per-procedure components remain; one that is just a named type is now a `$ref` to it. When an id's input and output shapes differ (for example a field with a default), the output keeps `Book` and the input is `BookInput`. Two different shapes for one id on the same side, an `<id>Input` that is already an id, or an id that equals another component name now throws, naming the id. Zod's unnamed recursive defs (`__schema0`, …) become `<host>.__schemaN`.
+  - Declared errors are shared per code: when every procedure that declares a code has the same `data` shape (or none), operations reference one `Error.<CODE>` (and `Error.<CODE>.Data`) instead of `<path>.Error.<CODE>`. Codes whose data differs keep the per-procedure names.
+  - Output and error `data` schemas (including the protocol `VALIDATION` data) no longer carry `additionalProperties: false`, so a server that adds a field does not break older generated clients. Input schemas and the protocol envelopes are unchanged.
+  - Component schemas no longer carry a nested `$schema`; the document's `jsonSchemaDialect` declares the dialect.
+  
+  If you post-process the document by component name (for example `planet.find.Error.NOT_FOUND`, or `$defs` under a procedure's component), update it to the new names.
+
+### Patch Changes
+
+- [#59](https://github.com/crobinson42/ts-pf/pull/59) [`cdf1f66`](https://github.com/crobinson42/ts-pf/commit/cdf1f66d71cf7c0a726fc44743cc4e0411307798) Thanks [@crobinson42](https://github.com/crobinson42)! - Every published `@ts-pf/*` package now releases together on one version (a Changesets `fixed` group), starting with this release; that is why this package's version jumps. Keep all `@ts-pf/*` dependencies on the same version and update them together in one install command: internal dependencies are exact pins, so a mixed set installs duplicate copies of shared packages such as `@ts-pf/protocol`.
+- Updated dependencies [[`29c8fac`](https://github.com/crobinson42/ts-pf/commit/29c8fac45a3be7a01eaffd2a490671190e6d6516), [`cdf1f66`](https://github.com/crobinson42/ts-pf/commit/cdf1f66d71cf7c0a726fc44743cc4e0411307798), [`09140cd`](https://github.com/crobinson42/ts-pf/commit/09140cd8c927d04953479f9f56f3449b3a30459c), [`4c7ba42`](https://github.com/crobinson42/ts-pf/commit/4c7ba42a4b64aa44ac3ddc86ca9858d100c74784)]:
+  - @ts-pf/docs@0.5.0
+
 ## 0.1.12
 
 ### Patch Changes
