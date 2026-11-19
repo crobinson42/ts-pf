@@ -27,7 +27,7 @@ export const contract = router({
 })
 ```
 
-`docs.hidden: true` omits the procedure from `catalog()` unless you pass `filter: () => true`. `docs()` keeps `tags` and `hidden` as literal types when you write them inline (other fields stay `DocsMeta`), so `@ts-pf/mcp`'s `all({ tags })` and hidden filters work in types too.
+`docs('Find a planet by id')` is shorthand for `docs({ description: 'Find a planet by id' })`. `docs.hidden: true` omits the procedure from `catalog()` unless you pass `filter: () => true`. `docs()` keeps `tags` and `hidden` as literal types when you write them inline (other fields stay `DocsMeta`), so `@ts-pf/mcp`'s `all({ tags })` and hidden filters work in types too.
 
 ## Generate a catalog
 
@@ -43,6 +43,8 @@ console.log(JSON.stringify(spec, null, 2))
 ```
 
 JSON Schema conversion uses Standard JSON Schema (`~standard.jsonSchema`) then TypeBox. Register more with `registerJsonSchemaConverter` (same accept-first pattern as `registerSchemaAdapter`). Unconverted schemas become `{ kind: 'unavailable', reason }` — they do not fail the catalog. `stream()` is `{ kind: 'stream', item? }` (the iterable is not converted; the item schema is). Protocol `VALIDATION` includes its `data.issues` schema on `protocolErrors`.
+
+`catalog(contract, { requireDescription: true })` throws an `Error` listing every procedure in the catalog (after `filter`, so hidden ones are skipped by default) that has no non-blank `docs()` `description` or `summary` (the same fallback `@ts-pf/mcp` and `@ts-pf/codegen` use). Run it in a test or a build script to keep the API documented. Default `false`.
 
 `walkContract(contract)` is public if you want a markdown/HTML renderer without going through `catalog()`.
 
