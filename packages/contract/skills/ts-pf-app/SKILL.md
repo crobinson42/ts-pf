@@ -110,6 +110,8 @@ createClient<typeof mobileContract>(new FetchLink({ url: '/rpc' }))
 
 No `mergeRouters`. No `compose()`. No lazy routers.
 
+Changing a contract clients already use (safe vs breaking changes, catch-all branches for new codes and enum values, `docs({ deprecated: true })`, shared vs per-procedure error maps, catalog diffs in CI): [Evolving a contract](https://github.com/crobinson42/ts-pf/blob/main/docs/evolution.md).
+
 ## Capabilities
 
 | I want | Install | Then load |

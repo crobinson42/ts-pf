@@ -29,7 +29,7 @@ scripts/check-deps.mjs                   @ts-pf/* DAG allow-list (mirrors rules.
 scripts/check-exports.mjs
 scripts/check-snippets.mjs                tsc over fenced ```ts in README.md, docs/**/*.md, packages/*/README.md, SKILL.md, example READMEs against dist (flags: `no-check`, `bundler`)
 scripts/bench.mjs                        `npm run bench`: ops/s for local / Fetch / MessagePort unary, declared error, and 2000-item streams (relative numbers; run before and after hot-path changes, see CONTRIBUTING "Benchmarks")
-docs/                                    human guides (tutorial, concepts, errors, testing, coming-from); site/ copies these
+docs/                                    human guides (tutorial, concepts, errors, evolution, testing, coming-from); site/ copies these
 site/                                    Starlight docs site (`@ts-pf/site`, private). Not `packages/docs`. Generated from READMEs + `docs/` + `packages/protocol/PROTOCOL.md`; GitHub Pages `/ts-pf`
 skills/README.md                         consumer skill index (not published)
 packages/*/skills/ts-pf-<pkg>/SKILL.md   consumer usage (hub catalog ts-pf-app on contract)

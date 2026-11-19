@@ -41,6 +41,7 @@ const PACKAGE_ORDER = [
 const GUIDE_ORDER = [
   'concepts.md',
   'errors.md',
+  'evolution.md',
   'testing.md',
   'coming-from-trpc-orpc.md',
 ]

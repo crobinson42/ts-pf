@@ -55,6 +55,8 @@ Defaults worth knowing:
 
 A `PFError` thrown directly (`throw new PFError({ code: 'UNAUTHORIZED' })`) also reaches the client at runtime, with its code as-is. It is not in the client's `ClientError` union, though, which is exactly the declared codes plus the protocol codes with no string catch-all: `result.error.code === 'UNAUTHORIZED'` fails to type-check. Declare the code on `.errors()` (on the procedure, or on every procedure a shared middleware guards) when the client needs to narrow on it.
 
+Adding, renaming, or removing codes on a live API, and choosing between one shared error map and per-procedure maps, are covered in [Evolving a contract](evolution.md).
+
 ## The protocol code set
 
 These six codes are closed. Every ts-pf server can emit them, no contract declares them, and every client must handle them as a catch-all.
@@ -140,6 +142,8 @@ Plain `try` / `catch` works too: `catch (e) { if (isPFError(e) && e.code === 'NO
 ### Mapping domain errors to declared codes
 
 To turn your own error classes into declared codes, use one `.use()` middleware placed first, and wrap stream results with `mapStreamErrors` from `@ts-pf/server`: a `catch` around `await next()` only sees throws that happen before the procedure returns, and a stream throws later, while it is read. The mapped error still has its `data` checked against the contract and gets the declared `status` when it has none (set the `message` on the `PFError` you return). See the [`@ts-pf/server` README](../packages/server/README.md#mapping-domain-errors) for the recipe. Do not map in a call interceptor: it sees errors after that check.
+
+When the domain layer owns its errors, keep one catalog there (code → message), a status map typed `satisfies Record<DomainCode, number | null>` where `null` means "not exposed to clients" (mapped to `INTERNAL`), and derive the contract's error map from the exposed codes. The mapping function turns a domain error into `new PFError({ code, message, cause })`, leaves every other thrown value as it is, and needs nothing from `@ts-pf/server`. The [domain error catalog](../packages/server/README.md#a-domain-error-catalog) recipe shows the whole pattern.
 
 ### `httpStatus()`
 

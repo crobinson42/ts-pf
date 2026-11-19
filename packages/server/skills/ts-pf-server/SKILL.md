@@ -105,6 +105,44 @@ const root = impl.use(async ({ next }) => {
 
 `fn` returns the error to throw and sees every thrown value: return `PFError`s unchanged so input / stream-item `VALIDATION` and `errors.CODE()` throws survive. Mapped errors still get the declared-error `data` check (invalid → `INTERNAL`) because middleware runs inside the procedure and get the declared `status` when they have none; set the `message` on the `PFError` you return. Not in a call interceptor: interceptors see errors after that check.
 
+Domain error catalog (the domain layer owns its codes): code → message, a status map where `null` = not exposed (sent as `INTERNAL`), `clientErrors` derived from the exposed codes for `.errors(clientErrors)`, and a `mapDomainError` that needs only `@ts-pf/protocol`:
+
+```ts
+import { PFError } from '@ts-pf/protocol'
+import type { MiddlewareFn } from '@ts-pf/server'
+import { mapStreamErrors } from '@ts-pf/server'
+
+const messages = { BOOK_NOT_FOUND: 'Book not found', LEDGER_MISMATCH: 'Ledger mismatch' } as const
+type DomainCode = keyof typeof messages
+class DomainError extends Error {
+  readonly code: DomainCode
+  constructor(code: DomainCode) {
+    super(messages[code])
+    this.code = code
+  }
+}
+const status = { BOOK_NOT_FOUND: 404, LEDGER_MISMATCH: null } as const satisfies Record<DomainCode, number | null>
+export const clientErrors = { BOOK_NOT_FOUND: { status: status.BOOK_NOT_FOUND, message: messages.BOOK_NOT_FOUND } } // derive from `status` in real code
+
+function mapDomainError(error: unknown): unknown {
+  if (!(error instanceof DomainError)) return error // PFErrors and unknown throws as is
+  if (status[error.code] === null) return new PFError({ code: 'INTERNAL', message: 'Internal server error', cause: error })
+  return new PFError({ code: error.code, message: error.message, cause: error }) // status filled from the declared entry
+}
+
+// MiddlewareFn is type-only; mapStreamErrors is a runtime @ts-pf/server import (peer dep in a shared package).
+export const mapDomainErrors: MiddlewareFn = async ({ next }) => {
+  try {
+    return mapStreamErrors(await next(), mapDomainError)
+  } catch (error) {
+    throw mapDomainError(error)
+  }
+}
+// impl.use(mapDomainErrors) — first in the chain
+```
+
+A code the procedure does not declare is sent without the declared status (HTTP 400) and is not in the client type. `.errors(clientErrors)` on every procedure is simple but loses per-procedure client error types: prefer a shared base map plus per-area spreads, `.errors({ ...baseErrors, ...areaErrors })` (a second `.errors()` call replaces the map). Full recipe: `@ts-pf/server` README "A domain error catalog"; trade-off: [Evolving a contract](https://github.com/crobinson42/ts-pf/blob/main/docs/evolution.md#error-maps-shared-or-per-procedure).
+
 ### Middleware and handler rules
 
 - `next()` at most once per `.use()` / `.useAfter()` call. Execution state (`input`, `context`) is shared: a second call re-runs inner middleware on already-parsed input with the context inner middleware added, and concurrent calls race. Retries / hedging are a `CallInterceptor` (its `next()` may run more than once; each gets a fresh execution).

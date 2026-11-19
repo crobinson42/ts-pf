@@ -157,6 +157,116 @@ export const root = impl.use(mapErrors)
 
 `fn` sees every value the iterable throws. The mapped error is still checked against the contract like any other throw (a declared code's `data` is validated; data that fails is sent as `INTERNAL`), because middleware runs inside the procedure. A declared code without its own `status` also gets the declared one; the declared `message` is not applied, so set it on the `PFError` yourself. `return()` (a client that stops reading) reaches the source iterator, including before the first item. Server call interceptors wrap the whole procedure and see its errors after that check, so an error mapped there skips the `data` validation: map in middleware.
 
+### A domain error catalog
+
+When the domain layer owns its errors (and may be shared by more than one server), keep one catalog there and derive the contract's codes from it. Every domain code has a message and a status; `null` means "not exposed to clients", and the mapping sends it as `INTERNAL`. This file needs only `@ts-pf/protocol`:
+
+```ts
+// domain-errors.ts — owned by the domain layer
+import { PFError } from '@ts-pf/protocol'
+
+/** Every error the domain raises, with its message. */
+const domainErrors = {
+  BOOK_NOT_FOUND: 'Book not found',
+  LOAN_LIMIT_REACHED: 'Loan limit reached',
+  LEDGER_MISMATCH: 'Ledger totals do not match',
+} as const
+
+export type DomainCode = keyof typeof domainErrors
+
+export class DomainError extends Error {
+  readonly code: DomainCode
+  constructor(code: DomainCode, options?: ErrorOptions) {
+    super(domainErrors[code], options)
+    this.code = code
+  }
+}
+
+/** HTTP status per code; `null` = not exposed to clients (sent as INTERNAL). */
+const domainStatus = {
+  BOOK_NOT_FOUND: 404,
+  LOAN_LIMIT_REACHED: 409,
+  LEDGER_MISMATCH: null,
+} as const satisfies Record<DomainCode, number | null>
+
+type ExposedCode = {
+  [K in DomainCode]: (typeof domainStatus)[K] extends number ? K : never
+}[DomainCode]
+
+/** The exposed codes as an error map for `procedure.errors()`. */
+export const clientErrors = Object.fromEntries(
+  Object.entries(domainStatus).flatMap(([code, status]) =>
+    status === null ? [] : [[code, { status, message: domainErrors[code as DomainCode] }]],
+  ),
+) as { [K in ExposedCode]: { status: (typeof domainStatus)[K]; message: string } }
+
+/** A DomainError becomes a PFError; anything else (PFErrors included) is returned as is. */
+export function mapDomainError(error: unknown): unknown {
+  if (!(error instanceof DomainError)) return error
+  if (domainStatus[error.code] === null) {
+    return new PFError({ code: 'INTERNAL', message: 'Internal server error', cause: error })
+  }
+  return new PFError({ code: error.code, message: error.message, cause: error })
+}
+```
+
+The contract declares the exposed codes, and one mapping middleware runs first:
+
+```ts
+// library-contract.ts
+import { procedure, router } from '@ts-pf/contract'
+import { z } from 'zod'
+import { clientErrors } from './domain-errors.js'
+
+export const contract = router({
+  loan: {
+    create: procedure
+      .input(z.object({ bookId: z.string() }))
+      .output(z.object({ loanId: z.string() }))
+      .errors(clientErrors),
+  },
+})
+```
+
+```ts
+// map-domain-errors.ts — server side: mapStreamErrors is a runtime import from @ts-pf/server
+import { type MiddlewareFn, mapStreamErrors } from '@ts-pf/server'
+import { mapDomainError } from './domain-errors.js'
+
+export const mapDomainErrors: MiddlewareFn = async ({ next }) => {
+  try {
+    return mapStreamErrors(await next(), mapDomainError)
+  } catch (error) {
+    throw mapDomainError(error)
+  }
+}
+```
+
+```ts
+// library-server.ts
+import { createImplementer } from '@ts-pf/server'
+import { DomainError } from './domain-errors.js'
+import { contract } from './library-contract.js'
+import { mapDomainErrors } from './map-domain-errors.js'
+
+const impl = createImplementer(contract)
+
+export const app = impl.use(mapDomainErrors).router({
+  loan: {
+    create: impl.loan.create.handler(async ({ input }) => {
+      if (input.bookId === '') throw new DomainError('BOOK_NOT_FOUND')
+      return { loanId: 'loan-1' }
+    }),
+  },
+})
+```
+
+- The mapped `PFError` sets no `status`: `runProcedure` fills it from the declared entry (404 for `BOOK_NOT_FOUND`) and keeps `cause`, so your logger still sees the domain error. A code the procedure does not declare is sent with HTTP 400 and is outside the client's type; pass `status` too if a procedure can throw codes it does not declare.
+- Unknown throws pass through unchanged and become `INTERNAL`, as does a `null`-status code. Both are logged by the `FetchHandler` default (`isUnexpectedError`).
+- A code that carries data: give `DomainError` a `data` field, pass it to the `PFError`, and add the schema to that code's entry on the contract (`{ ...clientErrors.BOOK_NOT_FOUND, data: schema }`), where it is checked like any declared `data`.
+- `MiddlewareFn` is a type-only import, so the middleware needs no implementer and fits `impl.use()` and a per-procedure `.use()` on any server. `domain-errors.ts` does not import `@ts-pf/server`; `map-domain-errors.ts` does (for `mapStreamErrors`), so a shared package that ships it lists `@ts-pf/server` as a peer dependency.
+- `.errors(clientErrors)` on every procedure is the simple choice, and it gives up per-procedure client error types. See [Error maps: shared or per procedure](https://github.com/crobinson42/ts-pf/blob/main/docs/evolution.md#error-maps-shared-or-per-procedure) for the trade-off and a base-set-plus-area pattern.
+
 ## Middleware and handler notes
 
 - Call `next()` at most once in a `.use()` / `.useAfter()` middleware. One call keeps one input and context: a second `next()` runs the rest of the chain on the input the first run already parsed and the context inner middleware already added, and concurrent calls race. For retries or hedging, use a `CallInterceptor`; its `next()` may be called more than once, and each call gets a fresh execution.
