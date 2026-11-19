@@ -9,7 +9,7 @@ Contract-first TypeScript RPC. One procedure model; Fetch is an adapter. This sk
 
 Install: `npm i @ts-pf/contract @ts-pf/server @ts-pf/server-http @ts-pf/client @ts-pf/client-http`
 
-Keep every `@ts-pf/*` package on the same version (they release together on one version); update them together, in one install command, never one at a time. Internal dependencies are exact pins, so a mixed set installs duplicate copies (`instanceof PFError` and private-member type checks then fail across copies).
+Keep every `@ts-pf/*` package on the same version (they release together on one version); update them together, in one install command, never one at a time. Internal dependencies are exact pins, so a mixed set installs duplicate copies (TypeScript private-member checks then fail across copies, and so does raw `instanceof PFError`; use `isPFError`).
 
 Link for agents (after install or `npm update`): `npx skills experimental_sync -y`
 
