@@ -37,6 +37,8 @@ packages/{contract,server,client}/tests/*.test-d.ts   type tests (expectTypeOf +
 packages/{server-http,message-server,astro}/tests/*.test-d.ts   context-inference type tests; tsc --noEmit only (no Vitest typecheck there)
 packages/{message-server,message-client}/tests/ws*.test-d.ts   npm `ws` 8 sockets / client class fit WebSocketLike / WsLink with no cast (@types/ws devDependency, type fixture only); tsc --noEmit only
 packages/mcp/tests/toolkit.test-d.ts     toolkit / all() inject / tags / hidden / names / coverage / binding type tests; tsc --noEmit only
+packages/openapi/tests/options.test-d.ts OpenAPIOptions profile literals (accepted / @ts-expect-error rejected); tsc --noEmit only
+packages/openapi/tests/fixtures/         golden documents: app-contract.openapi.json (default, must not change), app-contract.codegen.openapi.json (profile: 'codegen', codegenAppContract; canonical, so keys sorted)
 packages/mcp/bench/gen.mjs               400-procedure type-cost fixture (`npm run bench:types -w @ts-pf/mcp`; manual, not in verify)
 packages/contract/src/
   builder.ts          procedure singleton, router()
@@ -123,6 +125,25 @@ packages/docs/src/
   catalog.ts          catalog(); protocolErrors derived from ProtocolErrorCode + PROTOCOL_HTTP_STATUS (no local table); requireDescription (after filter; description or summary, non-blank; one Error listing every key)
 packages/openapi/src/
   index.ts            openapi, OpenAPIOptions, OpenAPIDocument
+  openapi.ts          document assembly: resolveProfile, streams: 'omit' catalog filter, protocol / shared error components (or shared-errors.ts), one path per procedure (or an x-ts-pf-streams entry), hoister.finish() → data component names, catalogHash → info, applySchemaPasses
+  operation.ts        one POST operation: <path>.Request / Success envelopes (inline under envelopes: 'inline') around <path>.Input / Output (procedureSchemas); emptyInputNull; x-ts-pf-errors
+  streams.ts          isStreamProcedure; streams: 'components' x-ts-pf-streams entry (input / inputItem / item / output refs + error codes)
+  errors.ts           operationErrors (declared then protocol codes, pure) + errorResponses (grouped by status); TsPf.Error.<CODE> (protocol), Error.<CODE> (declared, same data shape everywhere), else <path>.Error.<CODE>
+  profile.ts          OpenAPIOptions profile: resolveProfile (defaults / PROFILES table, explicit options win; enumNames / catalogHash are not profile keys), applySchemaPasses (naming → enumNames → closeInputs → dropFormatPatterns → constAsEnum → hoist → discriminators → canonical; all off by default)
+  shared-errors.ts    errors: 'shared': ErrorCode, RpcError, <Code>Data (protocol <Code>ErrorData); one data shape per code or throw; errorCodes → x-ts-pf-errors
+  naming.ts           naming: 'pascal' post-pass: dotted names derived from the catalog → PascalCase, bare id Input / Output aliases dropped, clashes throw, refs rewritten; returns the rename map
+  close-inputs.ts     closeInputs: additionalProperties: false on input-only components / request bodies (not allOf members or combinator nodes)
+  const-enum.ts       constAsEnum: 'exceptTags': const → enum [v], except union tag properties (refs followed)
+  format-patterns.ts  dropFormatPatterns: drop pattern next to a JSON Schema 2020-12 format
+  enum-names.ts       enumNames: inline enums with an entry's value set → $ref to the named component; component roots untouched; unused entries warn
+  hoist-objects.ts    hoist: 'objects': nested inline objects of data components (never envelopes) → structural names (pascal concat / path dotted; Item, Value, tag or OptionN), dedupe by canonical shape (alphabetically first name), clash throws, one warning
+  discriminators.ts   discriminators: discriminator { propertyName, mapping } on oneOf / anyOf of whole-component $refs with a unionTag
+  tags.ts             unionTag: the property every variant requires with a distinct string const / one-value enum (alphabetically first)
+  document.ts         mapDocumentSchemas (every schema root, with its side, incl. x-ts-pf-streams entries), componentTarget, resolveComponent
+  hoist.ts            createHoister: normalize each schema, lift root $defs / definitions to components (<id> / <id>Input split; same-side conflicts, taken <id>Input, name collisions throw; Zod __schemaN per host), shapeKey; finish() returns the data component names
+  normalize.ts        drop nested $schema; outputs drop additionalProperties: false
+  refs.ts / walk.ts   $ref helpers; keyword-aware schema map with the source node (never touches const / enum / default), forEachSchema
+  envelope.ts / names.ts  protocol envelopes (stay closed) + the shared RpcError envelope; component names (sanitized), pascalCase
 packages/codegen/src/
   index.ts            emit, emitFiles, catalogHash, diffCatalog, EmitOptions, EmitFile, CatalogDiff, CatalogChange
   hash.ts             catalogHash = sha256 of @ts-pf/docs canonicalize(catalog) (node:crypto)

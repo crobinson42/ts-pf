@@ -1,0 +1,2271 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Library API",
+    "version": "1.0.0"
+  },
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "paths": {
+    "/rpc/book/list": {
+      "post": {
+        "operationId": "book.list",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TsPfProtocol"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/book.list.Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "RPC success",
+            "headers": {
+              "x-ts-pf-protocol": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "1"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/book.list.Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "BAD_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.BAD_REQUEST"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.PAYLOAD_TOO_LARGE"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "VALIDATION",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.VALIDATION"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.INTERNAL"
+                }
+              }
+            }
+          }
+        },
+        "summary": "List books",
+        "tags": [
+          "books"
+        ]
+      }
+    },
+    "/rpc/book/find": {
+      "post": {
+        "operationId": "book.find",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TsPfProtocol"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/book.find.Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "RPC success",
+            "headers": {
+              "x-ts-pf-protocol": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "1"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/book.find.Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "BAD_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.BAD_REQUEST"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error.NOT_FOUND"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.PAYLOAD_TOO_LARGE"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "VALIDATION",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.VALIDATION"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.INTERNAL"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "book"
+        ]
+      }
+    },
+    "/rpc/book/create": {
+      "post": {
+        "operationId": "book.create",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TsPfProtocol"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/book.create.Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "RPC success",
+            "headers": {
+              "x-ts-pf-protocol": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "1"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/book.create.Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "BAD_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.BAD_REQUEST"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error.FORBIDDEN"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Duplicate ISBN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/book.create.Error.CONFLICT"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.PAYLOAD_TOO_LARGE"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "VALIDATION",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.VALIDATION"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.INTERNAL"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "book"
+        ]
+      }
+    },
+    "/rpc/book/media": {
+      "post": {
+        "operationId": "book.media",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TsPfProtocol"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/book.media.Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "RPC success",
+            "headers": {
+              "x-ts-pf-protocol": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "1"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/book.media.Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "BAD_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.BAD_REQUEST"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.PAYLOAD_TOO_LARGE"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "VALIDATION",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.VALIDATION"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.INTERNAL"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "book"
+        ]
+      }
+    },
+    "/rpc/book/reviews": {
+      "post": {
+        "operationId": "book.reviews",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TsPfProtocol"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/book.reviews.Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "RPC success",
+            "headers": {
+              "x-ts-pf-protocol": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "1"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/book.reviews.Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "BAD_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.BAD_REQUEST"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.PAYLOAD_TOO_LARGE"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "VALIDATION",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.VALIDATION"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.INTERNAL"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "book"
+        ]
+      }
+    },
+    "/rpc/book/watch": {
+      "post": {
+        "operationId": "book.watch",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TsPfProtocol"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/book.watch.Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "RPC success stream. HTTP status stays 200 after the stream starts; in-band `{ ok: false, error }` lines are failures; EOF ends the stream.",
+            "headers": {
+              "x-ts-pf-protocol": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "1"
+                }
+              }
+            },
+            "content": {
+              "application/jsonl": {
+                "schema": {
+                  "$ref": "#/components/schemas/book.watch.Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "BAD_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.BAD_REQUEST"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.PAYLOAD_TOO_LARGE"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "VALIDATION",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.VALIDATION"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.INTERNAL"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "book"
+        ]
+      }
+    },
+    "/rpc/author/find": {
+      "post": {
+        "operationId": "author.find",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TsPfProtocol"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/author.find.Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "RPC success",
+            "headers": {
+              "x-ts-pf-protocol": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "1"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/author.find.Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "BAD_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.BAD_REQUEST"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error.NOT_FOUND"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.PAYLOAD_TOO_LARGE"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "VALIDATION",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.VALIDATION"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.INTERNAL"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "author"
+        ]
+      }
+    },
+    "/rpc/review/find": {
+      "post": {
+        "operationId": "review.find",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TsPfProtocol"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/review.find.Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "RPC success",
+            "headers": {
+              "x-ts-pf-protocol": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "1"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/review.find.Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "BAD_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.BAD_REQUEST"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error.NOT_FOUND"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.PAYLOAD_TOO_LARGE"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "VALIDATION",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.VALIDATION"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.INTERNAL"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "review"
+        ]
+      }
+    },
+    "/rpc/category/tree": {
+      "post": {
+        "operationId": "category.tree",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TsPfProtocol"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/category.tree.Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "RPC success",
+            "headers": {
+              "x-ts-pf-protocol": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "1"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/category.tree.Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "BAD_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.BAD_REQUEST"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.PAYLOAD_TOO_LARGE"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "VALIDATION",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.VALIDATION"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.INTERNAL"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "category"
+        ]
+      }
+    },
+    "/rpc/loan/create": {
+      "post": {
+        "operationId": "loan.create",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TsPfProtocol"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/loan.create.Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "RPC success",
+            "headers": {
+              "x-ts-pf-protocol": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "1"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/loan.create.Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "BAD_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.BAD_REQUEST"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error.FORBIDDEN"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Already on loan",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/loan.create.Error.CONFLICT"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.PAYLOAD_TOO_LARGE"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "VALIDATION",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.VALIDATION"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.INTERNAL"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "loan"
+        ]
+      }
+    },
+    "/rpc/loan/return": {
+      "post": {
+        "operationId": "loan.return",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TsPfProtocol"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/loan.return.Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "RPC success",
+            "headers": {
+              "x-ts-pf-protocol": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "1"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/loan.return.Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "BAD_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.BAD_REQUEST"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.PAYLOAD_TOO_LARGE"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "VALIDATION",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.VALIDATION"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.INTERNAL"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "loan"
+        ]
+      }
+    },
+    "/rpc/health": {
+      "post": {
+        "operationId": "health",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/TsPfProtocol"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/health.Request"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "RPC success",
+            "headers": {
+              "x-ts-pf-protocol": {
+                "required": true,
+                "schema": {
+                  "type": "string",
+                  "const": "1"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/health.Success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "BAD_REQUEST",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.BAD_REQUEST"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "PAYLOAD_TOO_LARGE",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.PAYLOAD_TOO_LARGE"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "INTERNAL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TsPf.Error.INTERNAL"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "TsPf.Error.BAD_REQUEST": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ok",
+          "error"
+        ],
+        "properties": {
+          "ok": {
+            "const": false
+          },
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "const": "BAD_REQUEST"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "TsPf.Error.VALIDATION.Data": {
+        "type": "object",
+        "required": [
+          "issues"
+        ],
+        "properties": {
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "message",
+                "path"
+              ],
+              "properties": {
+                "message": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "array",
+                  "items": {
+                    "type": [
+                      "string",
+                      "number"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "TsPf.Error.VALIDATION": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ok",
+          "error"
+        ],
+        "properties": {
+          "ok": {
+            "const": false
+          },
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message",
+              "data"
+            ],
+            "properties": {
+              "code": {
+                "const": "VALIDATION"
+              },
+              "message": {
+                "type": "string"
+              },
+              "data": {
+                "$ref": "#/components/schemas/TsPf.Error.VALIDATION.Data"
+              }
+            }
+          }
+        }
+      },
+      "TsPf.Error.NOT_FOUND": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ok",
+          "error"
+        ],
+        "properties": {
+          "ok": {
+            "const": false
+          },
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "const": "NOT_FOUND"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "TsPf.Error.INTERNAL": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ok",
+          "error"
+        ],
+        "properties": {
+          "ok": {
+            "const": false
+          },
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "const": "INTERNAL"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "TsPf.Error.METHOD_NOT_ALLOWED": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ok",
+          "error"
+        ],
+        "properties": {
+          "ok": {
+            "const": false
+          },
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "const": "METHOD_NOT_ALLOWED"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "TsPf.Error.PAYLOAD_TOO_LARGE": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ok",
+          "error"
+        ],
+        "properties": {
+          "ok": {
+            "const": false
+          },
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "const": "PAYLOAD_TOO_LARGE"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "Error.NOT_FOUND.Data": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "Error.NOT_FOUND": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ok",
+          "error"
+        ],
+        "properties": {
+          "ok": {
+            "const": false
+          },
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message",
+              "data"
+            ],
+            "properties": {
+              "code": {
+                "const": "NOT_FOUND"
+              },
+              "message": {
+                "type": "string"
+              },
+              "data": {
+                "$ref": "#/components/schemas/Error.NOT_FOUND.Data"
+              }
+            }
+          }
+        }
+      },
+      "Error.FORBIDDEN": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ok",
+          "error"
+        ],
+        "properties": {
+          "ok": {
+            "const": false
+          },
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message"
+            ],
+            "properties": {
+              "code": {
+                "const": "FORBIDDEN"
+              },
+              "message": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "book.list.Input": {
+        "type": "object",
+        "properties": {
+          "genre": {
+            "$ref": "#/components/schemas/Genre"
+          }
+        }
+      },
+      "book.list.Output": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Book"
+        }
+      },
+      "book.list.Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "input"
+        ],
+        "properties": {
+          "input": {
+            "$ref": "#/components/schemas/book.list.Input"
+          }
+        }
+      },
+      "book.list.Success": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ok",
+          "output"
+        ],
+        "properties": {
+          "ok": {
+            "const": true
+          },
+          "output": {
+            "$ref": "#/components/schemas/book.list.Output"
+          }
+        }
+      },
+      "book.find.Input": {
+        "type": "object",
+        "properties": {
+          "isbn": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "isbn"
+        ]
+      },
+      "book.find.Output": {
+        "$ref": "#/components/schemas/Book"
+      },
+      "book.find.Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "input"
+        ],
+        "properties": {
+          "input": {
+            "$ref": "#/components/schemas/book.find.Input"
+          }
+        }
+      },
+      "book.find.Success": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ok",
+          "output"
+        ],
+        "properties": {
+          "ok": {
+            "const": true
+          },
+          "output": {
+            "$ref": "#/components/schemas/book.find.Output"
+          }
+        }
+      },
+      "book.create.Input": {
+        "$ref": "#/components/schemas/BookInput"
+      },
+      "book.create.Output": {
+        "$ref": "#/components/schemas/Book"
+      },
+      "book.create.Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "input"
+        ],
+        "properties": {
+          "input": {
+            "$ref": "#/components/schemas/book.create.Input"
+          }
+        }
+      },
+      "book.create.Success": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ok",
+          "output"
+        ],
+        "properties": {
+          "ok": {
+            "const": true
+          },
+          "output": {
+            "$ref": "#/components/schemas/book.create.Output"
+          }
+        }
+      },
+      "book.create.Error.CONFLICT.Data": {
+        "type": "object",
+        "properties": {
+          "isbn": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "isbn"
+        ]
+      },
+      "book.create.Error.CONFLICT": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ok",
+          "error"
+        ],
+        "properties": {
+          "ok": {
+            "const": false
+          },
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message",
+              "data"
+            ],
+            "properties": {
+              "code": {
+                "const": "CONFLICT"
+              },
+              "message": {
+                "type": "string"
+              },
+              "data": {
+                "$ref": "#/components/schemas/book.create.Error.CONFLICT.Data"
+              }
+            }
+          }
+        }
+      },
+      "book.media.Input": {
+        "type": "object",
+        "properties": {
+          "isbn": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "isbn"
+        ]
+      },
+      "book.media.Output": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/PrintMedia"
+          },
+          {
+            "$ref": "#/components/schemas/AudioMedia"
+          }
+        ]
+      },
+      "book.media.Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "input"
+        ],
+        "properties": {
+          "input": {
+            "$ref": "#/components/schemas/book.media.Input"
+          }
+        }
+      },
+      "book.media.Success": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ok",
+          "output"
+        ],
+        "properties": {
+          "ok": {
+            "const": true
+          },
+          "output": {
+            "$ref": "#/components/schemas/book.media.Output"
+          }
+        }
+      },
+      "book.reviews.Input": {
+        "type": "object",
+        "properties": {
+          "isbn": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "isbn"
+        ]
+      },
+      "book.reviews.Output": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Review"
+        }
+      },
+      "book.reviews.Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "input"
+        ],
+        "properties": {
+          "input": {
+            "$ref": "#/components/schemas/book.reviews.Input"
+          }
+        }
+      },
+      "book.reviews.Success": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ok",
+          "output"
+        ],
+        "properties": {
+          "ok": {
+            "const": true
+          },
+          "output": {
+            "$ref": "#/components/schemas/book.reviews.Output"
+          }
+        }
+      },
+      "book.watch.Input": {
+        "type": "object",
+        "properties": {
+          "genre": {
+            "$ref": "#/components/schemas/Genre"
+          }
+        },
+        "required": [
+          "genre"
+        ]
+      },
+      "book.watch.Output": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/BookAdded"
+          },
+          {
+            "$ref": "#/components/schemas/BookRemoved"
+          }
+        ]
+      },
+      "book.watch.Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "input"
+        ],
+        "properties": {
+          "input": {
+            "$ref": "#/components/schemas/book.watch.Input"
+          }
+        }
+      },
+      "book.watch.Success": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ok",
+          "output"
+        ],
+        "properties": {
+          "ok": {
+            "const": true
+          },
+          "output": {
+            "$ref": "#/components/schemas/book.watch.Output"
+          }
+        }
+      },
+      "author.find.Input": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "author.find.Output": {
+        "$ref": "#/components/schemas/Author"
+      },
+      "author.find.Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "input"
+        ],
+        "properties": {
+          "input": {
+            "$ref": "#/components/schemas/author.find.Input"
+          }
+        }
+      },
+      "author.find.Success": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ok",
+          "output"
+        ],
+        "properties": {
+          "ok": {
+            "const": true
+          },
+          "output": {
+            "$ref": "#/components/schemas/author.find.Output"
+          }
+        }
+      },
+      "review.find.Input": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ]
+      },
+      "review.find.Output": {
+        "$ref": "#/components/schemas/Review"
+      },
+      "review.find.Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "input"
+        ],
+        "properties": {
+          "input": {
+            "$ref": "#/components/schemas/review.find.Input"
+          }
+        }
+      },
+      "review.find.Success": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ok",
+          "output"
+        ],
+        "properties": {
+          "ok": {
+            "const": true
+          },
+          "output": {
+            "$ref": "#/components/schemas/review.find.Output"
+          }
+        }
+      },
+      "category.tree.Input": {
+        "type": "object",
+        "properties": {}
+      },
+      "category.tree.Output": {
+        "$ref": "#/components/schemas/Category"
+      },
+      "category.tree.Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "input"
+        ],
+        "properties": {
+          "input": {
+            "$ref": "#/components/schemas/category.tree.Input"
+          }
+        }
+      },
+      "category.tree.Success": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ok",
+          "output"
+        ],
+        "properties": {
+          "ok": {
+            "const": true
+          },
+          "output": {
+            "$ref": "#/components/schemas/category.tree.Output"
+          }
+        }
+      },
+      "loan.create.Input": {
+        "type": "object",
+        "properties": {
+          "isbn": {
+            "type": "string"
+          },
+          "memberId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "isbn",
+          "memberId"
+        ]
+      },
+      "loan.create.Output": {
+        "type": "object",
+        "properties": {
+          "loanId": {
+            "type": "string"
+          },
+          "dueAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "loanId",
+          "dueAt"
+        ]
+      },
+      "loan.create.Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "input"
+        ],
+        "properties": {
+          "input": {
+            "$ref": "#/components/schemas/loan.create.Input"
+          }
+        }
+      },
+      "loan.create.Success": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ok",
+          "output"
+        ],
+        "properties": {
+          "ok": {
+            "const": true
+          },
+          "output": {
+            "$ref": "#/components/schemas/loan.create.Output"
+          }
+        }
+      },
+      "loan.create.Error.CONFLICT.Data": {
+        "type": "object",
+        "properties": {
+          "isbn": {
+            "type": "string"
+          },
+          "dueAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "isbn",
+          "dueAt"
+        ]
+      },
+      "loan.create.Error.CONFLICT": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ok",
+          "error"
+        ],
+        "properties": {
+          "ok": {
+            "const": false
+          },
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message",
+              "data"
+            ],
+            "properties": {
+              "code": {
+                "const": "CONFLICT"
+              },
+              "message": {
+                "type": "string"
+              },
+              "data": {
+                "$ref": "#/components/schemas/loan.create.Error.CONFLICT.Data"
+              }
+            }
+          }
+        }
+      },
+      "loan.return.Input": {
+        "type": "object",
+        "properties": {
+          "loanId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "loanId"
+        ]
+      },
+      "loan.return.Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "input"
+        ],
+        "properties": {
+          "input": {
+            "$ref": "#/components/schemas/loan.return.Input"
+          }
+        }
+      },
+      "loan.return.Success": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ok"
+        ],
+        "properties": {
+          "ok": {
+            "const": true
+          }
+        }
+      },
+      "health.Request": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "input": {
+            "type": "null"
+          }
+        }
+      },
+      "health.Success": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "ok"
+        ],
+        "properties": {
+          "ok": {
+            "const": true
+          }
+        }
+      },
+      "Genre": {
+        "type": "string",
+        "enum": [
+          "fiction",
+          "science",
+          "history"
+        ]
+      },
+      "Book": {
+        "type": "object",
+        "properties": {
+          "isbn": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "genre": {
+            "$ref": "#/components/schemas/Genre"
+          },
+          "available": {
+            "default": true,
+            "type": "boolean"
+          },
+          "publisher": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "address": {
+                "type": "object",
+                "properties": {
+                  "street": {
+                    "type": "string"
+                  },
+                  "city": {
+                    "type": "string"
+                  },
+                  "geo": {
+                    "type": "object",
+                    "properties": {
+                      "lat": {
+                        "type": "number"
+                      },
+                      "lng": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "lat",
+                      "lng"
+                    ]
+                  }
+                },
+                "required": [
+                  "street",
+                  "city",
+                  "geo"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "address"
+            ]
+          }
+        },
+        "required": [
+          "isbn",
+          "title",
+          "genre",
+          "available",
+          "publisher"
+        ]
+      },
+      "BookInput": {
+        "type": "object",
+        "properties": {
+          "isbn": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "genre": {
+            "$ref": "#/components/schemas/Genre"
+          },
+          "available": {
+            "default": true,
+            "type": "boolean"
+          },
+          "publisher": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "address": {
+                "type": "object",
+                "properties": {
+                  "street": {
+                    "type": "string"
+                  },
+                  "city": {
+                    "type": "string"
+                  },
+                  "geo": {
+                    "type": "object",
+                    "properties": {
+                      "lat": {
+                        "type": "number"
+                      },
+                      "lng": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "lat",
+                      "lng"
+                    ]
+                  }
+                },
+                "required": [
+                  "street",
+                  "city",
+                  "geo"
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "address"
+            ]
+          }
+        },
+        "required": [
+          "isbn",
+          "title",
+          "genre",
+          "publisher"
+        ]
+      },
+      "PrintMedia": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "print"
+          },
+          "pages": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "kind",
+          "pages"
+        ]
+      },
+      "AudioMedia": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "audio"
+          },
+          "minutes": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "kind",
+          "minutes"
+        ]
+      },
+      "book.reviews.Output.__schema0": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "replies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/book.reviews.Output.__schema0"
+            }
+          }
+        },
+        "required": [
+          "text",
+          "replies"
+        ]
+      },
+      "Review": {
+        "type": "object",
+        "properties": {
+          "bookIsbn": {
+            "type": "string"
+          },
+          "rating": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "thread": {
+            "$ref": "#/components/schemas/book.reviews.Output.__schema0"
+          }
+        },
+        "required": [
+          "bookIsbn",
+          "rating",
+          "thread"
+        ]
+      },
+      "BookAdded": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "added"
+          },
+          "book": {
+            "$ref": "#/components/schemas/Book"
+          }
+        },
+        "required": [
+          "type",
+          "book"
+        ]
+      },
+      "BookRemoved": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "removed"
+          },
+          "isbn": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "isbn"
+        ]
+      },
+      "Author": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "genres": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Genre"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "genres"
+        ]
+      },
+      "Category": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Category"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "children"
+        ]
+      }
+    },
+    "parameters": {
+      "TsPfProtocol": {
+        "name": "x-ts-pf-protocol",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "const": "1"
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "books"
+    },
+    {
+      "name": "book"
+    },
+    {
+      "name": "author"
+    },
+    {
+      "name": "review"
+    },
+    {
+      "name": "category"
+    },
+    {
+      "name": "loan"
+    }
+  ]
+}
