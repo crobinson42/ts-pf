@@ -24,6 +24,8 @@ const client = createClient<typeof contract>(new PortLink({ port }), {
 new WsLink({ url: 'wss://example.com/rpc', WebSocket }) // or { socket }
 ```
 
+`WebSocket` defaults to `globalThis.WebSocket`; the npm `ws` 8.x class (`import { WebSocket } from 'ws'`, an app dependency) and its sockets fit with no cast.
+
 ```ts
 import { spawn } from 'node:child_process'
 import { StdioLink } from '@ts-pf/message-client/stdio'

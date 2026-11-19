@@ -156,7 +156,7 @@ Implemented routers in examples: `app`, not `router` (that name is the contract 
 - Do not fold SSE into `@ts-pf/server-http`. Do not fold WebSocket into `@ts-pf/server-http`.
 - Do not put `FetchHandler` back in `@ts-pf/server` or `FetchLink` back in `@ts-pf/client`.
 - Do not put `JSONCodec` / `RpcCodec` back in `@ts-pf/protocol`.
-- Do not depend on the `ws` npm package. Inject a `WebSocket` constructor.
+- Do not depend on the `ws` npm package. Inject a `WebSocket` constructor. An `@types/ws` devDependency used only as a type fixture in `*.test-d.ts` (that npm `ws` sockets fit `WebSocketLike` / `WsLink` with no cast) is allowed; no runtime `ws` import.
 - `@ts-pf/message-server` never depends on `@ts-pf/client` (prod or dev).
 - `@ts-pf/message-client` never depends on `@ts-pf/server` (prod).
 - Do not import `@ts-pf/message-server` from `@ts-pf/server`; do not import `@ts-pf/message-client` from `@ts-pf/client` (prod).

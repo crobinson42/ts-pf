@@ -48,6 +48,33 @@ new DuplexHandler(app).bind(duplex, { context: { db } })
 
 User owns listen / upgrade / spawn / Worker bootstrap. This package never depends on `@ts-pf/client`.
 
+## WebSocket on Node
+
+There is no Node upgrade helper here: you own the HTTP server and the upgrade, and hand each socket to `WsHandler`. A recipe with npm `ws` 8.x (your dependency, not this package's), whose sockets fit `WebSocketLike` with no cast:
+
+```ts
+import { createServer } from 'node:http'
+import { WsHandler } from '@ts-pf/message-server'
+import { WebSocketServer } from 'ws'
+
+const wsHandler = new WsHandler(app)
+const wss = new WebSocketServer({ noServer: true })
+const server = createServer() // your HTTP app; plain requests are not this package's job
+
+server.on('upgrade', (req, socket, head) => {
+  if (req.url !== '/rpc-ws') {
+    socket.destroy()
+    return
+  }
+  wss.handleUpgrade(req, socket, head, (ws) => {
+    wsHandler.bind(ws, { context: { db } })
+  })
+})
+server.listen(3000)
+```
+
+The same works under srvx or any other server that exposes Node's `upgrade` event: pass its `request` / `socket` / `head` to `handleUpgrade`.
+
 ## Backpressure
 
 On by default, so a slow client cannot make the server accumulate memory or hold a handler forever. An output stream's producer is pulled one item at a time and parked at its `yield` while the duplex is above its write high-water mark (WebSocket `bufferedAmount` over 1 MiB, stdio `write()` refused). If the client still has not drained after `drainTimeout` (30 s), that call is aborted: the handler's `signal` fires, the iterator's `return()` runs once, the remaining frames are dropped, and the client receives a terminal `result` error `INTERNAL` / `Peer did not drain within 30000 ms` if the socket still accepts it. The connection stays open and other calls on it continue. It is not a handler failure, so `onError` is not called; `onStall` is (default: one `console.warn` on `aborted` only; a `paused` is normal flow control and is passed to a custom hook but not logged). On the input side, a `stream: true` call's `in-item` queue is bounded by the same mark (measured as frame text length) and the handler pauses reading the duplex (connection-wide) until the handler catches up, where the duplex can pause. `WsHandler` over npm `ws` 8.x is bounded in both directions (it exposes `bufferedAmount`, `pause()`, and `resume()`); so is `StdioHandler`. A `MessagePort` can neither report nor pause; server sockets that are not `ws` (Bun `ServerWebSocket`, uWebSockets.js, Deno) report `bufferedAmount` so producers park, but cannot pause reads, so the receive-side bound there rests on the peer.

@@ -35,6 +35,7 @@ skills/README.md                         consumer skill index (not published)
 packages/*/skills/ts-pf-<pkg>/SKILL.md   consumer usage (hub catalog ts-pf-app on contract)
 packages/{contract,server,client}/tests/*.test-d.ts   type tests (expectTypeOf + @ts-expect-error); Vitest typecheck + tsc --noEmit
 packages/{server-http,message-server,astro}/tests/*.test-d.ts   context-inference type tests; tsc --noEmit only (no Vitest typecheck there)
+packages/{message-server,message-client}/tests/ws*.test-d.ts   npm `ws` 8 sockets / client class fit WebSocketLike / WsLink with no cast (@types/ws devDependency, type fixture only); tsc --noEmit only
 packages/mcp/tests/toolkit.test-d.ts     toolkit / all() inject / tags / hidden / names / coverage / binding type tests; tsc --noEmit only
 packages/mcp/bench/gen.mjs               400-procedure type-cost fixture (`npm run bench:types -w @ts-pf/mcp`; manual, not in verify)
 packages/contract/src/
@@ -351,7 +352,7 @@ New **published** packages: `version` `0.0.0`, `license: "MIT"`, a `LICENSE` cop
 - Folding SSE or WebSocket into `@ts-pf/server-http`
 - Putting `FetchHandler` in `@ts-pf/server` or `FetchLink` in `@ts-pf/client`
 - Putting `JSONCodec` / `RpcCodec` / `PROTOCOL_HEADER` in `@ts-pf/protocol`
-- Depending on the `ws` npm package
+- Depending on the `ws` npm package (an `@types/ws` devDependency as a `*.test-d.ts` type fixture is fine; no runtime import)
 - Awaiting `runProcedure` inside `MessageSession`; context factory on `onFrame`
 - Credit / ack frames for message backpressure (v2); a second backpressure option bag; awaiting a synchronous `send` (no `drained`) in the unary or `onHello` path; a `Duplex.send` promise that does not settle on close; reporting a drain timeout through `onError` or a new error code; dropping frames in a receive queue
 - Reconstructing HTTP status from `error.code` on message transports
