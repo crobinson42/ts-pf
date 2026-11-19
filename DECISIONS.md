@@ -131,7 +131,7 @@ These come from the protocol 1.1 design spike (maintainer notes, see the top of 
 
 #### Revision 1.2: the spec is written for implementers in any language
 
-Revision 1.1 described much of the wire through the TypeScript client. The non-RPC response rule sat in a paragraph about `FetchLink`, and TypeScript conventions (`local`, `status: 0`, `PFError`) were mixed into MUST-level frame rules. A client written in another language from that text classified a proxy's HTML 404 by its HTTP status and treated it as an application outcome.
+Revision 1.1 described much of the wire through the TypeScript client. The non-RPC response rule sat in a paragraph about `FetchLink`, and TypeScript conventions (`local`, `status: 0`, `PFError`) were mixed into MUST-level frame rules. A client written in another language from that text could easily classify a proxy's HTML 404 by its HTTP status and treat it as an application outcome ("no access"), with destructive results.
 
 Revision 1.2 is the clarity pass. It adds:
 - a normative "Classifying an HTTP response" section;
@@ -148,7 +148,7 @@ The normative text matches what the TypeScript client and server already do, so 
 
 #### `hello-error` carries a `PFError` thrown by `onHello` (revision 1.2)
 
-**Before.** Until revision 1.2, any throw from the per-connection context factory became the fixed `hello-error` `INTERNAL` / `Internal server error`. A server could not tell a client why it refused a connection: an expired token, a banned account, and a crashed database all looked the same. Apps reached for private close codes to say what the frame could not. The fixed literal existed to keep factory messages (stack traces, SQL errors) off the wire.
+**Before.** Until revision 1.2, any throw from the per-connection context factory became the fixed `hello-error` `INTERNAL` / `Internal server error`. A server could not tell a client why it refused a connection: an expired token, a banned account, and a crashed database all looked the same. The only way left to say more was an app-private close code. The fixed literal existed to keep factory messages (stack traces, SQL errors) off the wire.
 
 **Change.** `toWireError` already gives that guarantee for every handler throw: a `PFError` is the server's deliberate, client-facing error and goes out as `{ code, message, data? }`, and anything else becomes `INTERNAL` with the fixed message. Revision 1.2 applies the same mapping to `onHello`. The `@ts-pf/message` session passes the thrown value through `toWireError` into `hello-error`. So `throw new PFError({ code: 'UNAUTHORIZED', message: 'Session expired' })` reaches the client as that code, and an unknown throw still produces exactly the old literal.
 
