@@ -24,6 +24,7 @@ Everything a JSON-over-HTTP client needs. Streams, files, and SSE are optional.
 - On failure, switch on `error.code`, not the HTTP status. Handle unknown codes with a catch-all. → [Protocol errors](#protocol-errors)
 - Do not retry `BAD_REQUEST` `Unsupported protocol version`: the server speaks another wire major. → [Versioning](#versioning)
 - Optional streams: an `application/jsonl` response is one envelope per line and ends at EOF; a `text/event-stream` response ends at `event: close` (EOF without it is a failure); an `"ok": false` line or `event: error` ends the stream as a failure. → [Message streams](#message-streams-optional), [SSE](#sse-optional)
+- Check your client against `conformance/http.json` (and `http-stream.json` if it reads streams). → [Conformance](#conformance)
 
 ## WebSocket client checklist
 
@@ -40,6 +41,7 @@ The same envelopes as multiplexed JSON text frames. The same list applies to std
 - On a local timeout, abort, or `break` out of a stream, send `{ "type": "cancel", "id" }`. No frame acknowledges it; ignore any frames that still arrive for that id. → [Cancel and mid-stream errors](#cancel-and-mid-stream-errors)
 - A message that is not JSON, parses to a non-object, or is an invalid frame with no usable `id` closes the connection; a binary message closes it with `1002`. → [Multiplex](#multiplex), [Close codes](#close-codes-websocket)
 - Streams do not survive a reconnect: resubscribe after the next `hello-ok`. → [Reconnecting](#reconnecting-non-normative)
+- Check your client against `conformance/ws.json`. → [Conformance](#conformance)
 
 ## Envelope
 
@@ -149,7 +151,7 @@ Header `x-ts-pf-protocol` and `v` on `hello` / `hello-ok` carry the **wire major
 A client SHOULD NOT retry a call or connection that failed with `BAD_REQUEST` `Unsupported protocol version` (HTTP 400 or `hello-error`): the server speaks another wire major and answers the same way every time.
 
 - **1.1** — servers read the request `x-ts-pf-protocol` (another value is `BAD_REQUEST` `Unsupported protocol version`), clients do not decode a response carrying another value, and the advisory content negotiation paragraph below.
-- **1.2** — no new frame, key, header, or code. It adds [Classifying an HTTP response](#classifying-an-http-response), the RFC 2119 [conventions](#conventions), the [HTTP](#http-client-checklist) and [WebSocket](#websocket-client-checklist) client checklists, the [TypeScript reference client](#appendix-typescript-reference-client) appendix, the WebSocket [close-code ranges](#close-codes-websocket), the non-normative [reconnecting](#reconnecting-non-normative) and [`hello.meta.authorization`](#authenticating-with-hellometa-non-normative) notes, `hello-error` carrying the application error a server raised while accepting `hello` ([Handshake](#handshake)), and `BAD_REQUEST` for a stream procedure called on an endpoint whose codec cannot carry streams ([Message streams](#message-streams-optional)).
+- **1.2** — no new frame, key, header, or code. It adds [Classifying an HTTP response](#classifying-an-http-response), the RFC 2119 [conventions](#conventions), the [HTTP](#http-client-checklist) and [WebSocket](#websocket-client-checklist) client checklists, the [TypeScript reference client](#appendix-typescript-reference-client) appendix, the [conformance fixtures](#conformance), the WebSocket [close-code ranges](#close-codes-websocket), the non-normative [reconnecting](#reconnecting-non-normative) and [`hello.meta.authorization`](#authenticating-with-hellometa-non-normative) notes, `hello-error` carrying the application error a server raised while accepting `hello` ([Handshake](#handshake)), and `BAD_REQUEST` for a stream procedure called on an endpoint whose codec cannot carry streams ([Message streams](#message-streams-optional)).
 
 **Content negotiation.** Clients MAY send `Accept` listing the response media types they can decode (`application/json`, `application/jsonl`, `text/event-stream`). Servers MAY use it to choose the framing of a streamed response and MUST ignore it when they cannot satisfy it (never 406; the JSON failure envelope is always `application/json`). `Content-Type` on the request selects the request codec as today.
 
@@ -668,6 +670,12 @@ There is no session resumption: a new connection starts with `hello`, and no id,
 - **Never retry `Unsupported protocol version`** (a `hello-error`, or HTTP `BAD_REQUEST` with that message): the server speaks another wire major and answers the same way every time. Surface it.
 - **Back off between attempts**, exponentially and with jitter (for example a random delay between 0 and `min(cap, base × 2^attempt)`), and reset the attempt count once a connection has reached `hello-ok` and stayed up. Without jitter, a server restart draws every client back at the same instant.
 - Credentials are fixed at `hello` ([Authenticating with `hello.meta`](#authenticating-with-hellometa-non-normative)); a new credential means a new connection.
+
+## Conformance
+
+Language-neutral test vectors for this document live in [`conformance/`](https://github.com/crobinson42/ts-pf/tree/main/packages/protocol/conformance) next to it, and ship in the `@ts-pf/protocol` npm package: `http.json` (unary JSON requests and response classification), `http-stream.json` (`application/jsonl` output streams), and `ws.json` (WebSocket frame scripts, which also cover stdio and `MessagePort` minus binary messages and close codes). They are plain JSON data, not schemas. A client in any language replays them against its own code, with no server and no network; the directory's `README.md` defines the format, how a runner replays each file, and how to report results.
+
+Each file carries `"protocol": 1` and the `"revision"` of this document it was written against, and each case cites the sections it checks. Where a case and this document disagree, this document wins. The TypeScript reference client (`FetchLink`, `FetchLink` with `StreamCodec`, `WsLink`) replays every file in this repository's CI.
 
 ## Appendix: TypeScript reference client
 

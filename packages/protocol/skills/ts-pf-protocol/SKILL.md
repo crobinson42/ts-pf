@@ -11,7 +11,7 @@ Install: `npm i @ts-pf/protocol`
 
 Link for agents: `npx skills experimental_sync -y`
 
-Wire spec ships as `PROTOCOL.md` in this package (revision 1.2). Building a client in another language: start from its "HTTP client checklist" / "WebSocket client checklist" and "Classifying an HTTP response" sections; TypeScript-only conventions (`local`, `status: 0`, `isLocalFailure`) are in its appendix.
+Wire spec ships as `PROTOCOL.md` in this package (revision 1.2). Building a client in another language: start from its "HTTP client checklist" / "WebSocket client checklist" and "Classifying an HTTP response" sections; TypeScript-only conventions (`local`, `status: 0`, `isLocalFailure`) are in its appendix. Prove the client with the language-neutral fixtures in this package's `conformance/` (`http.json`, `http-stream.json`, `ws.json`; plain JSON versioned with the spec revision; `conformance/README.md` says how to replay them). TypeScript runners import them typed from `@ts-pf/protocol/conformance`.
 
 ## Do
 
@@ -35,6 +35,7 @@ Writing a codec or transport adapter: `toWireError(error)` is the failure envelo
 - `PROTOCOL_MAJOR` (`1`, the wire major: `v` on message `hello`), `PROTOCOL_VERSION` (`'1'`, its string: the `x-ts-pf-protocol` header value), `RpcRequest`, `RpcResponse`, `RpcSuccess`, `RpcFailure`, `PFResultPromise`
 - `toWireError`, `isAsyncIterable`
 - `defined`, `Defined` — `defined(obj)` drops the keys whose value is `undefined`, so `{ ...required, ...defined({ signal }) }` builds an `exactOptionalPropertyTypes` option bag without one spread per field
+- `@ts-pf/protocol/conformance`: `httpConformance`, `httpStreamConformance`, `wsConformance` (the `conformance/*.json` fixtures, typed) and their types `ConformanceFile`, `HttpCase`, `HttpExpect`, `HttpStreamExpect`, `HttpStreamEnd`, `WsCase`, `WsStep`, `WsExpectation`, `ConformanceRequest`, `ConformanceError`, `JsonValue`
 
 ## Pair with
 

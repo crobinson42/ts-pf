@@ -45,12 +45,24 @@ Two helpers the transports share, for codecs and adapters of your own: `toWireEr
 
 Wire spec: [`PROTOCOL.md`](https://github.com/crobinson42/ts-pf/blob/main/packages/protocol/PROTOCOL.md), revision 1.2 (also shipped in this package). It is written for implementers in any language: RFC 2119 keywords, one-screen HTTP and WebSocket client checklists, the rule for classifying an HTTP response (a body that does not decode as an envelope is a transport failure, never an application outcome read off the HTTP status), WebSocket close-code ranges, and the TypeScript client's own conventions (`local`, `status: 0`, error messages) in an appendix. Happy path: [root README](https://github.com/crobinson42/ts-pf#readme).
 
+Conformance fixtures: [`conformance/`](https://github.com/crobinson42/ts-pf/tree/main/packages/protocol/conformance) (also shipped in this package) holds language-neutral JSON test vectors versioned with the spec revision — `http.json` (unary requests and response classification), `http-stream.json` (JSONL streams), and `ws.json` (WebSocket frame scripts). A client written in any language replays them against its own code to prove it follows `PROTOCOL.md`; the directory's `README.md` is the runner spec. They are data, not schemas. The TypeScript clients are tested against the same files. TypeScript runners can import them typed:
+
+```ts
+import { httpConformance, wsConformance } from '@ts-pf/protocol/conformance'
+
+for (const testCase of httpConformance.cases) {
+  // testCase.request → call your client; testCase.expectRequest → check what it sent;
+  // testCase.response → answer it; testCase.expect → check what the caller saw.
+}
+```
+
 ## API
 
 - `PFError`, `PFErrorInit`, `isPFError`, `localFailure`, `ProtocolErrorCode`
 - `PROTOCOL_MAJOR` (`1`, the wire major: `v` on message `hello`), `PROTOCOL_VERSION` (`'1'`, its string: the `x-ts-pf-protocol` header value), `RpcRequest`, `RpcResponse`, `RpcSuccess`, `RpcFailure`, `PFResultPromise`
 - `toWireError`, `isAsyncIterable`
 - `defined`, `Defined` — `defined(obj)` drops the keys whose value is `undefined`, so `{ ...required, ...defined({ signal }) }` builds an `exactOptionalPropertyTypes` option bag without one spread per field
+- `@ts-pf/protocol/conformance`: `httpConformance`, `httpStreamConformance`, `wsConformance` (the `conformance/*.json` fixtures, typed) and their types `ConformanceFile`, `HttpCase`, `HttpExpect`, `HttpStreamExpect`, `HttpStreamEnd`, `WsCase`, `WsStep`, `WsExpectation`, `ConformanceRequest`, `ConformanceError`, `JsonValue`
 
 ## Agent skills
 
