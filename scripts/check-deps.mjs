@@ -10,6 +10,12 @@
 // - tests/**/*.ts (and *.test.ts under src) imports are allowed in prod or
 //   dev and declared in dependencies or devDependencies
 // - the declared prod graph has no cycle
+// - published packages pin every internal dep (dependencies, peer, optional,
+//   dev) to the exact current workspace version, never "*" or a range
+//   (rules.md "Code" → Workspace; `changeset version` only keeps exact pins in
+//   step, it never rewrites "*")
+// - every published package is in the one .changeset/config.json "fixed"
+//   group, and nothing else is (rules.md "Code" → Releases)
 import { readdir, readFile } from 'node:fs/promises'
 import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -244,15 +250,19 @@ for (const entry of await readdir(packagesDir, { withFileTypes: true })) {
     )
   }
   const section = (kind) =>
-    Object.keys(pkg[kind] ?? {})
-      .filter((name) => name.startsWith(SCOPE))
-      .map((name) => ({
+    Object.entries(pkg[kind] ?? {})
+      .filter(([name]) => name.startsWith(SCOPE))
+      .map(([name, range]) => ({
         name,
+        range,
         short: name.slice(SCOPE.length),
         line: lineOfKey(text, kind, name),
       }))
   packages.set(entry.name, {
     dir: entry.name,
+    name: pkg.name,
+    version: pkg.version,
+    published: pkg.private !== true,
     file: `packages/${entry.name}/package.json`,
     prod: PROD_KINDS.flatMap((kind) =>
       section(kind).map((dep) => ({ ...dep, kind })),
@@ -383,6 +393,53 @@ for (const info of packages.values()) {
           `${where} declared in ${info.file} dependencies`,
         )
       }
+    }
+  }
+}
+
+// Exact internal pins. Mixed versions nest duplicate copies in a consumer's
+// install, so every internal dep names the version released alongside it.
+for (const info of packages.values()) {
+  if (!info.published) continue
+  for (const dep of [...info.prod, ...info.dev]) {
+    const target = packages.get(dep.short)
+    if (!target || dep.range === target.version) continue
+    violation(
+      info.dir,
+      dep.kind,
+      dep.name,
+      info.file,
+      dep.line,
+      `must pin the exact workspace version "${target.version}" (found "${dep.range}")`,
+    )
+  }
+}
+
+// One fixed group: every published package shares one version.
+{
+  const configFile = '.changeset/config.json'
+  const config = JSON.parse(await readFile(join(root, configFile), 'utf8'))
+  const groups = config.fixed ?? []
+  const published = [...packages.values()]
+    .filter((info) => info.published)
+    .map((info) => info.name)
+  if (groups.length !== 1) {
+    errors.push(
+      `check-deps: ${configFile} "fixed" must be one group listing every published package (found ${groups.length} groups)`,
+    )
+  } else {
+    const group = new Set(groups[0])
+    for (const name of published) {
+      if (!group.has(name))
+        errors.push(
+          `check-deps: ${name} is missing from the ${configFile} "fixed" group (every published package shares one version)`,
+        )
+    }
+    for (const name of group) {
+      if (!published.includes(name))
+        errors.push(
+          `check-deps: ${configFile} "fixed" lists ${name}, which is not a published packages/* package (use exact names, no globs)`,
+        )
     }
   }
 }
