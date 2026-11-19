@@ -50,6 +50,7 @@ Wire spec: [`PROTOCOL.md`](https://github.com/crobinson42/ts-pf/blob/main/packag
 - `PFError`, `PFErrorInit`, `isPFError`, `localFailure`, `ProtocolErrorCode`
 - `PROTOCOL_MAJOR` (`1`, the wire major: `v` on message `hello`), `PROTOCOL_VERSION` (`'1'`, its string: the `x-ts-pf-protocol` header value), `RpcRequest`, `RpcResponse`, `RpcSuccess`, `RpcFailure`, `PFResultPromise`
 - `toWireError`, `isAsyncIterable`
+- `isUnexpectedError(error)` — `true` for a non-`PFError` or an `INTERNAL` `PFError` (no `cause` unwrapping): what `FetchHandler` and `@ts-pf/mcp` log by default when no `onError` is given, for a custom `onError` that keeps the same filter
 - `defined`, `Defined` — `defined(obj)` drops the keys whose value is `undefined`, so `{ ...required, ...defined({ signal }) }` builds an `exactOptionalPropertyTypes` option bag without one spread per field
 
 ## Agent skills

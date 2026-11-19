@@ -1,6 +1,6 @@
 import type { ValidationIssue } from '@ts-pf/contract'
 import type { JsonSchema } from '@ts-pf/docs'
-import { isPFError, toWireError } from '@ts-pf/protocol'
+import { isPFError, isUnexpectedError, toWireError } from '@ts-pf/protocol'
 import type { ErrorText } from './tool.js'
 import type { McpCallInfo } from './types.js'
 
@@ -62,7 +62,7 @@ export function errorText(error: unknown, options: ErrorTextOptions): string {
   return `${wire.code}: ${wire.message}`
 }
 
-/** `onError` when given; otherwise log unknown throws and `INTERNAL` `PFError`s, as `FetchHandler` does. */
+/** `onError` when given; otherwise log what `isUnexpectedError` selects, as `FetchHandler` does. */
 export function reportError(
   error: unknown,
   info: McpCallInfo,
@@ -72,10 +72,11 @@ export function reportError(
     onError(error, info)
     return
   }
+  if (!isUnexpectedError(error)) return
   const where = `"${info.tool?.name ?? '?'}"`
-  if (!isPFError(error)) {
-    console.error(`[ts-pf/mcp] Unhandled error in ${where}:`, error)
-  } else if (error.code === 'INTERNAL') {
+  if (isPFError(error)) {
     console.error(`[ts-pf/mcp] INTERNAL error in ${where}:`, error)
+  } else {
+    console.error(`[ts-pf/mcp] Unhandled error in ${where}:`, error)
   }
 }

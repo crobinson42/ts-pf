@@ -48,14 +48,17 @@ A custom `HandlerPlugin` that returns a new request builds it with `new Request(
 
 Unknown throws become `500 INTERNAL` with no stack on the wire. By default `FetchHandler` logs them with `console.error` (the original thrown value, tagged `[ts-pf/server-http]` with the procedure path). It also logs `INTERNAL` `PFError`s — an output schema failure under `validation.output`, invalid declared error `data`, or an explicit `INTERNAL` throw — naming those causes. Declared errors and every other protocol code (`VALIDATION`, `NOT_FOUND`, `BAD_REQUEST`, `METHOD_NOT_ALLOWED`, `PAYLOAD_TOO_LARGE`) are expected and are not logged.
 
-Pass `onError` to route errors to your own logger. It receives the original error (before `INTERNAL` mapping) for every error response, runs after each `HandlerPlugin.onError`, cannot replace the response (a throw from it rejects `handle()`), and turns the default logging off:
+Pass `onError` to route errors to your own logger. It receives the original error (before `INTERNAL` mapping) for every error response, runs after each `HandlerPlugin.onError`, cannot replace the response (a throw from it rejects `handle()`), and turns the default logging off. To keep the default filter (unknown throws and `INTERNAL` only), use `isUnexpectedError` from `@ts-pf/protocol`:
 
 ```ts
+import { isUnexpectedError } from '@ts-pf/protocol'
 import { FetchHandler } from '@ts-pf/server-http'
 
 new FetchHandler(app, {
-  onError(error, { request, path, context }) {
-    logger.error({ err: error, path: path.join('/'), url: request.url })
+  onError(error, { request, path }) {
+    if (isUnexpectedError(error)) {
+      logger.error({ err: error, path: path.join('/'), url: request.url })
+    }
   },
 })
 ```

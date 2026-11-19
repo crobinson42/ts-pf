@@ -10,6 +10,7 @@ import {
 } from '@ts-pf/http'
 import {
   isPFError,
+  isUnexpectedError,
   PFError,
   PROTOCOL_VERSION,
   toWireError,
@@ -239,12 +240,12 @@ export class FetchHandler<TCtx = unknown> {
   }
 
   private logError(error: unknown, path: readonly string[]): void {
+    if (!isUnexpectedError(error)) {
+      return
+    }
     const where = `"${path.join('/')}"`
     if (!isPFError(error)) {
       console.error(`[ts-pf/server-http] Unhandled error in ${where}:`, error)
-      return
-    }
-    if (error.code !== 'INTERNAL') {
       return
     }
     const causes =
