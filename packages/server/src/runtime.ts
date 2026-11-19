@@ -175,7 +175,11 @@ export function isImplementedProcedure(
 }
 
 export type ProcedureValidation = {
-  /** Set false to skip the input schema. Default true. */
+  /**
+   * Set false to skip the input schema. Default true. When skipped, the
+   * handler gets the raw value although `input` is typed as parsed; throw
+   * `validationError(...)` from a handler that validates itself.
+   */
   input?: boolean
   /** Set true to check the output schema, including stream output items. Default false. */
   output?: boolean

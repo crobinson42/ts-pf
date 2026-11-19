@@ -49,9 +49,9 @@ await local.planet.find({ id: 1 })
 
 `Db`, `User`, `db`, and `auth()` are your app's. `.use()` runs before input validation (`input: unknown`); `.useAfter()` runs after it. Input checks default on; output checks run only with `validation: { output: true }`. Name the implemented router `app`.
 
-A declared code gets its declared `status` whether you throw `errors.NOT_FOUND(...)` or a hand-built `new PFError({ code: 'NOT_FOUND', data, cause })`: `runProcedure` fills an unset `status` from the contract's `.errors()` entry and keeps `cause` (it never fills `message`).
+A declared code gets its declared `status` whether you throw `errors.NOT_FOUND(...)` or a hand-built `new PFError({ code: 'NOT_FOUND', data, cause })`: `runProcedure` fills an unset `status` on an error thrown from middleware or the handler from the contract's `.errors()` entry and keeps `cause` (it never fills `message`).
 
-`validation: { input: false }` hands the handler the raw value, although its `input` type still says parsed: contract-only narrowing (zod `.omit()`, defaults, transforms) is not applied. A handler that validates on its own reports failures in the built-in shape with `validationError` and `toValidationIssues` from `@ts-pf/contract`:
+`validation: { input: false }` hands the handler the raw value, although its `input` type still says parsed: contract-only narrowing (zod `.omit()`, defaults, transforms) is not applied. A handler that validates on its own reports failures in the built-in shape with `validationError` (this package) and `toValidationIssues` from `@ts-pf/contract`:
 
 ```ts
 import { toValidationIssues } from '@ts-pf/contract'
