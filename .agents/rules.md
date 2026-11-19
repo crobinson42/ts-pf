@@ -59,9 +59,9 @@ Contract-first TypeScript RPC library (`@ts-pf/*`). oRPC-like DX is the bar; oRP
 | `file` | `MultipartCodec` only. Do not add `PFFile`, `file()`, or export walk helpers. |
 | `stream` | `StreamCodec` + `stream()`. Root `AsyncIterable` as JSONL envelopes. |
 | `sse` | `SseCodec` + `SSE_CONTENT_TYPE`. Output-only `text/event-stream`. |
-| `docs` | `catalog()`, `docs()` meta helper (keeps `tags` / `hidden` literal in its return type, for `@ts-pf/mcp`'s type-level filters; other fields stay `DocsMeta`), `getDocs`, `walkContract`, `toJsonSchema`, `registerJsonSchemaConverter` (`getDocs` / `toJsonSchema` / `walkContract` are also what `@ts-pf/mcp` builds tool definitions from). |
+| `docs` | `catalog()`, `docs()` meta helper (keeps `tags` / `hidden` literal in its return type, for `@ts-pf/mcp`'s type-level filters; other fields stay `DocsMeta`), `getDocs`, `walkContract`, `toJsonSchema`, `registerJsonSchemaConverter`, `canonicalize` (sorted-keys copy; runtime-neutral — no `node:` imports, so `catalogHash` and its `node:crypto` stay in `codegen`) (`getDocs` / `toJsonSchema` / `walkContract` are also what `@ts-pf/mcp` builds tool definitions from). |
 | `openapi` | `openapi(catalog, options)` → OpenAPI 3.1. POST JSON RPC only. |
-| `codegen` | `emit(catalog)`, `emitFiles(catalog)`, `catalogHash()`, `EmitOptions`, `EmitFile`, CLI `ts-pf-codegen`. |
+| `codegen` | `emit(catalog)`, `emitFiles(catalog)`, `catalogHash()` (sha256 of `@ts-pf/docs` `canonicalize(catalog)`), `EmitOptions`, `EmitFile`, CLI `ts-pf-codegen`. |
 | `swr` | `createSwr(client)` helpers for SWR. |
 | `mvc-kit` | `bindClient(client, host)` / `issuesToFieldErrors` / `DisposeSignalHost`. |
 | `astro` | `createAstroHandler`, `createAstroLocalClient` (`./server`); `createAstroClient`, `withBase` (`.` and `./client`). Peer `astro >= 4.9.0`. Root export is client-only. `context` on `createAstroHandler` / `createAstroLocalClient` is typed from the app's `TCtx` (`NoInfer`); `createAstroClient<T = never>` follows the `createClient` `~error` rule. |

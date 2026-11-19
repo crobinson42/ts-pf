@@ -1,3 +1,4 @@
+export { canonicalize } from './canonicalize.js'
 export { type CatalogOptions, catalog } from './catalog.js'
 export { DOCS_KEY, type DocsMeta, docs, getDocs } from './docs.js'
 export {

@@ -105,12 +105,14 @@ packages/sse/src/
   index.ts            SseCodec + SSE_CONTENT_TYPE
   codec.ts            SSE output wrap of StreamCodec (event: error via toWireError → PFError without status; local isItemStream; inner is an EnvelopeTextCodec; mimeType / jsonBodySource from http)
 packages/docs/src/
-  index.ts            catalog, docs, getDocs, walkContract, toJsonSchema, registerJsonSchemaConverter
+  index.ts            catalog, docs, getDocs, walkContract, toJsonSchema, registerJsonSchemaConverter, canonicalize
+  canonicalize.ts     canonicalize — sorted-keys copy (byte-stable JSON); catalogHash in codegen hashes it; no node: imports
   catalog.ts          catalog(); protocolErrors derived from ProtocolErrorCode + PROTOCOL_HTTP_STATUS (no local table)
 packages/openapi/src/
   index.ts            openapi, OpenAPIOptions, OpenAPIDocument
 packages/codegen/src/
   index.ts            emit, emitFiles, catalogHash, EmitOptions, EmitFile
+  hash.ts             catalogHash = sha256 of @ts-pf/docs canonicalize(catalog) (node:crypto)
   files.ts            emitFiles — flat group + procedure .d.ts; entry contract.d.ts; _phantom.d.ts only if some error has data; catalogHash on the entry only; headers are role + path/call/parent (procedure `group:`, group `parent:`)
   cli.ts              emit / pull / hash; --out-dir (not exported from ".")
   jsdoc.ts            JSDoc from catalog docs() (internal; not exported)
