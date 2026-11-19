@@ -18,6 +18,8 @@ function jsonBody(body: string): RpcEncodedText {
 }
 
 export class JSONCodec implements EnvelopeTextCodec {
+  readonly streams: boolean = false
+
   encodeRequest(req: RpcRequest): RpcEncodedText {
     if (req.input === undefined) {
       return jsonBody('{}')

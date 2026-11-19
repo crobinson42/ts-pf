@@ -43,6 +43,10 @@ describe('StreamCodec', () => {
   const codec = new StreamCodec()
   const json = new JSONCodec()
 
+  it('declares that it carries streams', () => {
+    expect(codec.streams).toBe(true)
+  })
+
   it('encodes JSON-only input as application/json', async () => {
     const encoded = await codec.encodeRequest({ input: { id: 1 } })
     expect(encoded.contentType).toBe('application/json')

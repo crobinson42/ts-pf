@@ -178,6 +178,8 @@ JSON-only clients can ignore this section. A **root** `AsyncIterable` (async gen
 
 HTTP status for an accepted stream is **200**. Status cannot change after the first byte; later errors are in-band. Nested streams and file values inside stream items are `BAD_REQUEST`.
 
+An endpoint whose body encoding cannot carry streams (JSON-only or multipart) answers a call to a procedure whose input or output is a stream with HTTP 400, `error.code: "BAD_REQUEST"`, and `message: "Stream procedure requires a streaming codec"`, as a JSON failure envelope with `x-ts-pf-protocol: 1`. It never answers such a call with a 200 non-stream body. A server that knows the procedure streams from its contract answers before reading the body or running the procedure; otherwise it answers when the procedure returns a stream, and closes that stream unread.
+
 Output:
 
 Streamed bodies (JSONL and SSE) SHOULD send `Cache-Control: no-cache, no-transform` and `X-Accel-Buffering: no`. `FetchHandler` sets these when the codec body is a `ReadableStream`.
