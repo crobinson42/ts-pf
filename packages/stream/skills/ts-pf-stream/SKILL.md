@@ -35,7 +35,7 @@ new FetchHandler(app, { codec, validation: { output: true } })
 
 A `stream()` procedure on a non-streaming codec (the default `JSONCodec`, `MultipartCodec`) is `400 BAD_REQUEST` `Stream procedure requires a streaming codec` before the handler runs.
 
-Cleanup hangs off `signal`, not a generator's `finally`. A client cancel (or a message `cancel` before the handler resolved) calls the stream's `return()` once, but an async generator that was never pulled completes on `return()` without running its body, so its `finally` never runs:
+Cleanup hangs off `signal`, not a generator's `finally`. A client cancel (or a message `cancel` before the handler resolved) calls the stream's `return()` once, but an async generator that was never pulled completes on `return()` without running its body, so its `finally` never runs, and a generator waiting on an `await` between yields does not see `return()` until its next `yield`. Over HTTP the handler's `signal` is `request.signal`, which fires on disconnect when your host aborts it:
 
 ```ts no-check
 chat: impl.chat.handler(async function* ({ signal }) {
@@ -58,5 +58,5 @@ chat: impl.chat.handler(async function* ({ signal }) {
 ## Don't
 
 - Nested streams or File/Blob in items (`BAD_REQUEST`).
-- Rely on a generator's `finally` (or code before its first `yield`) for cleanup; use `signal`.
+- Rely on a generator's `finally` for cleanup (skipped if the stream is cancelled before the first pull, delayed while the generator waits on an `await`); close resources from `signal`.
 - Import `stream()` from `@ts-pf/sse` — it is not re-exported there.

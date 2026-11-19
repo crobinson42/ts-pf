@@ -104,7 +104,7 @@ const requireUser = impl.middleware(async ({ context, next }) => {
 
 Over HTTP, a **codec** decides how the envelope becomes a body. `JSONCodec` is the default and emits `application/json`. The opt-in codecs wrap it without changing the contract: `MultipartCodec` (`@ts-pf/file`) for `File` / `Blob` values, `StreamCodec` (`@ts-pf/stream`) for root `AsyncIterable` as JSONL, `SseCodec` (`@ts-pf/sse`) for SSE output framing.
 
-The handler and the link **must use the same codec**. A `FetchLink` with `StreamCodec` talking to a `FetchHandler` without it gets a JSON body where it expects JSONL frames; a handler with `MultipartCodec` behind a plain link never receives a file. The symptom is a `BAD_REQUEST` or a silently wrong shape, not a message that says "codec mismatch", so construct the codec in one shared module and pass `{ codec }` to both constructors. Message transports do not use codecs at all; they frame the same envelopes as JSON text.
+The handler and the link **must use the same codec**. A `FetchLink` with `StreamCodec` talking to a `FetchHandler` without it gets a JSON body where it expects JSONL frames; a handler with `MultipartCodec` behind a plain link never receives a file. A `stream()` procedure on a handler without `StreamCodec` / `SseCodec` answers `400 BAD_REQUEST` `Stream procedure requires a streaming codec`; other mismatches surface as a `BAD_REQUEST` or a silently wrong shape, not a message that says "codec mismatch", so construct the codec in one shared module and pass `{ codec }` to both constructors. Message transports do not use codecs at all; they frame the same envelopes as JSON text.
 
 ## Interceptors: three onions, one rule
 

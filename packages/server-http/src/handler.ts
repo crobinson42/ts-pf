@@ -223,7 +223,8 @@ export class FetchHandler<TCtx = unknown> {
 
   /**
    * Step 5. A stream output the codec did not encode as a `ReadableStream`
-   * (a codec that leaves `streams` unset) is closed and answered like the
+   * (a codec that leaves `streams` unset, or a contract that does not declare
+   * `stream()`) is closed and answered like the
    * step-1 stream check, never as a 200 with a non-stream body.
    */
   private async successResponse(output: unknown): Promise<Response> {

@@ -47,4 +47,4 @@ Those wrappers take `inner?: EnvelopeTextCodec` — an `RpcCodec` whose encoded 
 - Put these exports on `@ts-pf/protocol`.
 - Use this as a WebSocket / stdio framer — that is `ts-pf-message`.
 - Pass a `Blob` / stream-bodied codec as a wrapper's `inner` — it must be an `EnvelopeTextCodec`.
-- Leave `streams` unset on a custom codec — say `false` (or `true`) so stream procedures fail before the handler runs.
+- Leave `streams` unset on a custom codec — set `true` if it carries streams, `false` if it cannot (stream procedures then fail with 400 before the handler runs).
