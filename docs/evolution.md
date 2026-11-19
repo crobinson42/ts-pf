@@ -69,6 +69,8 @@ The same holds for outputs. A client's types list the enum values and union vari
 
 The same rules apply to any HTTP client: switch on `error.code` and treat an unknown code as a generic failure (the protocol requires a catch-all: see [Protocol errors](../packages/protocol/PROTOCOL.md#protocol-errors)), ignore unknown object keys, and accept enum strings you do not recognise.
 
+The [HTTP and WebSocket client checklists](../packages/protocol/PROTOCOL.md#http-client-checklist) in `PROTOCOL.md` list everything such a client must handle, and the [conformance fixtures](../packages/protocol/conformance/README.md) let it prove it.
+
 ## Prefer a discriminated union over widening an enum
 
 When a new case carries its own data, a new enum value plus an optional field next to it lets clients build states that make no sense (`archived` with a `mergedInto`). A discriminated union keeps each case's data with its tag, and an old client still lands in its `default` branch for a tag it does not know:
@@ -176,6 +178,8 @@ writeFileSync('catalog.json', `${JSON.stringify(spec, null, 2)}\n`)
 ```
 
 `catalog.json` then lists every procedure with its input and output JSON Schema, its declared errors, and its `docs()` metadata, so a diff shows a removed procedure, a new required input field, or a dropped error code directly; check it against the tables above. An OpenAPI document from `@ts-pf/openapi` works the same way if that is what your reviewers read. `catalogHash(spec)` from `@ts-pf/codegen` is a stable hash of the catalog: it tells you (or a client that pinned it with `ts-pf-codegen pull --lock`) that something changed, not what.
+
+To fail CI on a breaking change automatically, commit `catalog.json` as the baseline and run `ts-pf-codegen diff catalog.json next.json` from `@ts-pf/codegen` against the freshly generated one: it exits `2` when a change is breaking under the rules on this page (inputs are what old clients send; outputs and error `data` are what they receive) and lists safe changes too. See [Breaking-change check](../packages/codegen/README.md#breaking-change-check).
 
 ## Wire version vs contract version
 
