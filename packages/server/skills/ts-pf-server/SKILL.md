@@ -103,7 +103,7 @@ const root = impl.use(async ({ next }) => {
 })
 ```
 
-`fn` returns the error to throw and sees every thrown value: return `PFError`s unchanged so input / stream-item `VALIDATION` and `errors.CODE()` throws survive. Mapped errors still get the declared-error `data` check (invalid → `INTERNAL`) because middleware runs inside the procedure and get the declared `status` when they have none; set the `message` on the `PFError` you return. Not in a call interceptor: interceptors see errors after that check.
+`fn` returns the error to throw and sees every thrown value: return `PFError`s unchanged so input / stream-item `VALIDATION` and `errors.CODE()` throws survive. Mapped errors still get the declared-error `data` check (invalid → `INTERNAL`) and the declared `status` when they have none, because middleware runs inside the procedure; set the `message` on the `PFError` you return. Not in a call interceptor: interceptors see errors after that check.
 
 Domain error catalog (the domain layer owns its codes): code → message, a status map where `null` = not exposed (sent as `INTERNAL`), `clientErrors` derived from the exposed codes for `.errors(clientErrors)`, and a `mapDomainError` that needs only `@ts-pf/protocol`:
 
