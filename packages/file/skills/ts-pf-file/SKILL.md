@@ -38,3 +38,4 @@ Values that contain `File`/`Blob` are sent as `multipart/form-data` with the JSO
 
 - `PFFile`, `file()`, or exported walk helpers.
 - File size caps as a `HandlerPlugin` — they are codec options.
+- Serve `stream()` procedures through it (`streams: false`; `FetchHandler` answers `400 BAD_REQUEST`) — that is `ts-pf-stream` / `ts-pf-sse`.

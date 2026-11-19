@@ -53,8 +53,8 @@ packages/protocol/src/
   is-async-iterable.ts isAsyncIterable (object or function with a Symbol.asyncIterator function; ReadableStream is NOT excluded — wire sites compose a local isItemStream)
   defined.ts          defined(obj) / Defined<T> — copy without undefined-valued keys, typed optional; `{ ...required, ...defined({ signal }) }` replaces `...(x ? { x } : {})` at cold option boundaries (astro client construction). Per-call hot paths (server runtime / call-interceptor / events / error-factory / caller, client events / call-interceptor / client) do not call it: they build the object with its required keys and assign each optional key only when present (same `exactOptionalPropertyTypes` outcome, no per-call copy; `npm run bench` guards it)
 packages/http/src/
-  rpc.ts              PROTOCOL_HEADER, RpcCodec, RpcEncodedBody, RpcBodySource; RpcEncodedText + EnvelopeTextCodec (the `inner` role of the wrapping codecs: an RpcCodec whose encoded bodies are strings)
-  codec.ts            JSONCodec implements EnvelopeTextCodec (envelope object with keys but no `input` → BAD_REQUEST; wrapping codecs inherit it)
+  rpc.ts              PROTOCOL_HEADER, RpcCodec (optional `streams` capability flag: true = encodes AsyncIterable output as a ReadableStream and decodes AsyncIterable input, false = cannot, undefined = unknown), RpcEncodedBody, RpcBodySource; RpcEncodedText + EnvelopeTextCodec (the `inner` role of the wrapping codecs: an RpcCodec whose encoded bodies are strings)
+  codec.ts            JSONCodec implements EnvelopeTextCodec (`streams: false`; envelope object with keys but no `input` → BAD_REQUEST; wrapping codecs inherit it)
   content-type.ts     mimeType (media type, lower-cased, no params) / isJsonContentType (application/json or no header)
   body-source.ts      jsonBodySource(text) — an RpcBodySource over one in-memory envelope (multipart `rpc` part, JSONL line, SSE data)
   path.ts             join/parse procedure URL path
@@ -70,7 +70,8 @@ packages/server/src/
   events.ts           onStart / onSuccess / onError / onFinish
   dedupe-plugin.ts    DedupePlugin (in-flight; pass `key` to restrict to reads)
 packages/server-http/src/
-  handler.ts          FetchHandler (TCtx inferred from app's context brand, ImplementedRouter<unknown, TCtx>; anti-buffering headers on ReadableStream bodies; httpStatus on errors; `interceptors` around runProcedure; `validation` forwarded into it; `onError` option / `FetchHandlerOnError` or default console.error for unknown / INTERNAL)
+  handler.ts          FetchHandler (TCtx inferred from app's context brand, ImplementedRouter<unknown, TCtx>; anti-buffering headers on ReadableStream bodies; httpStatus on errors; `interceptors` around runProcedure; `validation` forwarded into it; `onError` option / `FetchHandlerOnError` or default console.error for unknown / INTERNAL; stream check after lookup when `codec.streams === false`, safety net in successResponse)
+  streams.ts          isStreamProcedure (reads the `'~pfStream'` key `stream()` sets, inline — no @ts-pf/stream import), streamCodecError (BAD_REQUEST `Stream procedure requires a streaming codec`), closeUnsentStream (return() once, rejection dropped)
   plugins.ts          HandlerPlugin
   cors-plugin.ts      CORSPlugin / CORSPluginOptions
   request-limit-plugin.ts RequestLimitPlugin / RequestLimitPluginOptions (content-length precheck; rewraps a body from request.url, never new Request(request, init))
@@ -93,17 +94,17 @@ packages/client-http/src/
   interceptors.ts     raw fetch throws, not mapped PFError
 packages/file/src/
   index.ts            re-exports MultipartCodec only
-  codec.ts            MultipartCodec (wraps an EnvelopeTextCodec, default JSONCodec; mimeType / isJsonContentType / jsonBodySource from http)
+  codec.ts            MultipartCodec (`streams: false`; wraps an EnvelopeTextCodec, default JSONCodec; mimeType / isJsonContentType / jsonBodySource from http)
   files.ts            Blob walk / placeholder inject (internal)
 packages/stream/src/
   index.ts            StreamCodec + stream()
-  codec.ts            JSONL wrap of an EnvelopeTextCodec, default JSONCodec (in-band failure lines via toWireError → PFError without status; content-type / body-source helpers from http)
-  schema.ts           stream() Standard Schema
-  jsonl.ts            JSONL read/write (internal)
+  codec.ts            JSONL wrap of an EnvelopeTextCodec, default JSONCodec (`streams: true`; in-band failure lines via toWireError → PFError without status; content-type / body-source helpers from http)
+  schema.ts           stream() Standard Schema (`'~pfStream'` brand; item checks in a hand-written iterator, not an async generator, so return() before the first next() still reaches the source)
+  jsonl.ts            JSONL read/write (internal; the producer's return() runs once on cancel or an unwritable item, rejection dropped)
   item-stream.ts      isItemStream = protocol isAsyncIterable minus ReadableStream (bytes, not items; internal, not exported — sse, message-server, and message-client inline the same 3 lines)
 packages/sse/src/
   index.ts            SseCodec + SSE_CONTENT_TYPE
-  codec.ts            SSE output wrap of StreamCodec (event: error via toWireError → PFError without status; local isItemStream; inner is an EnvelopeTextCodec; mimeType / jsonBodySource from http)
+  codec.ts            SSE output wrap of StreamCodec (`streams: true` — JSONL input through StreamCodec; event: error via toWireError → PFError without status; local isItemStream; inner is an EnvelopeTextCodec; mimeType / jsonBodySource from http)
 packages/docs/src/
   index.ts            catalog, docs, getDocs, walkContract, toJsonSchema, registerJsonSchemaConverter
   catalog.ts          catalog(); protocolErrors derived from ProtocolErrorCode + PROTOCOL_HTTP_STATUS (no local table)
@@ -277,7 +278,7 @@ Compose is nested objects. `router({ planet: planetContract })` nests slice cont
 ## Call pipeline
 
 0. `HandlerPlugin.onRequest` — optional `Request` wrap or `Response` short-circuit (CORS preflight). A wrap builds `new Request(request.url, { method, headers, signal, body, duplex: 'half' })`, never `new Request(request, init)` (userland bridges such as srvx pass Request-shaped objects undici cannot clone); every later step sees the wrapped request. Prefix miss skips plugins.
-1. Method check, then protocol version, then lookup procedure. Non-POST → `METHOD_NOT_ALLOWED` (Fetch; no call interceptors). Request `x-ts-pf-protocol` present and not `PROTOCOL_VERSION` (trimmed) → `BAD_REQUEST` `Unsupported protocol version`, the message handshake's string (Fetch; no call interceptors; absent is accepted). Miss → `NOT_FOUND` (no call interceptors). All three answer before the body is read.
+1. Method check, then protocol version, then lookup procedure, then codec stream support. Non-POST → `METHOD_NOT_ALLOWED` (Fetch; no call interceptors). Request `x-ts-pf-protocol` present and not `PROTOCOL_VERSION` (trimmed) → `BAD_REQUEST` `Unsupported protocol version`, the message handshake's string (Fetch; no call interceptors; absent is accepted). Miss → `NOT_FOUND` (no call interceptors). `codec.streams === false` and the contract input or output carries the `'~pfStream'` brand → `BAD_REQUEST` `Stream procedure requires a streaming codec` (Fetch; no call interceptors; the flag is read once in the constructor, so other codecs skip the check). All four answer before the body is read.
 2. Decode body (`RpcCodec`; JSONCodec is JSON, MultipartCodec may be multipart, StreamCodec may be JSONL, SseCodec may be JSONL input / SSE output). Runs only for a known procedure.
 3. Context factory, then `HandlerPlugin.onContext` — replace context (header bags)
 4. CallInterceptor onion around `runProcedure` (`FetchHandler({ interceptors, validation })`, `HandlerOptions.interceptors` / `HandlerOptions.validation`, `createLocalClient` `{ interceptors, plugins, validation }`). `[0]` outermost. `next()` may be called more than once, concurrently; `runProcedure` gives each `next()` its own `Execution` state object (built by its `execute(state)` thunk; the steps below are module-level functions over that object, not closures), so each run owns its `input` / `context` / `signal` (do not hoist them back to `runProcedure` scope or into shared closure variables). Inside `next()`:
@@ -287,7 +288,7 @@ Compose is nested objects. `router({ planet: planetContract })` nests slice cont
    - Handler
    - Output schema only when `validation.output === true` (default off; unary failure is `INTERNAL` — server bug; no issues leaked). Stream output items follow this flag (`VALIDATION` with `issues` from `stream()`)
    - `finalizeDeclaredError` on any throw (invalid declared `data` → `INTERNAL`, no payload). Declared error `data` is always checked
-5. Encode body (`RpcCodec`)
+5. Encode body (`RpcCodec`). An `isAsyncIterable` output whose encoded body is not a `ReadableStream` (a codec with `streams` unset) → `return()` once (rejection dropped), then the step-1 stream `BAD_REQUEST`
 6. On throw (including `METHOD_NOT_ALLOWED`, `BAD_REQUEST` `Unsupported protocol version`, `NOT_FOUND`, and codec `BAD_REQUEST` — invalid JSON or an envelope object with keys but no `input`): `HandlerPlugin.onError` (side-effect only, array order), then the `onError` option — or, when absent, `console.error` for non-`PFError` throws and `INTERNAL` `PFError`s only — then encode failure. HTTP status from `httpStatus(error)`. Throws after a stream has started are in-band codec items and skip this step.
 7. `HandlerPlugin.onResponse` — every matched `Response` (success, 405, errors, short-circuit)
 

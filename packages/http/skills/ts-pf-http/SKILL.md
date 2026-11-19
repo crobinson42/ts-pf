@@ -24,11 +24,13 @@ httpStatus(error) // Response.status from PFError: protocol table, else error.st
 
 `JSONCodec` is the default body. Encode returns `{ contentType, body }`. Decode takes `{ contentType, text(), formData(), body() }`. `decodeRequest` throws `BAD_REQUEST` for invalid JSON, a non-object body, or an envelope object with keys but no `input` key (`{"id":1}` instead of `{"input":{"id":1}}`); `{}` and `{"input":null}` decode to `input: undefined`. Wrapping codecs (`MultipartCodec`, `StreamCodec`, `SseCodec`) inherit these checks.
 
+A custom `RpcCodec` sets `streams`: `true` when it encodes an `AsyncIterable` output as a `ReadableStream` body and decodes an `AsyncIterable` input, `false` when it cannot (`JSONCodec` / `MultipartCodec` are `false`, `StreamCodec` / `SseCodec` `true`). On `streams: false`, `FetchHandler` answers a stream procedure with `BAD_REQUEST` before the body is read.
+
 Those wrappers take `inner?: EnvelopeTextCodec` — an `RpcCodec` whose encoded bodies are strings (`RpcEncodedText`), because they embed one envelope per part / line / event. `JSONCodec` implements it; `FetchHandler` / `FetchLink` still take any `RpcCodec`. Building your own wrapper: `mimeType(contentType)` (media type, lower-cased, no parameters), `isJsonContentType(contentType)` (`application/json` or no header), `jsonBodySource(text)` (an `RpcBodySource` over one in-memory envelope).
 
 ## API
 
-- `JSONCodec`, `RpcCodec`, `RpcEncodedBody`, `RpcBodySource`
+- `JSONCodec`, `RpcCodec` (`streams?: boolean`), `RpcEncodedBody`, `RpcBodySource`
 - `EnvelopeTextCodec`, `RpcEncodedText`
 - `mimeType`, `isJsonContentType`, `jsonBodySource`
 - `PROTOCOL_HEADER`, `joinProcedurePath`, `parseProcedurePath`
@@ -45,3 +47,4 @@ Those wrappers take `inner?: EnvelopeTextCodec` — an `RpcCodec` whose encoded 
 - Put these exports on `@ts-pf/protocol`.
 - Use this as a WebSocket / stdio framer — that is `ts-pf-message`.
 - Pass a `Blob` / stream-bodied codec as a wrapper's `inner` — it must be an `EnvelopeTextCodec`.
+- Leave `streams` unset on a custom codec — say `false` (or `true`) so stream procedures fail before the handler runs.

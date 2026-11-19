@@ -33,7 +33,7 @@ const codec = new JSONCodec() // the default RpcCodec; FetchHandler / FetchLink 
 httpStatus(new PFError({ code: 'NOT_FOUND', status: 404 })) // 404
 ```
 
-A custom body encoding implements `RpcCodec` (`encode` returns `{ contentType, body }`; `decode` takes `{ contentType, text(), formData(), body() }`) and goes on `FetchHandler` / `FetchLink` via `{ codec }`. First-party codecs: `@ts-pf/file`, `@ts-pf/stream`, `@ts-pf/sse`. The message-transport analog is `@ts-pf/message`.
+A custom body encoding implements `RpcCodec` (`encode` returns `{ contentType, body }`; `decode` takes `{ contentType, text(), formData(), body() }`) and goes on `FetchHandler` / `FetchLink` via `{ codec }`. Set `RpcCodec.streams`: `true` when `encodeSuccess` encodes an `AsyncIterable` output (as a `ReadableStream` body) and `decodeRequest` yields an `AsyncIterable` input, `false` when it cannot (`JSONCodec` and `MultipartCodec` are `false`; `StreamCodec` and `SseCodec` are `true`). `FetchHandler` answers a stream procedure on a `streams: false` codec with `BAD_REQUEST` before the body is read; with the flag unset it only finds out after the handler returns. First-party codecs: `@ts-pf/file`, `@ts-pf/stream`, `@ts-pf/sse`. The message-transport analog is `@ts-pf/message`.
 
 ### Wrapping codecs
 
@@ -55,7 +55,7 @@ Wire spec: [`PROTOCOL.md`](https://github.com/crobinson42/ts-pf/blob/main/packag
 
 ## API
 
-- `JSONCodec`, `RpcCodec`, `RpcEncodedBody`, `RpcBodySource`
+- `JSONCodec`, `RpcCodec` (optional `streams` flag), `RpcEncodedBody`, `RpcBodySource`
 - `EnvelopeTextCodec`, `RpcEncodedText` (the `inner` role of `MultipartCodec` / `StreamCodec` / `SseCodec`)
 - `mimeType`, `isJsonContentType`, `jsonBodySource`
 - `PROTOCOL_HEADER`, `joinProcedurePath`, `parseProcedurePath`
