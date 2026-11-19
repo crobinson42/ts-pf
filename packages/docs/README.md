@@ -88,6 +88,7 @@ See [`@ts-pf/openapi`](../openapi) and [`@ts-pf/codegen`](../codegen).
 
 - `docs`, `getDocs`, `catalog`, `walkContract`
 - `registerJsonSchemaConverter`, `toJsonSchema`
+- `canonicalize` (sorted-keys copy for byte-stable JSON; `catalogHash()` in `@ts-pf/codegen` hashes it)
 
 ## Not in this package
 
