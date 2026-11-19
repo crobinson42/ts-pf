@@ -66,6 +66,8 @@ export class FetchHandler<TCtx = unknown> {
   private readonly onError: FetchHandlerOnError | undefined
   /** The codec says it cannot carry streams (`RpcCodec.streams === false`). */
   private readonly rejectsStreams: boolean
+  /** The codec says it carries streams (`RpcCodec.streams === true`); its encoding is trusted. */
+  private readonly carriesStreams: boolean
 
   constructor(
     private readonly router: ImplementedRouter<unknown, TCtx>,
@@ -102,6 +104,7 @@ export class FetchHandler<TCtx = unknown> {
     this.validation = options?.validation
     this.onError = options?.onError
     this.rejectsStreams = this.codec.streams === false
+    this.carriesStreams = this.codec.streams === true
   }
 
   /**
@@ -222,14 +225,18 @@ export class FetchHandler<TCtx = unknown> {
   }
 
   /**
-   * Step 5. A stream output the codec did not encode as a `ReadableStream`
-   * (a codec that leaves `streams` unset, or a contract that does not declare
-   * `stream()`) is closed and answered like the
-   * step-1 stream check, never as a 200 with a non-stream body.
+   * Step 5. Unless the codec declares `streams: true`, a stream output it did
+   * not encode as a `ReadableStream` (a codec that leaves `streams` unset, or
+   * a contract that does not declare `stream()`) is closed and answered like
+   * the step-1 stream check, never as a 200 with a non-stream body.
    */
   private async successResponse(output: unknown): Promise<Response> {
     const encoded = await this.codec.encodeSuccess(output)
-    if (isAsyncIterable(output) && !(encoded.body instanceof ReadableStream)) {
+    if (
+      !this.carriesStreams &&
+      isAsyncIterable(output) &&
+      !(encoded.body instanceof ReadableStream)
+    ) {
       closeUnsentStream(output)
       throw streamCodecError()
     }

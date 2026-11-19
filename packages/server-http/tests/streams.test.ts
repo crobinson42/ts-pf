@@ -222,4 +222,24 @@ describe('FetchHandler stream output the codec did not encode as a stream', () =
     expect(result.response.status).toBe(200)
     expect(returned).not.toHaveBeenCalled()
   })
+
+  it('trusts a streams: true codec that encodes a stream as a non-stream body', async () => {
+    const { iterable, returned } = trackedIterable()
+    const handler = new FetchHandler(appReturning(iterable), {
+      codec: {
+        ...unflaggedCodec,
+        streams: true,
+        encodeSuccess: () => ({
+          contentType: 'application/json',
+          body: '{"ok":true,"output":[]}',
+        }),
+      },
+    })
+    const result = await post(handler, 'chat')
+    if (!result.matched) {
+      throw new Error('expected match')
+    }
+    expect(result.response.status).toBe(200)
+    expect(returned).not.toHaveBeenCalled()
+  })
 })
