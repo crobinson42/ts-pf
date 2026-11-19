@@ -155,7 +155,7 @@ const mapErrors = impl.middleware(async ({ next }) => {
 export const root = impl.use(mapErrors)
 ```
 
-`fn` sees every value the iterable throws. The mapped error is still checked against the contract like any other throw (a declared code's `data` is validated; data that fails is sent as `INTERNAL`), because middleware runs inside the procedure. Only `data` is checked: the declared `status` and `message` are not applied to an error you build, so set them on the `PFError` yourself. `return()` (a client that stops reading) reaches the source iterator, including before the first item. Server call interceptors wrap the whole procedure and see its errors after that check, so an error mapped there skips the `data` validation: map in middleware.
+`fn` sees every value the iterable throws. The mapped error is still checked against the contract like any other throw (a declared code's `data` is validated; data that fails is sent as `INTERNAL`), because middleware runs inside the procedure. A declared code without its own `status` also gets the declared one; the declared `message` is not applied, so set it on the `PFError` yourself. `return()` (a client that stops reading) reaches the source iterator, including before the first item. Server call interceptors wrap the whole procedure and see its errors after that check, so an error mapped there skips the `data` validation: map in middleware.
 
 ## Middleware and handler notes
 

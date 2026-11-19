@@ -139,7 +139,7 @@ Plain `try` / `catch` works too: `catch (e) { if (isPFError(e) && e.code === 'NO
 
 ### Mapping domain errors to declared codes
 
-To turn your own error classes into declared codes, use one `.use()` middleware placed first, and wrap stream results with `mapStreamErrors` from `@ts-pf/server`: a `catch` around `await next()` only sees throws that happen before the procedure returns, and a stream throws later, while it is read. The mapped error still has its `data` checked against the contract (only `data`: set the declared `status` and `message` on the `PFError` you return). See the [`@ts-pf/server` README](../packages/server/README.md#mapping-domain-errors) for the recipe. Do not map in a call interceptor: it sees errors after that check.
+To turn your own error classes into declared codes, use one `.use()` middleware placed first, and wrap stream results with `mapStreamErrors` from `@ts-pf/server`: a `catch` around `await next()` only sees throws that happen before the procedure returns, and a stream throws later, while it is read. The mapped error still has its `data` checked against the contract and gets the declared `status` when it has none (set the `message` on the `PFError` you return). See the [`@ts-pf/server` README](../packages/server/README.md#mapping-domain-errors) for the recipe. Do not map in a call interceptor: it sees errors after that check.
 
 ### `httpStatus()`
 

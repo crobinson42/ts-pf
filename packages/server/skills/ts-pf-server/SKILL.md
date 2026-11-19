@@ -103,7 +103,7 @@ const root = impl.use(async ({ next }) => {
 })
 ```
 
-`fn` returns the error to throw and sees every thrown value: return `PFError`s unchanged so input / stream-item `VALIDATION` and `errors.CODE()` throws survive. Mapped errors still get the declared-error `data` check (invalid → `INTERNAL`) because middleware runs inside the procedure — `data` only: set the declared `status` / `message` on the `PFError` you return. Not in a call interceptor: interceptors see errors after that check.
+`fn` returns the error to throw and sees every thrown value: return `PFError`s unchanged so input / stream-item `VALIDATION` and `errors.CODE()` throws survive. Mapped errors still get the declared-error `data` check (invalid → `INTERNAL`) because middleware runs inside the procedure and get the declared `status` when they have none; set the `message` on the `PFError` you return. Not in a call interceptor: interceptors see errors after that check.
 
 ### Middleware and handler rules
 
