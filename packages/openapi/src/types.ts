@@ -37,6 +37,48 @@ export type OpenAPIOptions = {
    * Default false — files are a codec, not in the catalog.
    */
   multipart?: boolean
+  /**
+   * A preset for code generators. `'codegen'` sets every option below to
+   * its generator-friendly value; an option you also pass wins.
+   */
+  profile?: 'codegen'
+  /**
+   * `'components'` (default): `<path>.Request` / `<path>.Success` envelope
+   * components. `'inline'`: envelopes inline in each operation; only
+   * `Input` / `Output` (and hoisted ids) are components.
+   */
+  envelopes?: 'components' | 'inline'
+  /**
+   * `'per-code'` (default): one failure envelope per code (`Error.<CODE>`,
+   * `TsPf.Error.<CODE>`, or `<path>.Error.<CODE>`). `'shared'`: one
+   * `RpcError` envelope, an `ErrorCode` enum, a `<Code>Data` schema per code
+   * with data, and `x-ts-pf-errors` on each operation. Throws when one code
+   * has two `data` shapes.
+   */
+  errors?: 'per-code' | 'shared'
+  /**
+   * `'path'` (default): dotted names (`auth.verifyCode.Input`). `'pascal'`:
+   * `AuthVerifyCodeInput`; a procedure whose input or output is a
+   * `.meta({ id })` type uses the id. Throws when two schemas get one name.
+   */
+  naming?: 'path' | 'pascal'
+  /**
+   * Add `additionalProperties: false` to objects reached only from inputs
+   * (stricter than the server, which strips unknown keys). Default false.
+   */
+  closeInputs?: boolean
+  /**
+   * `'exceptTags'`: rewrite `const: v` as `enum: [v]`, except on the tag
+   * property of a union of objects. Default false.
+   */
+  constAsEnum?: false | 'exceptTags'
+  /** Drop `pattern` where a standard `format` says the same. Default false. */
+  dropFormatPatterns?: boolean
+  /**
+   * A procedure with no input (or a `null` input) gets an inline
+   * `{ input: null }` request body and no `Input` component. Default false.
+   */
+  emptyInputNull?: boolean
 }
 
 type OpenAPIMediaType = {
@@ -81,6 +123,8 @@ export type OpenAPIOperation = {
   parameters?: Array<OpenAPIParameter | OpenAPIRef>
   requestBody?: OpenAPIRequestBody
   responses: Record<string, OpenAPIResponse>
+  /** The error codes this operation can return (`errors: 'shared'`). */
+  'x-ts-pf-errors'?: string[]
 }
 
 export type PathItem = {

@@ -1,6 +1,6 @@
 ---
 name: ts-pf-openapi
-description: "Use when projecting a ts-pf catalog() to OpenAPI 3.1 with openapi(). Triggers: @ts-pf/openapi, openapi(), OpenAPI 3.1, POST JSON RPC spec."
+description: "Use when projecting a ts-pf catalog() to OpenAPI 3.1 with openapi(). Triggers: @ts-pf/openapi, openapi(), OpenAPI 3.1, POST JSON RPC spec, profile: 'codegen', openapi-generator / Kiota / orval / swagger_parser."
 ---
 
 # @ts-pf/openapi
@@ -41,6 +41,32 @@ Same schemas as the catalog, normalized for code generators:
 - Declared errors: one `Error.<CODE>` (+ `Error.<CODE>.Data`) when every procedure's `data` shape matches (or none), including a code only one procedure declares; else `<path>.Error.<CODE>` per procedure. Protocol errors: `TsPf.Error.<CODE>` (+ `TsPf.Error.VALIDATION.Data`).
 
 Post-processing by component name? Use these names; older versions emitted `<path>.Error.<CODE>` and `$defs` under each procedure component.
+
+## Codegen profile (non-TypeScript generators)
+
+For openapi-generator, Kiota, orval, or swagger_parser, pass `profile: 'codegen'` instead of writing a post-processor. It is still POST JSON RPC (no GET, path params, or REST):
+
+```ts
+import { catalog } from '@ts-pf/docs'
+import { openapi } from '@ts-pf/openapi'
+
+const spec = openapi(catalog(contract, { prefix: '/rpc' }), {
+  info: { title: 'Planet API', version: '1.0.0' },
+  profile: 'codegen',
+})
+```
+
+It sets these options (each settable alone; an explicit option beats the profile, e.g. `{ profile: 'codegen', naming: 'path' }`):
+
+- `envelopes: 'inline'` (default `'components'`): envelopes inline in each operation; only `Input` / `Output` and ids are components.
+- `errors: 'shared'` (default `'per-code'`): one `RpcError`, an `ErrorCode` enum, `<Code>Data` per code with data (`NotFoundData`; protocol `ValidationErrorData`), `x-ts-pf-errors: [codes]` per operation. Throws when one code has two `data` shapes: declare one shape per code or rename one.
+- `naming: 'pascal'` (default `'path'`): `AuthVerifyCodeInput` / `…Output`; a bare id input / output uses the id. Two schemas with one name throw: give one a distinct `.meta({ id })`.
+- `closeInputs: true`: `additionalProperties: false` on input-only objects (stricter than the server, which strips unknown keys).
+- `constAsEnum: 'exceptTags'`: `const` → one-value `enum`, except union tag properties.
+- `dropFormatPatterns: true`: drop `pattern` next to a standard `format`.
+- `emptyInputNull: true`: no input or a `null` input → inline `{ input: null }` body, no `Input` component.
+
+Security schemes and `servers` stay userland: mutate the returned document.
 
 ## Documenting a GET bridge or REST facade
 
@@ -86,7 +112,7 @@ A REST facade has its own paths and bodies, so it documents them by hand (or wit
 ## API
 
 - `openapi`
-- `OpenAPIOptions` (`sse: true` / `multipart: true` advertise those content types), `OpenAPIDocument`
+- `OpenAPIOptions` (`sse: true` / `multipart: true` advertise those content types; `profile: 'codegen'` and its options `envelopes`, `errors`, `naming`, `closeInputs`, `constAsEnum`, `dropFormatPatterns`, `emptyInputNull`), `OpenAPIDocument`
 
 ## Pair with
 

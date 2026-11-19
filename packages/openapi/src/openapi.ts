@@ -2,6 +2,8 @@ import type { JsonSchema, ProcedureCatalog } from '@ts-pf/docs'
 import { protocolErrorRefs, sharedErrorRefs } from './errors.js'
 import { createHoister } from './hoist.js'
 import { toPathEntry } from './operation.js'
+import { applySchemaPasses, resolveProfile } from './profile.js'
+import { sharedErrorComponents } from './shared-errors.js'
 import type {
   OpenAPIDocument,
   OpenAPIInfo,
@@ -28,13 +30,21 @@ export function openapi(
     throw new Error('info.title and info.version are required')
   }
 
+  const profile = resolveProfile(options)
   const schemas: Record<string, JsonSchema> = {}
   const hoister = createHoister(schemas)
   const includeProtocolErrors = options.protocolErrors !== false
-  const protocolRefs = includeProtocolErrors
-    ? protocolErrorRefs(catalog, schemas, hoister)
-    : new Map<string, JsonSchema>()
-  const sharedRefs = sharedErrorRefs(catalog, schemas, hoister)
+  const sharedErrors = profile.errors === 'shared'
+  const protocolRefs =
+    includeProtocolErrors && !sharedErrors
+      ? protocolErrorRefs(catalog, schemas, hoister)
+      : new Map<string, JsonSchema>()
+  const sharedRefs = sharedErrors
+    ? new Map<string, JsonSchema>()
+    : sharedErrorRefs(catalog, schemas, hoister)
+  const rpcError = sharedErrors
+    ? sharedErrorComponents(catalog, schemas, hoister, includeProtocolErrors)
+    : undefined
 
   const paths: Record<string, PathItem> = {}
   const tags: string[] = []
@@ -49,6 +59,8 @@ export function openapi(
       protocolRefs,
       sharedErrorRefs: sharedRefs,
       includeProtocolErrors,
+      profile,
+      rpcError,
     })
     paths[entry.path] = entry.item
     if (entry.tags !== undefined) {
@@ -89,6 +101,7 @@ export function openapi(
   if (tags.length > 0) {
     document.tags = tags.map((name) => ({ name }))
   }
+  applySchemaPasses(document, catalog, profile)
   return document
 }
 

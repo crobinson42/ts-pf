@@ -9,14 +9,20 @@ import {
   requestEnvelope,
   successEnvelope,
 } from './envelope.js'
-import { operationErrorResponses } from './errors.js'
+import {
+  errorResponses,
+  operationErrorResponses,
+  operationErrors,
+} from './errors.js'
 import type { Hoister } from './hoist.js'
 import {
   operationId as makeOperationId,
   operationPath,
   schemaName,
 } from './names.js'
+import type { ResolvedProfile } from './profile.js'
 import { putSchema } from './refs.js'
+import { errorCodes } from './shared-errors.js'
 import type {
   OpenAPIOperation,
   OpenAPIOptions,
@@ -33,6 +39,9 @@ export type OperationContext = {
   protocolRefs: Map<string, JsonSchema>
   sharedErrorRefs: Map<string, JsonSchema>
   includeProtocolErrors: boolean
+  profile: ResolvedProfile
+  /** `RpcError` under `errors: 'shared'` (unset when no operation fails). */
+  rpcError: JsonSchema | undefined
 }
 
 export function toPathEntry(
@@ -58,14 +67,16 @@ function toOperation(
   const requestName = schemaName(proc.path, 'Request')
   const successName = schemaName(proc.path, 'Success')
   const owner = makeOperationId(proc.path)
-  const requestInner = hasInput(proc)
-    ? options.hoister.add(
-        schemaName(proc.path, 'Input'),
-        'input',
-        owner,
-        innerFromCatalog(proc.input) ?? {},
-      )
-    : undefined
+  const emptyInput = options.profile.emptyInputNull && isEmptyInput(proc)
+  const requestInner =
+    hasInput(proc) && !emptyInput
+      ? options.hoister.add(
+          schemaName(proc.path, 'Input'),
+          'input',
+          owner,
+          innerFromCatalog(proc.input) ?? {},
+        )
+      : undefined
   const successInner = hasOutput(proc)
     ? options.hoister.add(
         schemaName(proc.path, 'Output'),
@@ -74,15 +85,19 @@ function toOperation(
         innerFromCatalog(proc.output) ?? {},
       )
     : undefined
-  const requestSchema = putSchema(
-    options.schemas,
-    requestName,
-    requestEnvelope(requestInner),
-  )
-  const successSchema = putSchema(
-    options.schemas,
-    successName,
-    successEnvelope(successInner),
+  const envelope = (name: string, schema: JsonSchema) =>
+    options.profile.envelopes === 'inline'
+      ? schema
+      : putSchema(options.schemas, name, schema)
+  const requestSchema = emptyInput
+    ? requestEnvelope()
+    : envelope(requestName, requestEnvelope(requestInner))
+  const successSchema = envelope(successName, successEnvelope(successInner))
+  const sharedErrors = options.profile.errors === 'shared'
+  const errors = operationErrors(
+    proc,
+    options.catalog,
+    options.includeProtocolErrors,
   )
 
   const operation: OpenAPIOperation = {
@@ -91,8 +106,13 @@ function toOperation(
     requestBody: requestBody(proc, requestSchema, options.openapi),
     responses: {
       '200': successResponse(proc, successSchema, options),
-      ...operationErrorResponses(proc, options),
+      ...(sharedErrors
+        ? errorResponses(errors, () => options.rpcError ?? {})
+        : operationErrorResponses(proc, options)),
     },
+  }
+  if (sharedErrors) {
+    operation['x-ts-pf-errors'] = errorCodes(errors)
   }
   if (proc.docs?.summary !== undefined) {
     operation.summary = proc.docs.summary
@@ -203,6 +223,18 @@ function isStream(schema: CatalogSchema | undefined): boolean {
 
 function hasInput(proc: CatalogProcedure): boolean {
   return proc.input !== undefined
+}
+
+/** No input, or an input that is only `null` (`emptyInputNull`). */
+function isEmptyInput(proc: CatalogProcedure): boolean {
+  if (proc.input === undefined) {
+    return true
+  }
+  if (proc.input.kind !== 'json') {
+    return false
+  }
+  const { $schema: _dialect, ...schema } = proc.input.jsonSchema
+  return Object.keys(schema).length === 1 && schema.type === 'null'
 }
 
 function hasOutput(proc: CatalogProcedure): boolean {

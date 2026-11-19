@@ -80,3 +80,28 @@ export function failureEnvelope(code: string, data?: JsonSchema): JsonSchema {
     },
   }
 }
+
+/**
+ * The one failure envelope of `errors: 'shared'`: `code` is the `ErrorCode`
+ * enum and `data` is optional (its shape is the code's `<Code>Data`).
+ */
+export function sharedFailureEnvelope(code: JsonSchema): JsonSchema {
+  return {
+    type: 'object',
+    additionalProperties: false,
+    required: ['ok', 'error'],
+    properties: {
+      ok: { const: false },
+      error: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['code', 'message'],
+        properties: {
+          code,
+          message: { type: 'string' },
+          data: { description: 'Shape depends on code: see <Code>Data.' },
+        },
+      },
+    },
+  }
+}

@@ -52,6 +52,36 @@ The document describes the same schemas the catalog holds. It normalizes them so
 
 `$anchor` / `$dynamicAnchor` across schemas are not rewritten, and only root `$defs` / `definitions` are hoisted. If you post-process the document by component name, use these names.
 
+### Codegen profile
+
+The default document is a plain projection that reads well in Scalar. Code generators (openapi-generator, Kiota, orval, swagger_parser) want a few more choices made for them. `profile: 'codegen'` makes them:
+
+```ts
+import { catalog } from '@ts-pf/docs'
+import { openapi } from '@ts-pf/openapi'
+
+const spec = openapi(catalog(contract, { prefix: '/rpc' }), {
+  info: { title: 'Planet API', version: '1.0.0' },
+  profile: 'codegen',
+})
+```
+
+The profile describes the same POST JSON RPC paths and envelopes: no GET, no path params, no REST. It sets the options below. Each one can also be set alone, and an option you pass yourself wins over the profile (`{ profile: 'codegen', naming: 'path' }` keeps dotted names).
+
+| Option | Default | `codegen` | Effect |
+| --- | --- | --- | --- |
+| `envelopes` | `'components'` | `'inline'` | Request / success envelopes inline in each operation. Only `Input` / `Output` and hoisted ids are components. |
+| `errors` | `'per-code'` | `'shared'` | One `RpcError` envelope (`{ ok: false, error: { code: ErrorCode, message, data? } }`), an `ErrorCode` string enum (every code an operation can return), one `<Code>Data` per code with data (`NOT_FOUND` → `NotFoundData`; protocol `VALIDATION` → `ValidationErrorData`), and `x-ts-pf-errors: [codes]` on each operation. Error responses `$ref` `RpcError`. Throws when two procedures declare one code with different `data` shapes; a procedure that declares the code without data is fine. |
+| `naming` | `'path'` | `'pascal'` | `auth.verifyCode.Input` → `AuthVerifyCodeInput` (`…Output`, `…Request`, `…Success`; `Error.NOT_FOUND` → `NotFoundError`; `<host>.__schema0` → `<Host>Schema0`). Ids keep their names, and a procedure whose input or output is just an id uses the id (`BookFindOutput` is not emitted; the operation refs `Book`). Throws when two different schemas get one name: give one a distinct `.meta({ id })`. |
+| `closeInputs` | `false` | `true` | `additionalProperties: false` on objects that only requests reach. This is stricter than the server, which strips unknown keys. A component a response also reaches stays open, and so do `allOf` members. |
+| `constAsEnum` | `false` | `'exceptTags'` | `const: v` → `enum: [v]`, except on the tag property of a union of objects (a property with a different `const` in every variant). |
+| `dropFormatPatterns` | `false` | `true` | Drops `pattern` where a standard `format` (`date-time`, `email`, `uuid`, `uri`, …) is set. Zod emits both. Non-standard formats keep their pattern. |
+| `emptyInputNull` | `false` | `true` | A procedure with no input, or a `null` input, gets an inline `{ input: null }` request body and no `Input` component. (`z.void()` / `z.undefined()` are `unavailable` in the catalog and are not detected; omit `.input()` instead.) |
+
+More profile options follow in a later release.
+
+App-specific parts of the document (security schemes, `servers`, extra components) stay in userland: mutate the returned document, as with the default output.
+
 Message transports (WebSocket, stdio, MessagePort) are not HTTP and are not in this document.
 
 Typed split-repo clients: [`@ts-pf/codegen`](../codegen).
@@ -59,4 +89,4 @@ Typed split-repo clients: [`@ts-pf/codegen`](../codegen).
 ## API
 
 - `openapi`
-- `OpenAPIOptions` (`sse: true` / `multipart: true` advertise those content types), `OpenAPIDocument`
+- `OpenAPIOptions` (`sse: true` / `multipart: true` advertise those content types; `profile: 'codegen'` and its options `envelopes`, `errors`, `naming`, `closeInputs`, `constAsEnum`, `dropFormatPatterns`, `emptyInputNull`), `OpenAPIDocument`

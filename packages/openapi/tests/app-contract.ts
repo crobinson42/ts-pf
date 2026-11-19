@@ -138,3 +138,21 @@ export const appContract = router({
   },
   health: procedure,
 })
+
+// `errors: 'shared'` needs one `data` shape per code, so the codegen-profile
+// golden gives loan.create's diverging CONFLICT its own code. (appContract
+// keeps both CONFLICT shapes: they cover per-procedure error components.)
+export const codegenAppContract = router({
+  ...appContract,
+  loan: {
+    ...appContract.loan,
+    create: appContract.loan.create.errors({
+      ALREADY_ON_LOAN: {
+        status: 409,
+        message: 'Already on loan',
+        data: z.object({ isbn: z.string(), dueAt: z.iso.datetime() }),
+      },
+      FORBIDDEN: forbidden,
+    }),
+  },
+})

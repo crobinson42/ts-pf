@@ -35,3 +35,19 @@ export function operationPath(href: string | undefined, key: string): string {
   const raw = href ?? (key === '' ? '/' : `/${key}`)
   return raw.startsWith('/') ? raw : `/${raw}`
 }
+
+/**
+ * `verifyCode` → `VerifyCode`, `NOT_FOUND` → `NotFound`, `get-user` →
+ * `GetUser`. All-caps words are capitalized; other words keep their case.
+ */
+export function pascalCase(value: string): string {
+  return value
+    .split(/[^A-Za-z0-9]+/)
+    .filter((word) => word.length > 0)
+    .map((word) =>
+      /^[A-Z0-9]+$/.test(word)
+        ? `${word.charAt(0)}${word.slice(1).toLowerCase()}`
+        : `${word.charAt(0).toUpperCase()}${word.slice(1)}`,
+    )
+    .join('')
+}

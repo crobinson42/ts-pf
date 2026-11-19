@@ -36,6 +36,8 @@ packages/*/skills/ts-pf-<pkg>/SKILL.md   consumer usage (hub catalog ts-pf-app o
 packages/{contract,server,client}/tests/*.test-d.ts   type tests (expectTypeOf + @ts-expect-error); Vitest typecheck + tsc --noEmit
 packages/{server-http,message-server,astro}/tests/*.test-d.ts   context-inference type tests; tsc --noEmit only (no Vitest typecheck there)
 packages/mcp/tests/toolkit.test-d.ts     toolkit / all() inject / tags / hidden / names / coverage / binding type tests; tsc --noEmit only
+packages/openapi/tests/options.test-d.ts OpenAPIOptions profile literals (accepted / @ts-expect-error rejected); tsc --noEmit only
+packages/openapi/tests/fixtures/         golden documents: app-contract.openapi.json (default, must not change), app-contract.codegen.openapi.json (profile: 'codegen', codegenAppContract)
 packages/mcp/bench/gen.mjs               400-procedure type-cost fixture (`npm run bench:types -w @ts-pf/mcp`; manual, not in verify)
 packages/contract/src/
   builder.ts          procedure singleton, router()
@@ -109,13 +111,20 @@ packages/docs/src/
   catalog.ts          catalog(); protocolErrors derived from ProtocolErrorCode + PROTOCOL_HTTP_STATUS (no local table)
 packages/openapi/src/
   index.ts            openapi, OpenAPIOptions, OpenAPIDocument
-  openapi.ts          document assembly: protocol / shared error components, one path per procedure, hoister.finish()
-  operation.ts        one POST operation: <path>.Request / Success envelopes around <path>.Input / Output
-  errors.ts           TsPf.Error.<CODE> (protocol), Error.<CODE> (declared, same data shape everywhere), else <path>.Error.<CODE>; responses grouped by status
+  openapi.ts          document assembly: resolveProfile, protocol / shared error components (or shared-errors.ts), one path per procedure, hoister.finish(), applySchemaPasses
+  operation.ts        one POST operation: <path>.Request / Success envelopes (inline under envelopes: 'inline') around <path>.Input / Output; emptyInputNull; x-ts-pf-errors
+  errors.ts           operationErrors (declared then protocol codes, pure) + errorResponses (grouped by status); TsPf.Error.<CODE> (protocol), Error.<CODE> (declared, same data shape everywhere), else <path>.Error.<CODE>
+  profile.ts          OpenAPIOptions profile: resolveProfile (defaults / PROFILES table, explicit options win), applySchemaPasses (naming → closeInputs → dropFormatPatterns → constAsEnum; all off by default)
+  shared-errors.ts    errors: 'shared': ErrorCode, RpcError, <Code>Data (protocol <Code>ErrorData); one data shape per code or throw; errorCodes → x-ts-pf-errors
+  naming.ts           naming: 'pascal' post-pass: dotted names derived from the catalog → PascalCase, bare id Input / Output aliases dropped, clashes throw, refs rewritten
+  close-inputs.ts     closeInputs: additionalProperties: false on input-only components / request bodies (not allOf members or combinator nodes)
+  const-enum.ts       constAsEnum: 'exceptTags': const → enum [v], except union tag properties (refs followed)
+  format-patterns.ts  dropFormatPatterns: drop pattern next to a JSON Schema 2020-12 format
+  document.ts         mapDocumentSchemas (every schema root, with its side), componentTarget, resolveComponent
   hoist.ts            createHoister: normalize each schema, lift root $defs / definitions to components (<id> / <id>Input split; same-side conflicts, taken <id>Input, name collisions throw; Zod __schemaN per host), shapeKey
   normalize.ts        drop nested $schema; outputs drop additionalProperties: false
-  refs.ts / walk.ts   $ref helpers; keyword-aware schema map (never touches const / enum / default)
-  envelope.ts / names.ts  protocol envelopes (stay closed); component names (sanitized)
+  refs.ts / walk.ts   $ref helpers; keyword-aware schema map with the source node (never touches const / enum / default), forEachSchema
+  envelope.ts / names.ts  protocol envelopes (stay closed) + the shared RpcError envelope; component names (sanitized), pascalCase
 packages/codegen/src/
   index.ts            emit, emitFiles, catalogHash, EmitOptions, EmitFile
   files.ts            emitFiles — flat group + procedure .d.ts; entry contract.d.ts; _phantom.d.ts only if some error has data; catalogHash on the entry only; headers are role + path/call/parent (procedure `group:`, group `parent:`)

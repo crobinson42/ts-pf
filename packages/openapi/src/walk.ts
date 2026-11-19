@@ -25,18 +25,18 @@ const SCHEMA_ONE = new Set([
   'contentSchema',
 ])
 
-function isSchemaObject(value: unknown): value is JsonSchema {
+export function isSchemaObject(value: unknown): value is JsonSchema {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+type Visit = (node: JsonSchema, source: JsonSchema) => JsonSchema
+
 /**
  * Copies a JSON Schema bottom-up, passing every schema object (children
- * first) through `visit`. Boolean schemas and data keywords are copied as is.
+ * first) through `visit`, with the original object it was copied from as
+ * `source`. Boolean schemas and data keywords are copied as is.
  */
-export function mapSchema(
-  schema: unknown,
-  visit: (node: JsonSchema) => JsonSchema,
-): unknown {
+export function mapSchema(schema: unknown, visit: Visit): unknown {
   if (!isSchemaObject(schema)) {
     return schema
   }
@@ -44,14 +44,21 @@ export function mapSchema(
   for (const [key, value] of Object.entries(schema)) {
     node[key] = mapKeyword(key, value, visit)
   }
-  return visit(node)
+  return visit(node, schema)
 }
 
-function mapKeyword(
-  key: string,
-  value: unknown,
-  visit: (node: JsonSchema) => JsonSchema,
-): unknown {
+/** Calls `visit` with every schema object in `schema` (children first). */
+export function forEachSchema(
+  schema: unknown,
+  visit: (node: JsonSchema) => void,
+): void {
+  mapSchema(schema, (node, source) => {
+    visit(source)
+    return node
+  })
+}
+
+function mapKeyword(key: string, value: unknown, visit: Visit): unknown {
   if (SCHEMA_MAPS.has(key) && isSchemaObject(value)) {
     return Object.fromEntries(
       Object.entries(value).map(([name, child]) => [
