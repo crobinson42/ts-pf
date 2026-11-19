@@ -37,7 +37,7 @@ Same schemas as the catalog, normalized for code generators:
 - Output and error `data` schemas are open (no `additionalProperties: false`). Inputs and the `{ ok, … }` envelopes are unchanged.
 - Root `$defs` are hoisted: `.meta({ id: 'Book' })` → `components.schemas.Book`, one component across procedures. `<path>.Input` / `<path>.Output` stay; a bare named type is a `$ref` to it.
 - Input shape differs from output (e.g. a field with a default) → output `Book`, input `BookInput`. Two shapes for one id on the same side, a taken `<id>Input`, or an id equal to another component name throws: give one schema a distinct `.meta({ id })`.
-- Zod's unnamed recursion (`__schema0`) → `<host>.__schema0`; give it an id for a stable name.
+- Zod's unnamed recursion (any def key `__schemaN`) → `<host>.__schemaN`, shared only when identical; give it an id for a stable name.
 - Declared errors: one `Error.<CODE>` (+ `Error.<CODE>.Data`) when every procedure's `data` shape matches (or none), else `<path>.Error.<CODE>` per procedure. Protocol errors: `TsPf.Error.<CODE>`.
 
 Post-processing by component name? Use these names; older versions emitted `<path>.Error.<CODE>` and `$defs` under each procedure component.
