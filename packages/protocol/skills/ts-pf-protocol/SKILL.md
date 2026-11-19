@@ -11,7 +11,7 @@ Install: `npm i @ts-pf/protocol`
 
 Link for agents: `npx skills experimental_sync -y`
 
-Wire spec ships as `PROTOCOL.md` in this package.
+Wire spec ships as `PROTOCOL.md` in this package (revision 1.2). Building a client in another language: start from its "HTTP client checklist" / "WebSocket client checklist" and "Classifying an HTTP response" sections; TypeScript-only conventions (`local`, `status: 0`, `isLocalFailure`) are in its appendix.
 
 ## Do
 
@@ -27,7 +27,7 @@ Envelope: `{ input }`, `{ ok: true, output }`, `{ ok: false, error: { code, mess
 
 `PFError.status?: number` is transport metadata, not identity. It is the HTTP response status on a unary Fetch failure, `undefined` on message transports and after a stream has started, and `0` on local failures. Guard it (`err.status ?? 400`); switch on `code`. The HTTP default (400 for a code with no status) is applied by `httpStatus()` in `@ts-pf/http`, not by the constructor.
 
-Writing a codec or transport adapter: `toWireError(error)` is the failure envelope's `error` for any thrown value (`PFError` → `toJSON()`; anything else → fixed `{ code: 'INTERNAL', message: 'Internal server error' }`, no stack, no message leak — log the original value yourself). `isAsyncIterable(value)` is the shared "is this a stream" predicate (object or function with a `Symbol.asyncIterator` function). A `ReadableStream` is async-iterable on Node; a site that wants bytes excludes it explicitly. `defined({ signal, headers })` is the shared way to forward optional fields under `exactOptionalPropertyTypes`: it returns a copy without the `undefined`-valued keys, typed so those keys are optional (`{ ...required, ...defined({ signal }) }`).
+Writing a codec or transport adapter: `toWireError(error)` is the failure envelope's `error` for any thrown value (`PFError` → `toJSON()`; anything else → fixed `{ code: 'INTERNAL', message: 'Internal server error' }`, no stack, no message leak — log the original value yourself). The message `hello-error` for a throwing context factory uses the same mapping. `isAsyncIterable(value)` is the shared "is this a stream" predicate (object or function with a `Symbol.asyncIterator` function). A `ReadableStream` is async-iterable on Node; a site that wants bytes excludes it explicitly. `defined({ signal, headers })` is the shared way to forward optional fields under `exactOptionalPropertyTypes`: it returns a copy without the `undefined`-valued keys, typed so those keys are optional (`{ ...required, ...defined({ signal }) }`).
 
 ## API
 
