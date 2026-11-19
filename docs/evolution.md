@@ -9,7 +9,7 @@ Servers and clients rarely ship at the same moment: a browser tab keeps an old b
 | Change | Why an old client keeps working |
 |---|---|
 | Add a procedure | Old clients never call it. |
-| Add an optional input field | Old clients omit it. Give it a default (`.optional()` / `.default()` in the schema, or in the handler). |
+| Add an optional input field | Old clients omit it. Make it `.optional()`, or `.default(x)` so the handler always gets a value. |
 | Add an output field | Old clients ignore keys they do not know (see [Open outputs, closed inputs](#open-outputs-closed-inputs)). |
 | Add an enum value or union variant to an output | Safe on the wire, as long as old clients [tolerate unknown values](#unknown-enum-values-and-union-variants). |
 | Add an error code | Safe on the wire, as long as old clients [keep a catch-all branch](#unknown-error-codes). |
@@ -20,7 +20,7 @@ The last two are only as safe as the client code that reads them. Write clients 
 
 | Change | What an old client sees |
 |---|---|
-| Rename or remove a procedure | `NOT_FOUND` (`Procedure not found`) on every call. |
+| Rename or remove a procedure | `NOT_FOUND` (`Procedure not found`) on every call, with no `data`. If the procedure declared its own `NOT_FOUND` with `data`, the old client's types still promise that `data` (see the example [below](#unknown-error-codes)). |
 | Add a required input field, or make an optional one required | `VALIDATION` on every call that omits it. |
 | Rename an input field | `VALIDATION` if the new name is required; otherwise the old key is stripped and its value silently ignored. |
 | Remove an input field | The call succeeds, but the value the client sent is stripped and ignored. Breaking whenever it mattered. |
@@ -42,14 +42,15 @@ A TypeScript client's `ClientError` union is exactly the procedure's declared co
 ```ts
 import { asResult } from '@ts-pf/client'
 
-declare function showMissing(id: number): void
+declare function showMissing(id: number | undefined): void
 declare function showError(message: string): void
 
 const result = await asResult(client.planet.find({ id: 1 }))
 if (!result.ok) {
   switch (result.error.code) {
     case 'NOT_FOUND':
-      showMissing(result.error.data.id)
+      // Also the protocol NOT_FOUND (no `data`) if this procedure is ever removed.
+      showMissing(result.error.data?.id)
       break
     default:
       // Every other code, including codes added after this client was built.
@@ -157,7 +158,7 @@ export const contract = router({
 })
 ```
 
-`satisfies ErrorMap` checks each entry and keeps the literal keys and `data` schemas, so the spread map types the handler's `errors` factory and the client's `ClientError` exactly as an inline map would. To derive the map from a domain layer's own error catalog, see [Mapping domain errors](../packages/server/README.md#mapping-domain-errors) in the `@ts-pf/server` README.
+`satisfies ErrorMap` checks each entry and keeps the literal keys and `data` schemas, so the spread map types the handler's `errors` factory and the client's `ClientError` exactly as an inline map would. To derive the map from a domain layer's own error catalog, see [A domain error catalog](../packages/server/README.md#a-domain-error-catalog) in the `@ts-pf/server` README.
 
 ## Checking for breaking changes
 
@@ -169,11 +170,12 @@ import { writeFileSync } from 'node:fs'
 import { catalog } from '@ts-pf/docs'
 import { contract } from './contract.js'
 
-const spec = catalog(contract, { prefix: '/rpc' })
+// `filter: () => true` keeps docs({ hidden: true }) procedures in the baseline too.
+const spec = catalog(contract, { prefix: '/rpc', filter: () => true })
 writeFileSync('catalog.json', `${JSON.stringify(spec, null, 2)}\n`)
 ```
 
-`catalog.json` lists every procedure with its input and output JSON Schema, its declared errors, and its `docs()` metadata, so a diff shows a removed procedure, a new required input field, or a dropped error code directly; check it against the tables above. An OpenAPI document from `@ts-pf/openapi` works the same way if that is what your reviewers read. `catalogHash(spec)` from `@ts-pf/codegen` is a stable hash of the catalog: it tells you (or a client that pinned it with `ts-pf-codegen pull --lock`) that something changed, not what.
+`catalog.json` then lists every procedure with its input and output JSON Schema, its declared errors, and its `docs()` metadata, so a diff shows a removed procedure, a new required input field, or a dropped error code directly; check it against the tables above. An OpenAPI document from `@ts-pf/openapi` works the same way if that is what your reviewers read. `catalogHash(spec)` from `@ts-pf/codegen` is a stable hash of the catalog: it tells you (or a client that pinned it with `ts-pf-codegen pull --lock`) that something changed, not what.
 
 ## Wire version vs contract version
 

@@ -141,7 +141,7 @@ export const mapDomainErrors: MiddlewareFn = async ({ next }) => {
 // impl.use(mapDomainErrors) — first in the chain
 ```
 
-A code the procedure does not declare is sent without the declared status (HTTP 400) and is not in the client type. `.errors(clientErrors)` on every procedure is simple but loses per-procedure client error types: prefer a shared base map plus per-area spreads, `.errors({ ...baseErrors, ...areaErrors })` (a second `.errors()` call replaces the map). Full recipe: `@ts-pf/server` README "A domain error catalog"; trade-off: [Evolving a contract](https://github.com/crobinson42/ts-pf/blob/main/docs/evolution.md#error-maps-shared-or-per-procedure).
+A code the procedure does not declare is sent without the declared status (HTTP 400) and is not in the client type. `.errors(clientErrors)` on every procedure is simple but loses per-procedure client error types: a shared base map plus per-area spreads is a good middle ground, `.errors({ ...baseErrors, ...areaErrors })` (a second `.errors()` call replaces the map). Full recipe: `@ts-pf/server` README "A domain error catalog"; trade-off: [Evolving a contract](https://github.com/crobinson42/ts-pf/blob/main/docs/evolution.md#error-maps-shared-or-per-procedure).
 
 ### Middleware and handler rules
 
