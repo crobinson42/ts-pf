@@ -13,7 +13,7 @@ Keep every `@ts-pf/*` package on the same version (they release together on one 
 
 Link for agents (after install or `npm update`): `npx skills experimental_sync -y`
 
-`experimental_sync` copies skills from **installed** packages only. If `ts-pf-<pkg>` is not in the project skill dir: `npm i @ts-pf/<pkg> && npx skills experimental_sync -y`, then load that skill. Do not invent APIs from a package name. Do not assume an opt-in package is already a dependency.
+`experimental_sync` copies skills from **installed** packages only. If `ts-pf-<pkg>` is not in the project skill dir: `npm i @ts-pf/<pkg>@<version> && npx skills experimental_sync -y` (`<version>` = the installed `@ts-pf/contract` version, or upgrade every `@ts-pf/*` dependency in the same command), then load that skill. Do not invent APIs from a package name. Do not assume an opt-in package is already a dependency.
 
 ## Do
 
@@ -114,7 +114,7 @@ No `mergeRouters`. No `compose()`. No lazy routers.
 
 ## Browser bundles
 
-Browser code (client modules, islands) must not import a server-only or Node-only entry point. Ban them with a lint rule scoped to browser directories. Biome (`biome.json`; adjust `includes`):
+Browser UI code (client modules, islands) must not import a server-side or Node-only entry point. Ban them with a lint rule scoped to those directories (a server hosted in a Worker or extension background is server-side code, outside this scope). Biome (`biome.json`; adjust `includes`):
 
 ```json
 {
@@ -128,13 +128,13 @@ Browser code (client modules, islands) must not import a server-only or Node-onl
               "level": "error",
               "options": {
                 "paths": {
-                  "@ts-pf/server": "Server-only",
-                  "@ts-pf/server-http": "Server-only",
-                  "@ts-pf/message-server": "Server-only",
-                  "@ts-pf/message-server/stdio": "Server-only (Node)",
-                  "@ts-pf/astro/server": "Server-only",
-                  "@ts-pf/mcp": "Server-only",
-                  "@ts-pf/mcp/sdk": "Server-only",
+                  "@ts-pf/server": "Server-side",
+                  "@ts-pf/server-http": "Server-side",
+                  "@ts-pf/message-server": "Server-side",
+                  "@ts-pf/message-server/stdio": "Server-side (Node)",
+                  "@ts-pf/astro/server": "Server-side",
+                  "@ts-pf/mcp": "Server-side",
+                  "@ts-pf/mcp/sdk": "Server-side",
                   "@ts-pf/message/stdio": "Node-only",
                   "@ts-pf/message-client/stdio": "Node-only",
                   "@ts-pf/codegen": "Node-only (build time)"

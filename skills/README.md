@@ -2,7 +2,7 @@
 
 Index only. Published skills live next to the package they describe so they version with that package. Do not put `SKILL.md` files here.
 
-Hub `ts-pf-app` on `@ts-pf/contract` is the capability catalog. `npx skills experimental_sync -y` copies skills from **installed** packages. Uninstalled opt-in packages are discovered from the hub, then `npm i @ts-pf/<pkg> && npx skills experimental_sync -y`.
+Hub `ts-pf-app` on `@ts-pf/contract` is the capability catalog. `npx skills experimental_sync -y` copies skills from **installed** packages. Uninstalled opt-in packages are discovered from the hub, then `npm i @ts-pf/<pkg>@<version> && npx skills experimental_sync -y` (`<version>` = the installed `@ts-pf/contract` version: every `@ts-pf/*` package shares one version).
 
 | Skill | Path | Job |
 |---|---|---|

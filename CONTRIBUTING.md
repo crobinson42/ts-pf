@@ -1,6 +1,6 @@
 # Contributing to ts-pf
 
-ts-pf is a contract-first TypeScript RPC library published as 19 `@ts-pf/*` packages from this monorepo. This guide covers the mechanics: setup, the verify chain, changesets, and releasing. The design rules are not repeated here.
+ts-pf is a contract-first TypeScript RPC library published as 20 `@ts-pf/*` packages from this monorepo. This guide covers the mechanics: setup, the verify chain, changesets, and releasing. The design rules are not repeated here.
 
 - **Rules** (what the packages may and may not do, public names, locks): [`.agents/rules.md`](.agents/rules.md). It is authoritative; when this file and the rules disagree, the rules win.
 - **Why each rule exists**: [`DECISIONS.md`](DECISIONS.md). Read it before proposing to change a lock.
@@ -42,7 +42,7 @@ npm run lint && npm run lint:root && npm run check:skills && npm run check:deps 
 |---|---|
 | `lint`, `lint:root` | Biome, warnings are errors; `lint:root` covers `scripts/` and the root configs |
 | `check:skills` | every published package ships `skills/ts-pf-<pkg>/SKILL.md` with frontmatter, `files` includes `skills`, npm `keywords`, the hub skill names every opt-in package, `skills/README.md` indexes every skill, no oRPC names in code or docs, and every symbol a skill lists under `## API` is named in that package's README |
-| `check:deps` | the `@ts-pf/*` dependency DAG from `.agents/rules.md` ("Packages"), in `package.json` and in `src` / `tests` imports; no cycles |
+| `check:deps` | the `@ts-pf/*` dependency DAG from `.agents/rules.md` ("Packages"), in `package.json` and in `src` / `tests` imports; no cycles; published packages pin internal `@ts-pf/*` deps (dependencies, peer, optional, dev) to the exact workspace version; `.changeset/config.json` `fixed` is one group listing exactly the published packages |
 | `type-check` | `tsc --noEmit` per package, including `tests/*.test-d.ts` |
 | `test` | Vitest per package and per example (examples are smoke tests) |
 | `build` | `dist` for every package |
@@ -76,7 +76,7 @@ Pick the packages, the bump (`patch` / `minor` / `major`), and write the summary
 
 ### Adding a package
 
-The checklist for a new published package (`package.json` fields, `LICENSE`, skill, tsconfigs, `vitest.config.ts`, `skills/README.md` row, `scripts/check-deps.mjs` `PROD` entry, changeset) is the "Code" section of `.agents/rules.md`; `check:exports`, `check:skills`, and `check:deps` fail on omissions. New examples follow the "Examples" section there and are appended to `.changeset/config.json` `ignore`. `@ts-pf/site` is ignored too.
+The checklist for a new published package (`package.json` fields, `LICENSE`, skill, tsconfigs, `vitest.config.ts`, `skills/README.md` row, `scripts/check-deps.mjs` `PROD` entry, exact-version internal `@ts-pf/*` pins, `.changeset/config.json` `fixed` group entry, changeset) is the "Code" section of `.agents/rules.md`; `check:exports`, `check:skills`, and `check:deps` fail on omissions. New examples follow the "Examples" section there and are appended to `.changeset/config.json` `ignore`. `@ts-pf/site` is ignored too.
 
 ## Examples
 
@@ -97,7 +97,7 @@ Only `hello` listens; the others are smoke-tested. Do not add a framework adapte
 
 Releases use [Changesets](https://github.com/changesets/changesets) and publish to the npm `latest` dist-tag. The full runbook, including npm trusted-publisher setup, lives in [`.changeset/README.md`](.changeset/README.md); this is the shape of it.
 
-1. Merging a PR to `main` triggers the [release workflow](.github/workflows/release.yml). It re-runs lint, `lint:root`, `check:skills`, `check:deps`, type-check, test, build, `check:exports`, and `check:snippets` (CI has already run the full chain on the PR), then `changesets/action` opens or updates a **Version packages** PR when unpublished changesets exist. That PR consumes `.changeset/*.md`, bumps every published package to one shared version (they are one Changesets `fixed` group), writes `CHANGELOG.md` files, rewrites the exact internal `@ts-pf/*` pins to that version, and refreshes the lockfile. Internal dependencies are always exact versions of the current workspace package, never `"*"` (`changeset version` does not rewrite `"*"`; `check:deps` rejects it).
+1. Merging a PR to `main` triggers the [release workflow](.github/workflows/release.yml). It re-runs lint, `lint:root`, `check:skills`, `check:deps`, type-check, test, build, `check:exports`, and `check:snippets` (CI has already run the full chain on the PR), then `changesets/action` opens or updates a **Version packages** PR when unpublished changesets exist. That PR consumes `.changeset/*.md`, bumps every published package to one shared version (they are one Changesets `fixed` group), writes `CHANGELOG.md` files, rewrites the exact internal `@ts-pf/*` pins to that version, and refreshes the lockfile. Published packages' internal dependencies are always exact versions of the current workspace package, never `"*"` (`changeset version` does not rewrite `"*"`; `check:deps` rejects it).
 2. Merging the Version packages PR publishes every bumped package, pushes git tags, and creates GitHub Releases. Do not publish by hand in a separate step; that skips tags and releases. The same workflow builds `@ts-pf/site` and deploys [crobinson42.github.io/ts-pf](https://crobinson42.github.io/ts-pf/) (GitHub Pages, source **GitHub Actions**, environment `github-pages`). A `workflow_dispatch` input `deploy_docs` deploys the site without a publish.
 3. Publishing uses npm **trusted publishing** (OIDC), not a token. Each `@ts-pf/*` package has a trusted publisher pointing at user `crobinson42`, repository `ts-pf`, workflow filename `release.yml`, empty environment, with `npm publish` allowed (not stage-only). `id-token: write` is the only credential. Do not set `NPM_TOKEN`, and do not pass `registry-url` to `actions/setup-node`: it writes an empty `_authToken` and npm then skips OIDC and fails with `ENEEDAUTH`. The job runs `scripts/probe-npm-oidc.mjs` first so a failed token exchange prints the registry's message. A 404 `package not found` from that exchange means a missing trusted publisher, not an unpublished package; `scripts/trust-github-publishers.sh` creates them all with interactive 2FA.
 4. The release job pins Node 24 with a global `npm@11.12.1`, the combination the OIDC flow was verified with. It is deliberately not tied to `.nvmrc`.
