@@ -14,6 +14,8 @@ Requires Node.js 22+.
 npm install @ts-pf/contract @ts-pf/server @ts-pf/server-http @ts-pf/client @ts-pf/client-http
 ```
 
+Every `@ts-pf/*` package releases on one version. Keep them all on that version and update them together in one install command; a mixed set installs duplicate copies of shared packages.
+
 `@ts-pf/protocol` (`PFError`) comes along as a dependency of `server` and `client`; import it directly, and add it to your own `dependencies` if your package manager blocks undeclared transitive imports.
 
 ### TypeScript setup
