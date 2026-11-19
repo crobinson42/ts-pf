@@ -52,7 +52,7 @@
     },
     {
       "id": "http-success-null-output",
-      "description": "output: null is a value, not an omitted output. PROTOCOL.md: Envelope.",
+      "description": "output: null is a value, not an omitted output. PROTOCOL.md: Envelope; Classifying an HTTP response, step 2.",
       "request": { "procedure": ["planet", "moon"], "input": { "id": 2 } },
       "expectRequest": {
         "method": "POST",

@@ -153,6 +153,63 @@
       ]
     },
     {
+      "id": "ws-handshake-unexpected-frame",
+      "description": "Any parsed frame other than hello-ok / hello-error while handshaking fails the connect locally and closes. PROTOCOL.md: Handshake.",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "receive": { "type": "result", "id": "1", "ok": true } },
+        {
+          "expect": {
+            "handshake": "local-failure",
+            "reference": "Invalid response"
+          }
+        },
+        { "expect": { "closed": {} } }
+      ]
+    },
+    {
+      "id": "ws-handshake-peer-close",
+      "description": "The server closing before hello-ok fails the connect locally. PROTOCOL.md: Handshake.",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "serverClose": {} },
+        {
+          "expect": {
+            "handshake": "local-failure",
+            "reference": "Connection closed"
+          }
+        }
+      ]
+    },
+    {
+      "id": "ws-abort-before-ready",
+      "description": "Aborting a call that is still waiting for hello-ok fails it locally without sending cancel (it has no id) and leaves the connection up for other calls. PROTOCOL.md: Cancel and mid-stream errors.",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "call": "a", "path": ["planet", "slow"] },
+        { "abort": "a" },
+        {
+          "expect": {
+            "call": "a",
+            "outcome": "local-failure",
+            "reference": "Request aborted"
+          }
+        },
+        { "receive": { "type": "hello-ok", "v": 1 } },
+        { "call": "b", "path": ["ping"] },
+        { "send": { "type": "call", "id": "1", "path": ["ping"] } },
+        {
+          "receive": {
+            "type": "result",
+            "id": "1",
+            "ok": true,
+            "output": "pong"
+          }
+        },
+        { "expect": { "call": "b", "outcome": "value", "output": "pong" } }
+      ]
+    },
+    {
       "id": "ws-unary-result",
       "description": "Unary call: string id, path as an array, result ok: true resolves to output. PROTOCOL.md: Unary call; Frame types.",
       "steps": [
@@ -483,6 +540,42 @@
       ]
     },
     {
+      "id": "ws-stream-peer-close",
+      "description": "The server closing the connection mid-stream ends the stream with a local failure. PROTOCOL.md: streaming-out.",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "receive": { "type": "hello-ok", "v": 1 } },
+        { "call": "a", "path": ["chat"], "input": { "prompt": "hi" } },
+        {
+          "send": {
+            "type": "call",
+            "id": "1",
+            "path": ["chat"],
+            "input": { "prompt": "hi" }
+          }
+        },
+        {
+          "receive": { "type": "item", "id": "1", "output": { "token": "Hel" } }
+        },
+        { "expect": { "call": "a", "outcome": "stream" } },
+        {
+          "expect": {
+            "stream": "a",
+            "outcome": "item",
+            "output": { "token": "Hel" }
+          }
+        },
+        { "serverClose": {} },
+        {
+          "expect": {
+            "stream": "a",
+            "outcome": "local-failure",
+            "reference": "Connection closed"
+          }
+        }
+      ]
+    },
+    {
       "id": "ws-late-frames-after-result",
       "description": "item / done after a unary result are for an id no longer in flight: ignored, and the connection stays open. PROTOCOL.md: Multiplex; Legal sequences.",
       "steps": [
@@ -665,8 +758,33 @@
       ]
     },
     {
+      "id": "ws-peer-close-before-first-frame",
+      "description": "The server closing the connection before any frame for an in-flight id fails that call locally. PROTOCOL.md: First frame (client).",
+      "steps": [
+        { "send": { "type": "hello", "v": 1 } },
+        { "receive": { "type": "hello-ok", "v": 1 } },
+        { "call": "a", "path": ["planet", "find"], "input": { "id": 1 } },
+        {
+          "send": {
+            "type": "call",
+            "id": "1",
+            "path": ["planet", "find"],
+            "input": { "id": 1 }
+          }
+        },
+        { "serverClose": {} },
+        {
+          "expect": {
+            "call": "a",
+            "outcome": "local-failure",
+            "reference": "Connection closed"
+          }
+        }
+      ]
+    },
+    {
       "id": "ws-cancel-unary",
-      "description": "Aborting an in-flight call sends cancel and fails it locally. No frame acknowledges cancel; a late result for that id is ignored, and the id is not reused. PROTOCOL.md: Unary call; Cancel and mid-stream errors.",
+      "description": "Aborting an in-flight call sends cancel and fails it locally. No frame acknowledges cancel; a late result for that id is ignored (and a client SHOULD NOT reuse the id). PROTOCOL.md: Unary call; Cancel and mid-stream errors.",
       "steps": [
         { "send": { "type": "hello", "v": 1 } },
         { "receive": { "type": "hello-ok", "v": 1 } },
@@ -840,7 +958,7 @@
     },
     {
       "id": "ws-invalid-frame-without-id",
-      "description": "An invalid frame with no usable id after ready closes the connection. PROTOCOL.md: Multiplex.",
+      "description": "An invalid frame with no usable id after ready closes the connection. PROTOCOL.md: Multiplex; Close codes.",
       "steps": [
         { "send": { "type": "hello", "v": 1 } },
         { "receive": { "type": "hello-ok", "v": 1 } },
@@ -866,7 +984,7 @@
     },
     {
       "id": "ws-numeric-id",
-      "description": "Ids are non-empty strings: a frame whose id is the number 1 has no usable id, so it closes the connection instead of settling call \"1\". PROTOCOL.md: Frame types (id); Multiplex.",
+      "description": "Ids are non-empty strings: a frame whose id is the number 1 has no usable id, so it closes the connection instead of settling call \"1\". PROTOCOL.md: Frame types (id); Multiplex; Close codes.",
       "steps": [
         { "send": { "type": "hello", "v": 1 } },
         { "receive": { "type": "hello-ok", "v": 1 } },

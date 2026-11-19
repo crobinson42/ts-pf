@@ -57,7 +57,7 @@ packages/protocol/conformance/
   README.md           language-neutral runner spec (replay rules, expect kinds, id binding, reporting); not a docs-site page
   http.json           unary JSON: request the client must send + response to classify (success / error / transport-failure / version-mismatch)
   http-stream.json    application/jsonl responses (items, then eof / error / transport-failure)
-  ws.json             WebSocket frame scripts from the client's side (send / receive / call / abort / expect); also stdio / MessagePort minus binary + close codes
+  ws.json             WebSocket frame scripts from the client's side (send / receive / receiveText / receiveBinary / serverClose / call / abort / expect); also stdio / MessagePort minus binary + close codes
                       Each file: `protocol` = PROTOCOL_MAJOR, `revision` = PROTOCOL.md title (tests/conformance.test.ts; also unique ids, cited sections exist). Replayed by client-http / stream / message-client tests/conformance.test.ts
 packages/http/src/
   rpc.ts              PROTOCOL_HEADER, RpcCodec (optional `streams` capability flag: true = encodes AsyncIterable output as a ReadableStream and decodes AsyncIterable input, false = cannot, undefined = unknown), RpcEncodedBody, RpcBodySource; RpcEncodedText + EnvelopeTextCodec (the `inner` role of the wrapping codecs: an RpcCodec whose encoded bodies are strings)

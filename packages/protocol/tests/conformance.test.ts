@@ -36,10 +36,17 @@ function citedSections(description: string): string[] {
     .filter((part) => part.length > 0)
 }
 
+/** "Frame types (id)" → "Frame types"; "streaming-out (after …)" → "streaming-out". */
+function withoutQualifier(title: string): string {
+  return title.replace(/ \([^)]*\)$/, '')
+}
+
+/** A citation names a heading exactly, or with a trailing "(…)" qualifier dropped on either side. */
 function isHeading(section: string): boolean {
   return headings.some(
     (heading) =>
-      heading.startsWith(section) || section.startsWith(`${heading} (`),
+      heading === section ||
+      withoutQualifier(heading) === withoutQualifier(section),
   )
 }
 

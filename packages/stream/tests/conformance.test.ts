@@ -3,7 +3,7 @@
 // with an injected fetch: no server, no network.
 import { isLocalFailure } from '@ts-pf/client'
 import { FetchLink } from '@ts-pf/client-http'
-import { mimeType } from '@ts-pf/http'
+import { mimeType, PROTOCOL_HEADER } from '@ts-pf/http'
 import { isPFError, type PFError } from '@ts-pf/protocol'
 import {
   type HttpStreamEnd,
@@ -80,15 +80,17 @@ describe(`conformance: http-stream.json (revision ${httpStreamConformance.revisi
   for (const testCase of httpStreamConformance.cases) {
     it(`${testCase.id}: ${testCase.description}`, async () => {
       let sent: Request | undefined
+      let response: Response | undefined
       const link = new FetchLink({
         url: 'http://conformance.test',
         codec: new StreamCodec(),
         fetch: async (input) => {
           sent = input as Request
-          return new Response(testCase.response.body, {
+          response = new Response(testCase.response.body, {
             status: testCase.response.status,
             headers: testCase.response.headers,
           })
+          return response
         },
       })
       const outcome = await link
@@ -133,9 +135,21 @@ describe(`conformance: http-stream.json (revision ${httpStreamConformance.revisi
           expectEnd(error, expected.end)
           return
         }
-        default:
+        case 'version-mismatch': {
+          // PROTOCOL.md appendix "HTTP (FetchLink)": checked before decode, body unread.
+          expect(outcome.ok).toBe(false)
+          const error = asPFError(outcome.ok ? undefined : outcome.error)
+          expect(isLocalFailure(error)).toBe(false)
+          expect(error.code).toBe('INTERNAL')
+          expect(error.message).toBe(
+            `Unsupported protocol version (${PROTOCOL_HEADER}: ${response?.headers.get(PROTOCOL_HEADER)})`,
+          )
+          expect(response?.bodyUsed).toBe(false)
+          return
+        }
+        case 'transport-failure':
           throw new Error(
-            `${expected.kind} cases belong in http.json (client-http runner)`,
+            'transport-failure responses belong in http.json (client-http runner)',
           )
       }
     })

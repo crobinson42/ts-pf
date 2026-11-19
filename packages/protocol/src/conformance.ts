@@ -87,6 +87,7 @@ export type WsStep =
   | { receive: { [key: string]: JsonValue } }
   | { receiveText: string }
   | { receiveBinary: string }
+  | { serverClose: { code?: number } }
   | {
       call: string
       path: string[]

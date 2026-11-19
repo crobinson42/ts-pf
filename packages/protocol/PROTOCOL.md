@@ -534,6 +534,8 @@ After sending `call` (and while possibly sending `in-item` / `in-done` if `call.
 | `cancel` / `call` / `hello*` / `in-item` / `in-done` | Reject this call as local `Invalid response`. Do not close the connection. Ignore further frames for this id. |
 | Peer close before any frame | Reject as local `Connection closed`. |
 
+A frame with this `id` whose `type` this document does not define, or one that fails decode, is not a first frame (unlike the defined types in the wrong direction above): it is ignored as in [Multiplex](#multiplex), and the call keeps waiting.
+
 The call's result is not itself the stream: for output streams it **resolves to** a stream the caller then reads (in TypeScript, `const tokens = await client.planet.chat(...)` then `for await`, the same as JSONL).
 
 #### `streaming-out` (after the call resolved to a stream)

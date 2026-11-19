@@ -67,6 +67,17 @@ class ScriptSocket implements WebSocketLike {
     }
   }
 
+  /**
+   * The server closes the connection. Not recorded in `closeCodes` (those are
+   * the client's); WsLink does not surface the code, so it is not passed on.
+   */
+  serverClose(): void {
+    if (this.readyState === WS_OPEN) {
+      this.readyState = WS_CLOSED
+      this.dispatch('close', {})
+    }
+  }
+
   private dispatch(type: EventName, event: { data?: unknown }): void {
     for (const handler of [...this.listeners[type]]) {
       handler(event)
@@ -169,6 +180,9 @@ class ScriptRunner {
       } else if ('receiveBinary' in step) {
         await this.expectIdle()
         this.socket.deliver(Buffer.from(step.receiveBinary, 'base64'))
+      } else if ('serverClose' in step) {
+        await this.expectIdle()
+        this.socket.serverClose()
       } else if ('call' in step) {
         const controller = new AbortController()
         const input =
@@ -219,8 +233,9 @@ class ScriptRunner {
     ) {
       return
     }
+    // Uniqueness among in-flight calls is exercised by the scripts themselves
+    // (ws-multiplex): a reused in-flight id would misroute their frames.
     expect(typeof actual.id === 'string' && actual.id !== '').toBe(true)
-    expect([...this.ids.values()]).not.toContain(actual.id)
     this.ids.set(expected.id, actual.id as string)
   }
 

@@ -229,6 +229,29 @@
       }
     },
     {
+      "id": "stream-version-mismatch",
+      "description": "The version header is checked before the content type: an application/jsonl response from another wire major is not read as a stream. PROTOCOL.md: Classifying an HTTP response, steps 1-5.",
+      "request": { "procedure": ["chat"], "input": { "prompt": "hi" } },
+      "expectRequest": {
+        "method": "POST",
+        "path": "/chat",
+        "headers": {
+          "content-type": "application/json",
+          "x-ts-pf-protocol": "1"
+        },
+        "body": { "input": { "prompt": "hi" } }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "content-type": "application/jsonl",
+          "x-ts-pf-protocol": "2"
+        },
+        "body": "{\"ok\":true,\"output\":{\"token\":\"Hel\"}}\n{\"ok\":true,\"output\":{\"token\":\"lo\"}}\n"
+      },
+      "expect": { "kind": "version-mismatch" }
+    },
+    {
       "id": "stream-pre-stream-failure",
       "description": "A failure before the stream starts is a plain application/json failure envelope with its HTTP status: the call fails, no stream. PROTOCOL.md: Message streams.",
       "request": { "procedure": ["chat"], "input": { "prompt": 1 } },
