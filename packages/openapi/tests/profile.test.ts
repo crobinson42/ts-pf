@@ -288,6 +288,20 @@ describe('closeInputs', () => {
     })
   })
 
+  it('leaves an id open when shared error data also uses it', () => {
+    const Ref = z.object({ id: z.string() }).meta({ id: 'Ref' })
+    const spec = build(
+      router({
+        find: procedure.input(Ref).errors({ GONE: { status: 410, data: Ref } }),
+      }),
+      { closeInputs: true, errors: 'shared' },
+    )
+    expect(spec.components.schemas.GoneData).toEqual(ref('Ref'))
+    expect(spec.components.schemas.Ref).not.toHaveProperty(
+      'additionalProperties',
+    )
+  })
+
   it('does not close allOf members', () => {
     const spec = build(
       router({

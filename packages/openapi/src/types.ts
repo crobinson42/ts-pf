@@ -44,8 +44,7 @@ export type OpenAPIOptions = {
   profile?: 'codegen'
   /**
    * `'components'` (default): `<path>.Request` / `<path>.Success` envelope
-   * components. `'inline'`: envelopes inline in each operation; only
-   * `Input` / `Output` (and hoisted ids) are components.
+   * components. `'inline'`: the envelopes are inline in each operation.
    */
   envelopes?: 'components' | 'inline'
   /**

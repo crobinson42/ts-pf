@@ -58,15 +58,15 @@ const spec = openapi(catalog(contract, { prefix: '/rpc' }), {
 
 It sets these options (each settable alone; an explicit option beats the profile, e.g. `{ profile: 'codegen', naming: 'path' }`):
 
-- `envelopes: 'inline'` (default `'components'`): envelopes inline in each operation; only `Input` / `Output` and ids are components.
-- `errors: 'shared'` (default `'per-code'`): one `RpcError`, an `ErrorCode` enum, `<Code>Data` per code with data (`NotFoundData`; protocol `ValidationErrorData`), `x-ts-pf-errors: [codes]` per operation. Throws when one code has two `data` shapes: declare one shape per code or rename one.
+- `envelopes: 'inline'` (default `'components'`): envelopes inline in each operation (no `<path>.Request` / `<path>.Success` components).
+- `errors: 'shared'` (default `'per-code'`): one `RpcError`, an `ErrorCode` enum, `<Code>Data` per code with data (`NotFoundData`; protocol `ValidationErrorData`), `x-ts-pf-errors: [codes]` per operation. Nothing `$ref`s `<Code>Data`: map it by name from `error.code`. Throws when one code has two `data` shapes: declare one shape per code or rename one.
 - `naming: 'pascal'` (default `'path'`): `AuthVerifyCodeInput` / `…Output`; a bare id input / output uses the id. Two schemas with one name throw: give one a distinct `.meta({ id })`.
 - `closeInputs: true`: `additionalProperties: false` on input-only objects (stricter than the server, which strips unknown keys).
 - `constAsEnum: 'exceptTags'`: `const` → one-value `enum`, except union tag properties.
 - `dropFormatPatterns: true`: drop `pattern` next to a standard `format`.
 - `emptyInputNull: true`: no input or a `null` input → inline `{ input: null }` body, no `Input` component.
 
-Security schemes and `servers` stay userland: mutate the returned document.
+Security schemes and extra components stay userland: mutate the returned document.
 
 ## Documenting a GET bridge or REST facade
 

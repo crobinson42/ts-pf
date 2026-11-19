@@ -70,17 +70,17 @@ The profile describes the same POST JSON RPC paths and envelopes: no GET, no pat
 
 | Option | Default | `codegen` | Effect |
 | --- | --- | --- | --- |
-| `envelopes` | `'components'` | `'inline'` | Request / success envelopes inline in each operation. Only `Input` / `Output` and hoisted ids are components. |
-| `errors` | `'per-code'` | `'shared'` | One `RpcError` envelope (`{ ok: false, error: { code: ErrorCode, message, data? } }`), an `ErrorCode` string enum (every code an operation can return), one `<Code>Data` per code with data (`NOT_FOUND` → `NotFoundData`; protocol `VALIDATION` → `ValidationErrorData`), and `x-ts-pf-errors: [codes]` on each operation. Error responses `$ref` `RpcError`. Throws when two procedures declare one code with different `data` shapes; a procedure that declares the code without data is fine. |
-| `naming` | `'path'` | `'pascal'` | `auth.verifyCode.Input` → `AuthVerifyCodeInput` (`…Output`, `…Request`, `…Success`; `Error.NOT_FOUND` → `NotFoundError`; `<host>.__schema0` → `<Host>Schema0`). Ids keep their names, and a procedure whose input or output is just an id uses the id (`BookFindOutput` is not emitted; the operation refs `Book`). Throws when two different schemas get one name: give one a distinct `.meta({ id })`. |
-| `closeInputs` | `false` | `true` | `additionalProperties: false` on objects that only requests reach. This is stricter than the server, which strips unknown keys. A component a response also reaches stays open, and so do `allOf` members. |
+| `envelopes` | `'components'` | `'inline'` | Request / success envelopes inline in each operation: no `<path>.Request` / `<path>.Success` components. |
+| `errors` | `'per-code'` | `'shared'` | One `RpcError` envelope (`{ ok: false, error: { code: ErrorCode, message, data? } }`), an `ErrorCode` string enum (every code an operation can return), one `<Code>Data` per code with data (`NOT_FOUND` → `NotFoundData`; protocol `VALIDATION` → `ValidationErrorData`), and `x-ts-pf-errors: [codes]` on each operation. Error responses `$ref` `RpcError`. Nothing `$ref`s a `<Code>Data` component: map it by name from `error.code` (or `x-ts-pf-errors`). Throws when two procedures declare one code with different `data` shapes; a procedure that declares the code without data is fine. |
+| `naming` | `'path'` | `'pascal'` | `auth.verifyCode.Input` → `AuthVerifyCodeInput` (`…Output`, `…Request`, `…Success`; `book.reviews.Output.__schema0` → `BookReviewsOutputSchema0`; with `errors: 'per-code'`, `Error.NOT_FOUND` → `NotFoundError`, `TsPf.Error.VALIDATION` → `TsPfValidationError`, `<path>.Error.<CODE>` → `<Path><Code>Error`, and `.Data` → `…Data`). Ids keep their names as given, and a procedure whose input or output is just an id uses the id (`BookFindOutput` is not emitted; the operation refs `Book`). Throws when two different schemas get one name: give one a distinct `.meta({ id })`. |
+| `closeInputs` | `false` | `true` | `additionalProperties: false` on objects that only requests reach. This is stricter than the server, which strips unknown keys. A component a response (or error data) also reaches stays open, and so do `allOf` members and objects that combine subschemas (`allOf` / `anyOf` / `oneOf`). |
 | `constAsEnum` | `false` | `'exceptTags'` | `const: v` → `enum: [v]`, except on the tag property of a union of objects (a property with a different `const` in every variant). |
 | `dropFormatPatterns` | `false` | `true` | Drops `pattern` where a standard `format` (`date-time`, `email`, `uuid`, `uri`, …) is set. Zod emits both. Non-standard formats keep their pattern. |
 | `emptyInputNull` | `false` | `true` | A procedure with no input, or a `null` input, gets an inline `{ input: null }` request body and no `Input` component. (`z.void()` / `z.undefined()` are `unavailable` in the catalog and are not detected; omit `.input()` instead.) |
 
 More profile options follow in a later release.
 
-App-specific parts of the document (security schemes, `servers`, extra components) stay in userland: mutate the returned document, as with the default output.
+App-specific parts of the document (security schemes, extra components, operation overrides) stay in userland: mutate the returned document, as with the default output.
 
 Message transports (WebSocket, stdio, MessagePort) are not HTTP and are not in this document.
 

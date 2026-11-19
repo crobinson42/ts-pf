@@ -64,6 +64,14 @@ function reachedComponents(document: OpenAPIDocument): Reach {
     }
     return schema
   })
+  // A component no operation refers to (`<Code>Data` under shared errors)
+  // documents a response, so it counts as output.
+  for (const [name, schema] of Object.entries(schemas)) {
+    if (!reach.input.has(name) && !reach.output.has(name)) {
+      reach.output.add(name)
+      visit(schema, 'output')
+    }
+  }
   return reach
 }
 
