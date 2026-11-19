@@ -68,7 +68,9 @@ export async function finalizeDeclaredError(
 }
 
 // `PFError` fields are readonly, so a finalized error is a copy that keeps
-// everything the constructor takes (including `cause`) and the throw-site stack.
+// everything the constructor takes (including `cause`). The original stack is
+// not copied: reading `error.stack` makes V8 format it, which costs more than
+// the rest of the failed call (`npm run bench`, declared-error rows).
 function rebuild(
   error: PFError,
   status: number | undefined,
@@ -87,9 +89,5 @@ function rebuild(
   if (error.local === true) {
     init.local = true
   }
-  const copy = new PFError(init)
-  if (error.stack !== undefined) {
-    copy.stack = error.stack
-  }
-  return copy
+  return new PFError(init)
 }

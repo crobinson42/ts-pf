@@ -213,12 +213,12 @@ describe('declared error data', () => {
 
 describe('declared status on a hand-thrown PFError', () => {
   const c = router({
-    lag: procedure.errors({ Lagging: { status: 409 } }),
+    lag: procedure.errors({ Conflict: { status: 409 } }),
     find: procedure.errors({
       NOT_FOUND: { status: 404, data: z.object({ id: z.number() }) },
     }),
     plain: procedure.errors({ TEAPOT: { message: 'short and stout' } }),
-    feed: procedure.errors({ Lagging: { status: 409 } }),
+    feed: procedure.errors({ Conflict: { status: 409 } }),
   })
   const impl = createImplementer(c)
 
@@ -231,13 +231,11 @@ describe('declared status on a hand-thrown PFError', () => {
     )
   }
 
-  it('fills the declared status and keeps cause, message, and stack', async () => {
+  it('fills the declared status and keeps cause and message', async () => {
     const cause = new Error('upstream lag')
-    let thrown: PFError | undefined
     const app = impl.router({
       lag: impl.lag.handler(async () => {
-        thrown = new PFError({ code: 'Lagging', message: 'behind', cause })
-        throw thrown
+        throw new PFError({ code: 'Conflict', message: 'behind', cause })
       }),
       find: impl.find.handler(async () => null),
       plain: impl.plain.handler(async () => null),
@@ -245,12 +243,11 @@ describe('declared status on a hand-thrown PFError', () => {
     })
     const err = await rejection(createLocalClient(app, { context: {} }).lag())
     expect(err).toBeInstanceOf(PFError)
-    expect(err.code).toBe('Lagging')
+    expect(err.code).toBe('Conflict')
     expect(err.status).toBe(409)
     expect(err.message).toBe('behind')
     expect(err.cause).toBe(cause)
-    expect(err.stack).toBe(thrown?.stack)
-    expect(err.toJSON()).toEqual({ code: 'Lagging', message: 'behind' })
+    expect(err.toJSON()).toEqual({ code: 'Conflict', message: 'behind' })
   })
 
   it('does not fill message', async () => {
@@ -288,7 +285,7 @@ describe('declared status on a hand-thrown PFError', () => {
     let thrown: PFError | undefined
     const app = impl.router({
       lag: impl.lag.handler(async () => {
-        thrown = new PFError({ code: 'Lagging', status: 503 })
+        thrown = new PFError({ code: 'Conflict', status: 503 })
         throw thrown
       }),
       find: impl.find.handler(async () => null),
@@ -324,14 +321,14 @@ describe('declared status on a hand-thrown PFError', () => {
       plain: impl.plain.handler(async () => null),
       feed: impl.feed.handler(async function* () {
         yield* []
-        throw new PFError({ code: 'Lagging', cause })
+        throw new PFError({ code: 'Conflict', cause })
       }),
     })
     const iter = (await createLocalClient(app, {
       context: {},
     }).feed()) as AsyncIterable<unknown>
     const err = await rejection(iter[Symbol.asyncIterator]().next())
-    expect(err.code).toBe('Lagging')
+    expect(err.code).toBe('Conflict')
     expect(err.status).toBe(409)
     expect(err.cause).toBe(cause)
   })

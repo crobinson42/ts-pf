@@ -123,12 +123,12 @@ describe('FetchHandler default error logging', () => {
 
   it('answers a hand-thrown declared PFError with its declared status', async () => {
     const lagContract = router({
-      lag: procedure.errors({ Lagging: { status: 409 } }),
+      lag: procedure.errors({ Conflict: { status: 409 } }),
     })
     const lagImpl = createImplementer(lagContract)
     const lagApp = lagImpl.router({
       lag: lagImpl.lag.handler(async () => {
-        throw new PFError({ code: 'Lagging', cause: new Error('behind') })
+        throw new PFError({ code: 'Conflict', cause: new Error('behind') })
       }),
     })
     const { status, json } = await call(
@@ -138,7 +138,7 @@ describe('FetchHandler default error logging', () => {
     expect(status).toBe(409)
     expect(json).toEqual({
       ok: false,
-      error: { code: 'Lagging', message: 'Lagging' },
+      error: { code: 'Conflict', message: 'Conflict' },
     })
     expect(errorSpy).not.toHaveBeenCalled()
   })

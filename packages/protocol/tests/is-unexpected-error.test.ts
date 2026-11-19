@@ -18,7 +18,7 @@ describe('isUnexpectedError', () => {
     expect(isUnexpectedError(new PFError({ code: 'NOT_FOUND' }))).toBe(false)
     expect(isUnexpectedError(new PFError({ code: 'VALIDATION' }))).toBe(false)
     expect(
-      isUnexpectedError(new PFError({ code: 'Lagging', status: 409 })),
+      isUnexpectedError(new PFError({ code: 'Conflict', status: 409 })),
     ).toBe(false)
   })
 
