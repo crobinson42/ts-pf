@@ -28,8 +28,11 @@ export type CatalogChange = {
   /** Procedure key (`planet/find`). Absent for catalog-level changes. */
   path?: string
   /**
-   * Location inside the procedure entry: `/input`, `/output`, or
-   * `/errors/<code>/data`, then the JSON Schema path (`/properties/id`).
+   * Location inside the procedure entry: `/input` / `/output` (`/item` for a
+   * stream item) / `/errors/<code>/data`, then the JSON Schema path
+   * (`/input/properties/id`); or `/errors/<code>`, `/errors/<code>/status`,
+   * `/docs/deprecated`. Catalog level: `/protocol/version`. Error codes are
+   * JSON-pointer escaped.
    */
   pointer?: string
   message: string

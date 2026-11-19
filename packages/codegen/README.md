@@ -114,7 +114,7 @@ Commit `catalog.json` (written from `catalog(contract)`, as in the first snippet
 npx ts-pf-codegen diff catalog.json catalog.next.json
 ```
 
-`diff` prints breaking and safe changes. It exits `2` when there is a breaking change, `0` otherwise, and `1` on a usage or read error. `--json` prints the `CatalogDiff` instead (same exit codes). Either path may be `-` for stdin.
+`diff` prints breaking and safe changes. It exits `2` when there is a breaking change, `0` otherwise, and `1` on a usage, read, or parse error (including a file that is not a `catalog()` document). `--json` prints the `CatalogDiff` instead (same exit codes). One path may be `-` for stdin.
 
 Or call it from the script that writes the catalog:
 
@@ -136,7 +136,7 @@ for (const change of diff.breaking) {
 if (diff.breaking.length > 0) process.exitCode = 2
 ```
 
-`path` is the procedure key (`planet/find`); it is absent for a catalog-level change. `pointer` is the location inside that entry: `/input`, `/output`, or `/errors/<code>/data`, then the JSON Schema path (`/input/properties/id`). `kind` names the rule (`procedure-removed`, `required-property-added`, `type-changed`, …). Changes are plain JSON.
+`path` is the procedure key (`planet/find`); it is absent for a catalog-level change (`pointer: '/protocol/version'`). `pointer` is the location inside that entry: `/input` or `/output` (plus `/item` for a stream item) or `/errors/<code>/data`, then the JSON Schema path (`/input/properties/id`); also `/errors/<code>`, `/errors/<code>/status`, and `/docs/deprecated`. Errors are addressed by code (JSON-pointer escaped), not array index. `kind` names the rule (`procedure-removed`, `required-property-added`, `type-changed`, …). Changes are plain JSON.
 
 Direction decides. Inputs are what an old client **sends**; outputs and error `data` are what it **receives**.
 
@@ -156,7 +156,7 @@ Direction decides. Inputs are what an old client **sends**; outputs and error `d
 
 Error `data` is compared like output. Union variants match by a shared `const` tag (`z.discriminatedUnion`), else by equal schema; a lone unmatched variant on each side of an untagged union is compared as the same variant. Local `$ref`s resolve through `$defs` / `definitions`, so a change to a shared DTO is reported at every place that uses it.
 
-The check is conservative where it can reason and quiet where it cannot. Docs text (`description`, `title`, `examples`, `default`) and `format` are ignored. A keyword it does not model (`pattern`, `allOf`, `not`, …) is reported as a safe `unknown-change`, never as breaking. A schema that becomes `kind: 'unavailable'` (or available again) is reported as safe and not compared. It does not prove two schemas are compatible; it flags the changes that are known to break old clients.
+The check is conservative where it can reason and quiet where it cannot. Docs text (`description`, `title`, `examples`, `default`) and `format` are ignored. A keyword it does not model (`pattern`, `prefixItems` tuples, `allOf`, `not`, …) is reported as a safe `unknown-change`, never as breaking. Catalog fields outside the schemas are not compared: `prefix`, `href`, `meta` (other than `docs().deprecated`), `protocol.header`, `protocolErrors`, and error `message`. A schema that becomes `kind: 'unavailable'` (or available again) is reported as safe and not compared. It does not prove two schemas are compatible; it flags the changes that are known to break old clients.
 
 ## Serve the catalog in userland
 

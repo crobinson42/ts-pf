@@ -322,6 +322,41 @@ describe('diffCatalog', () => {
       ])
     })
 
+    it('terminates on a recursive schema behind a nullable union', () => {
+      type Node = { name: string; next: Node | null }
+      const node: z.ZodType<Node> = z.lazy(() =>
+        z.object({ name: z.string(), next: node.nullable() }),
+      )
+      const contract = one(procedure.input(node))
+      expect(JSON.stringify(catalog(contract))).toContain('"anyOf"')
+      expect(compare(contract, contract)).toEqual({ breaking: [], safe: [] })
+    })
+
+    it('compares a removed input property against the new catch-all', () => {
+      expect(
+        compare(
+          one(
+            procedure.input(z.object({ p: z.string() }).catchall(z.string())),
+          ),
+          one(procedure.input(z.object({}).catchall(z.number()))),
+        ).breaking,
+      ).toEqual([
+        'type-changed planet/find /input/properties/p',
+        'type-changed planet/find /input/additionalProperties',
+      ])
+    })
+
+    it('a new catch-all schema on an open input is narrowing', () => {
+      expect(
+        compare(
+          one(procedure.input(z.looseObject({ id: z.number() }))),
+          one(
+            procedure.input(z.object({ id: z.number() }).catchall(z.string())),
+          ),
+        ).breaking,
+      ).toEqual(['type-changed planet/find /input/additionalProperties'])
+    })
+
     it('terminates on recursive schemas', () => {
       type Node = { name: string; children: Node[] }
       const node: z.ZodType<Node> = z.lazy(() =>

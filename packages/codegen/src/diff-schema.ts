@@ -9,7 +9,9 @@ import {
 /**
  * `input`: the client sends it (a change must keep accepting what it accepted).
  * `output`: the client receives it — procedure output and error `data`
- * (a change must not hand an old client a value it cannot read).
+ * (a change must not hand an old client a value of a type it cannot read).
+ * Policy: a new output enum value or union variant is safe; old clients must
+ * tolerate values they do not know (DECISIONS.md "Catalog diff").
  */
 export type Direction = 'input' | 'output'
 
@@ -119,16 +121,18 @@ function compareNode(
   pointer: string,
   w: Walk,
 ): void {
-  const refPair = `${refOf(prevRaw)}|${refOf(nextRaw)}`
-  const tracked = refPair !== '|'
+  const prev = split(resolve(prevRaw, w.prevRoot), w.prevRoot)
+  const next = split(resolve(nextRaw, w.nextRoot), w.nextRoot)
+  // Every `$ref` followed to reach this pair, including the member of an
+  // unwrapped nullable union (`anyOf: [{ $ref }, { type: 'null' }]`).
+  const refPair = `${refOf(prevRaw)}>${prev.memberRef}|${refOf(nextRaw)}>${next.memberRef}`
+  const tracked = refPair !== '>|>'
   if (tracked) {
     if (w.refs.has(refPair)) {
       return
     }
     w.refs.add(refPair)
   }
-  const prev = split(resolve(prevRaw, w.prevRoot), w.prevRoot)
-  const next = split(resolve(nextRaw, w.nextRoot), w.nextRoot)
   compareNullable(prev.nullable, next.nullable, pointer, w)
   if (prev.variants !== undefined || next.variants !== undefined) {
     compareVariants(prev, next, pointer, w)
@@ -148,6 +152,8 @@ function compareNode(
 type Split = {
   node: JsonSchema
   nullable: boolean
+  /** `$ref` of the member a one-member union was unwrapped to, else `''`. */
+  memberRef: string
   /** `anyOf` / `oneOf` members other than `{ type: 'null' }`, unresolved. */
   variants?: { keyword: string; items: unknown[] }
 }
@@ -161,15 +167,19 @@ function split(node: JsonSchema, root: JsonSchema): Split {
       : undefined
   const typeNull = normalizeType(node.type).includes('null')
   if (keyword === undefined) {
-    return { node, nullable: typeNull }
+    return { node, nullable: typeNull, memberRef: '' }
   }
   const members = node[keyword] as unknown[]
   const items = members.filter((member) => !isNullSchema(member))
   const nullable = typeNull || items.length < members.length
   if (items.length === 1) {
-    return { node: resolve(items[0], root), nullable }
+    return {
+      node: resolve(items[0], root),
+      nullable,
+      memberRef: refOf(items[0]),
+    }
   }
-  return { node, nullable, variants: { keyword, items } }
+  return { node, nullable, memberRef: '', variants: { keyword, items } }
 }
 
 function compareNullable(
@@ -401,6 +411,10 @@ function compareObject(
         // Output: old clients read a required property.
         breaking: input ? nextClosed : wasRequired,
       })
+      if (input && isRecord(next.additionalProperties)) {
+        // What clients still send is now checked against the catch-all.
+        compareNode(prevProps[name], next.additionalProperties, at, w)
+      }
       continue
     }
     if (!(name in prevProps)) {
@@ -455,8 +469,9 @@ function compareAdditional(
       message: 'unknown properties are now allowed',
       breaking: false,
     })
-  } else if (isRecord(prev) && isRecord(next)) {
-    compareNode(prev, next, at, w)
+  } else if (isRecord(prev) || isRecord(next)) {
+    // A catch-all schema on either side; absent / `true` is any value.
+    compareNode(isRecord(prev) ? prev : {}, isRecord(next) ? next : {}, at, w)
   }
 }
 

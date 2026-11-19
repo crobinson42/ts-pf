@@ -114,7 +114,7 @@ packages/codegen/src/
   index.ts            emit, emitFiles, catalogHash, diffCatalog, EmitOptions, EmitFile, CatalogDiff, CatalogChange
   hash.ts             catalogHash = sha256 of @ts-pf/docs canonicalize(catalog) (node:crypto)
   files.ts            emitFiles — flat group + procedure .d.ts; entry contract.d.ts; _phantom.d.ts only if some error has data; catalogHash on the entry only; headers are role + path/call/parent (procedure `group:`, group `parent:`)
-  cli.ts              emit / pull / hash / diff; --out-dir; diff exits 2 on breaking, 1 on usage / read errors (not exported from ".")
+  cli.ts              emit / pull / hash / diff; --out-dir; diff exits 2 on breaking, 1 on usage / read / parse errors (not exported from ".")
   diff.ts             diffCatalog — catalog / procedure level: protocol version, procedures by key, unary ↔ stream, schema slots (input = sent, output + error data = received), errors by code, deprecation
   diff-schema.ts      JSON Schema walker for diffCatalog (internal): local $ref / $defs, type (integer ⊂ number), null, enum / const, properties / required / additionalProperties, anyOf / oneOf (const-tag or equal-schema matching), items, min* / max* bounds; other keywords → safe unknown-change
   schema-util.ts      isRecord / normalizeType / resolvePointer / escapePointer / unescapePointer shared by print-type.ts and diff-schema.ts (internal)

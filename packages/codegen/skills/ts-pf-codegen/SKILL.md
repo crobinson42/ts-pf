@@ -1,5 +1,4 @@
 ---
-
 name: ts-pf-codegen
 description: "Use when emitting a split-repo ts-pf Contract .d.ts from catalog() with emit, emitFiles, catalogHash, or ts-pf-codegen, or when failing CI on breaking catalog changes with diffCatalog / ts-pf-codegen diff. Triggers: @ts-pf/codegen, emit(), emitFiles(), catalogHash(), diffCatalog(), ts-pf-codegen, ts-pf-codegen diff, generated Contract, breaking change, catalog.json."
 ---
@@ -57,7 +56,7 @@ import type { Contract } from './src/generated/contract.js'
 
 CLI: `npx ts-pf-codegen emit <catalog.json|-> [-o contract.d.ts | --out-dir <dir>]`. `--out-dir` owns that directory (deletes stale `.d.ts`, refuses any other file). Also `pull` / `hash` / `diff`; `--help` / `-h` print usage. Serve `catalog.json` in userland, not `FetchHandler`.
 
-Breaking-change check: commit `catalog.json`; in CI write the current one and run `npx ts-pf-codegen diff catalog.json catalog.next.json [--json]` — exit `2` on a breaking change, `0` otherwise, `1` on a usage / read error. Or in code:
+Breaking-change check: commit `catalog.json`; in CI write the current one and run `npx ts-pf-codegen diff catalog.json catalog.next.json [--json]` — exit `2` on a breaking change, `0` otherwise, `1` on a usage, read, or parse error. One path may be `-` (stdin). Or in code:
 
 ```ts
 import { readFileSync } from 'node:fs'
@@ -71,7 +70,7 @@ const diff = diffCatalog(previous, catalog(contract, { prefix: '/rpc' }))
 diff.breaking // CatalogChange[]: { kind, path?, pointer?, message }
 ```
 
-Direction decides: inputs are what old clients send, outputs and error `data` what they receive. Breaking: procedure removed / renamed, unary ↔ stream, protocol version, input required property added or optional → required, input narrowed (enum value / union variant removed, `number` → `integer`, tighter bounds, `null` dropped, object closed, property removed from a closed object), output required property removed or required → optional, output type changed / widened (now `null`, looser bounds), output or error `data` schema removed. Safe: procedure added, optional input property, output property / enum value / union variant added, error code added or removed, error `status` change, `docs({ deprecated: true })`. Docs text and `format` are ignored; unmodeled keywords are a safe `unknown-change`.
+Direction decides: inputs are what old clients send, outputs and error `data` what they receive. Breaking: procedure removed / renamed, unary ↔ stream, protocol version, input schema added where there was none, input required property added or optional → required, input narrowed (enum value / union variant removed, `number` → `integer`, tighter bounds, `null` dropped, object closed, property removed from a closed object), output required property removed or required → optional, output type changed / widened (now `null`, looser bounds), output or error `data` schema removed. Safe: procedure added, optional input property, output property / enum value / union variant added or removed, output narrowed, error code added or removed, error `status` change, `docs({ deprecated: true })`. Docs text and `format` are ignored; unmodeled keywords (`pattern`, `prefixItems` tuples, `allOf`, …) are a safe `unknown-change`.
 
 ## API
 
