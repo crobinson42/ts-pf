@@ -49,7 +49,7 @@ impl.planet.find.handler(async ({ input, context, errors }) => {
 Defaults worth knowing:
 
 - The default `message` is the **code string** (`'NOT_FOUND'`), not a sentence. Set `message` on the `ErrorDef` or pass a hand-built `PFError` when the text matters.
-- `status` is HTTP / OpenAPI metadata only. Omit it and `FetchHandler` sends 400; message transports never see it.
+- `status` is HTTP / OpenAPI metadata only. Omit it and `FetchHandler` sends 400; message transports never see it. A hand-built `new PFError({ code: 'ARCHIVED', cause })` for a declared code gets the declared `status` too (when it has none of its own) and keeps its `cause`; its `message` is not filled from the `ErrorDef`.
 - `data` is always validated against its schema when the error is thrown, regardless of `validation.output`. Data that fails the schema is a server bug and is sent as `INTERNAL` with no issues.
 - Do not redeclare `VALIDATION`, `INTERNAL`, `BAD_REQUEST`, `METHOD_NOT_ALLOWED`, or `PAYLOAD_TOO_LARGE`. They belong to the protocol. Reusing `NOT_FOUND` for a missing entity is fine.
 
@@ -154,14 +154,17 @@ httpStatus(new PFError({ code: 'TEAPOT' })) // 400
 
 Unknown throws become `500 INTERNAL` with no stack on the wire. By default `FetchHandler` logs them with `console.error` (the original thrown value, tagged `[ts-pf/server-http]` with the procedure path). It also logs `INTERNAL` `PFError`s: an output schema failure under `validation.output`, invalid declared error `data`, or an explicit `INTERNAL` throw. Declared errors and every other protocol code (`VALIDATION`, `NOT_FOUND`, `BAD_REQUEST`, `METHOD_NOT_ALLOWED`, `PAYLOAD_TOO_LARGE`) are expected and are not logged.
 
-Pass `onError` to route errors to your own logger. It receives the original error (before `INTERNAL` mapping) for **every** error response, runs after each `HandlerPlugin.onError`, cannot replace the response (a throw from it rejects `handle()`), and turns the default logging off:
+Pass `onError` to route errors to your own logger. It receives the original error (before `INTERNAL` mapping) for **every** error response, runs after each `HandlerPlugin.onError`, cannot replace the response (a throw from it rejects `handle()`), and turns the default logging off. `isUnexpectedError` from `@ts-pf/protocol` is the default's filter (any non-`PFError`, or a `PFError` whose code is `INTERNAL`); call it to keep that filter in your own logger:
 
 ```ts
+import { isUnexpectedError } from '@ts-pf/protocol'
 import { FetchHandler } from '@ts-pf/server-http'
 
 new FetchHandler(app, {
-  onError(error, { request, path, context }) {
-    logger.error({ err: error, path: path.join('/'), url: request.url })
+  onError(error, { request, path }) {
+    if (isUnexpectedError(error)) {
+      logger.error({ err: error, path: path.join('/'), url: request.url })
+    }
   },
 })
 ```
