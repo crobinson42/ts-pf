@@ -19,7 +19,7 @@ type WsHandlerFn = (ev: { data?: unknown }) => void
 class FakeWebSocket implements WebSocketLike {
   readyState: number
   sent: string[] = []
-  closeCalls: { code?: number }[] = []
+  closeCalls: { code?: number; reason?: string }[] = []
   peer: FakeWebSocket | undefined
   private readonly listeners: Record<
     'message' | 'open' | 'close' | 'error',
@@ -52,11 +52,14 @@ class FakeWebSocket implements WebSocketLike {
     })
   }
 
-  close(code?: number): void {
+  close(code?: number, reason?: string): void {
     if (this.readyState === WS_CLOSING || this.readyState === WS_CLOSED) {
       return
     }
-    this.closeCalls.push(code === undefined ? {} : { code })
+    this.closeCalls.push({
+      ...(code === undefined ? {} : { code }),
+      ...(reason === undefined ? {} : { reason }),
+    })
     this.readyState = WS_CLOSING
     const peer = this.peer
     queueMicrotask(() => {
@@ -301,5 +304,27 @@ describe('WsHandler', () => {
     bind.close()
     bind.close()
     expect(serverSocket.closeCalls).toEqual([{ code: 1000 }])
+  })
+
+  it('bind.close(code, reason) closes the socket with them before the session closes it', async () => {
+    const { client: clientSocket, server: serverSocket } = paired()
+    const bind = new WsHandler(defaultApp).bind(serverSocket, { context: {} })
+    const { client } = openClient(clientSocket)
+    await client.ready
+
+    const socketClose = serverSocket.close.bind(serverSocket)
+    const calls: unknown[][] = []
+    serverSocket.close = (...args: [number?, string?]) => {
+      calls.push(args)
+      socketClose(...args)
+    }
+    bind.close(4401, 'Session ended')
+    bind.close(1000)
+
+    expect(calls[0]).toEqual([4401, 'Session ended'])
+    expect(serverSocket.closeCalls).toEqual([
+      { code: 4401, reason: 'Session ended' },
+    ])
+    client.close()
   })
 })

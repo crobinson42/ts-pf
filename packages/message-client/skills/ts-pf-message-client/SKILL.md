@@ -51,12 +51,14 @@ const duplex: Duplex = {
   onClose: (handler) => ipc.on('close', handler),
   close: () => ipc.close(),
 }
-const link = new DuplexLink({ duplex, meta: { token: 'abc' } })
+const link = new DuplexLink({ duplex, meta: { authorization: 'Bearer abc' } })
 const client = createClient<typeof contract>(link)
 link.close()
 ```
 
 User owns listen / upgrade / spawn / Worker bootstrap. Impls may have `close()`; do not add `close()` to `Link`.
+
+`meta` rides on the opening `hello` only. Put a credential in `meta.authorization` (same value as an HTTP `Authorization` header). A server that refuses the connection sends a `hello-error`: every call on that link rejects with the server's `PFError` (`code` such as `UNAUTHORIZED`, not local, not retried by `RetryPlugin`'s default). To rotate the credential, open a new link; streams do not survive a reconnect, so resubscribe after it is ready. Never retry `BAD_REQUEST` `Unsupported protocol version`.
 
 Slow servers are handled by default (`LinkOptions.backpressure`, the same `{ highWaterMark?, drainTimeout?, onStall? }` as the server; 1 MiB / 30 s / one `console.warn` on `aborted` only, and a throwing `onStall` is swallowed): an `AsyncIterable` input is pumped one item at a time and parked while the duplex is over its mark; after `drainTimeout` the call fails locally (`isLocalFailure` from `@ts-pf/client` is true; `Peer did not drain within 30000 ms`), `cancel` goes out, and the input iterator's `return()` runs once. Output streams you read are bounded by the same mark (frame text length) — the link pauses reads (connection-wide) while your `for await` lags, where the pipe can pause. A server that gives up on a slow reader ends the stream with `INTERNAL` / `Peer did not drain within …` after the buffered items; that one is not local. `drainTimeout: 0` waits forever; `highWaterMark: Infinity` disables the receive-queue bound and the WebSocket `bufferedAmount` mark (stdio's write mark is the `Writable`'s own); `onStall: false` silences; a bad value throws from the constructor.
 

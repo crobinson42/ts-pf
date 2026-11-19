@@ -7,6 +7,7 @@ import {
   type MessageFrame,
   MessageSession,
 } from '@ts-pf/message'
+import { PFError } from '@ts-pf/protocol'
 import { createImplementer, type ImplementedRouter } from '@ts-pf/server'
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
@@ -832,6 +833,57 @@ describe('shared unary dispatch', () => {
       }),
     ])
     await expect(server.ready).rejects.toMatchObject({ code: 'INTERNAL' })
+  })
+
+  it('context factory PFError sends that error as hello-error and skips onError', async () => {
+    const { a, b } = createMemoryDuplex()
+    const seen: unknown[] = []
+    const received: string[] = []
+    b.onMessage((text) => {
+      received.push(text)
+    })
+    const server = attachRouter({
+      duplex: a,
+      router: defaultApp,
+      context: async () => {
+        throw new PFError({
+          code: 'UNAUTHORIZED',
+          message: 'Session expired',
+          data: { retry: false },
+        })
+      },
+      onError: (error) => {
+        seen.push(error)
+      },
+    })
+    const client = new MessageSession({
+      duplex: b,
+      role: 'client',
+      onFrame: () => {},
+    })
+    const reason = await client.ready.then(
+      () => {
+        throw new Error('client ready should reject')
+      },
+      (error: unknown) => error,
+    )
+    expect(reason).toMatchObject({
+      code: 'UNAUTHORIZED',
+      message: 'Session expired',
+      data: { retry: false },
+    })
+    expect(received).toEqual([
+      encodeFrame({
+        type: 'hello-error',
+        error: {
+          code: 'UNAUTHORIZED',
+          message: 'Session expired',
+          data: { retry: false },
+        },
+      }),
+    ])
+    expect(seen).toEqual([])
+    await expect(server.ready).rejects.toMatchObject({ code: 'UNAUTHORIZED' })
   })
 
   it('call.stream true runs with an input queue and keeps the first in-item', async () => {

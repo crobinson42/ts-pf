@@ -20,6 +20,8 @@ import { createStdioDuplex } from '@ts-pf/message/stdio'
 
 Bindings live in `@ts-pf/message-server` / `@ts-pf/message-client`. Inject a `WebSocket` constructor — do not depend on the `ws` npm package. User owns listen / upgrade / spawn / Worker bootstrap.
 
+`MessageSession` server role: a throwing `onHello(meta)` sends `hello-error` with `toWireError(thrown)` — a `PFError` keeps its `code` / `message` / `data` (refuse with `UNAUTHORIZED`), any other throw is the fixed `INTERNAL` / `Internal server error`. `WebSocketLike.close(code?, reason?)` fits browser `WebSocket` and npm `ws`; `createWsDuplex` closes with `1000` (or `1002` on a binary message).
+
 `errorFromEnvelope({ code, message, data? })` builds a `PFError` with `status` left `undefined` — frames carry no HTTP status and none is synthesized. Switch on `code`.
 
 `createPushQueue<T>()` turns frames into an `AsyncIterable<T>` for a custom binding: `push(value, size?)` from the frame callback, `end()` to complete after the buffered values, `fail(error)` to reject the next pull instead. One pending `next()` at a time (one `for await` consumer); `end` / `fail` are one-shot and later calls are ignored. `createPushQueue({ highWaterMark, onPause, onResume })` bounds it: `onPause` once the buffered `size` sum passes the mark, `onResume` once drained to half or on `end` / `fail`; nothing is dropped. The first-party server (streamed input) and client (streamed output) use the same queue.

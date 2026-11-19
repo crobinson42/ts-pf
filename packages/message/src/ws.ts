@@ -10,7 +10,8 @@ export interface WebSocketLike {
    */
   readonly bufferedAmount?: number
   send(data: string): void
-  close(code?: number): void
+  /** WHATWG `close(code?, reason?)`; browser `WebSocket` and npm `ws` both fit. */
+  close(code?: number, reason?: string): void
   addEventListener(
     type: 'message' | 'open' | 'close' | 'error',
     handler: (ev: { data?: unknown }) => void,

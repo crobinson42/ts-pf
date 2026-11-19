@@ -47,6 +47,34 @@ const client = createClient<typeof contract>(new DuplexLink({ duplex }))
 
 User owns listen / upgrade / spawn / Worker bootstrap. Prod never depends on `@ts-pf/server`.
 
+## Credentials and refused connections
+
+`meta` is sent once, in the `hello` that opens the connection. The convention for a credential is `meta.authorization` with the same value as an HTTP `Authorization` header (browsers cannot set headers on a WebSocket upgrade). A server that refuses the connection throws a `PFError` from its context factory; every call on the link then rejects with that `code` / `message` / `data` (not a local failure, so `RetryPlugin` does not retry it by default). The credential is fixed for the connection: to rotate it, close the link and open a new one. Streams do not survive a reconnect; call the stream procedure again after the new link is ready.
+
+```ts
+import { createClient } from '@ts-pf/client'
+import { WsLink } from '@ts-pf/message-client'
+import { isPFError } from '@ts-pf/protocol'
+
+declare const token: string
+
+const link = new WsLink({
+  url: 'wss://example.com/rpc',
+  WebSocket,
+  meta: { authorization: `Bearer ${token}` }, // same value as an HTTP Authorization header
+})
+const client = createClient<typeof contract>(link)
+
+try {
+  await client.planet.find({ id: 1 })
+} catch (error) {
+  // a refusal code is the server's, not the procedure's: it is not in the typed error union
+  if (isPFError(error) && error.code === 'UNAUTHORIZED') {
+    // the server refused the hello; open a new link with a fresh credential
+  }
+}
+```
+
 ## Backpressure
 
 On by default, mirroring the server. An `AsyncIterable` input is pumped one item at a time and parked while the duplex is above its write high-water mark (WebSocket `bufferedAmount` over 1 MiB, stdio `write()` refused). If the server still has not drained after `drainTimeout` (30 s) the call fails locally (`isLocalFailure` from `@ts-pf/client` is true; message `Peer did not drain within 30000 ms`), a `cancel` is sent if the socket accepts it, and the input iterator's `return()` runs once. An output stream you read is bounded by the same mark (measured as frame text length): while its queue is over it the link pauses reading the duplex (connection-wide) until you catch up, where the pipe can pause (stdio, npm `ws`); a server that times out on you ends the stream with `INTERNAL` / `Peer did not drain within …` after the items already buffered — that one came from the server, so `isLocalFailure` is false.
