@@ -35,10 +35,10 @@ Same schemas as the catalog, normalized for code generators:
 
 - No nested `$schema` (the document's `jsonSchemaDialect` declares it).
 - Output and error `data` schemas are open (no `additionalProperties: false`). Inputs and the `{ ok, … }` envelopes are unchanged.
-- Root `$defs` are hoisted: `.meta({ id: 'Book' })` → `components.schemas.Book`, one component across procedures. `<path>.Input` / `<path>.Output` stay; a bare named type is a `$ref` to it.
-- Input shape differs from output (e.g. a field with a default) → output `Book`, input `BookInput`. Two shapes for one id on the same side, a taken `<id>Input`, or an id equal to another component name throws: give one schema a distinct `.meta({ id })`.
-- Zod's unnamed recursion (any def key `__schemaN`) → `<host>.__schemaN`, shared only when identical; give it an id for a stable name.
-- Declared errors: one `Error.<CODE>` (+ `Error.<CODE>.Data`) when every procedure's `data` shape matches (or none), else `<path>.Error.<CODE>` per procedure. Protocol errors: `TsPf.Error.<CODE>`.
+- Root `$defs` / `definitions` are hoisted (every key except `__schemaN` is an id): `.meta({ id: 'Book' })` → `components.schemas.Book`, one component across procedures. `<path>.Input` / `<path>.Output` stay; a bare named type is a `$ref` to it.
+- Input shape differs from output (a field with a default, or a closed object such as `z.strictObject`, since inputs stay closed) → output `Book`, input `BookInput`. One side only or the same shape → `Book`. Two shapes for one id on the same side, a taken `<id>Input`, or an id equal to another component name throws: give one schema a distinct `.meta({ id })`.
+- Zod's unnamed recursion (any def key `__schemaN`) → `<host>.__schemaN`, shared only when side and shape are identical; give it an id for a stable name.
+- Declared errors: one `Error.<CODE>` (+ `Error.<CODE>.Data`) when every procedure's `data` shape matches (or none), including a code only one procedure declares; else `<path>.Error.<CODE>` per procedure. Protocol errors: `TsPf.Error.<CODE>` (+ `TsPf.Error.VALIDATION.Data`).
 
 Post-processing by component name? Use these names; older versions emitted `<path>.Error.<CODE>` and `$defs` under each procedure component.
 
@@ -81,7 +81,7 @@ for (const proc of cat.procedures) {
 }
 ```
 
-A REST facade has its own paths and bodies, so it documents them by hand (or with your REST framework's generator). Reference the components `openapi()` already emitted (`#/components/schemas/<id>`, `<path>.Input`, `<path>.Output`) instead of redeclaring them.
+A REST facade has its own paths and bodies, so it documents them by hand (or with your REST framework's generator). Reference the components `openapi()` already emitted (`#/components/schemas/<id>`, `<id>Input` for request bodies when the id split, `<path>.Input`, `<path>.Output`) instead of redeclaring them.
 
 ## API
 

@@ -112,7 +112,7 @@ packages/openapi/src/
   openapi.ts          document assembly: protocol / shared error components, one path per procedure, hoister.finish()
   operation.ts        one POST operation: <path>.Request / Success envelopes around <path>.Input / Output
   errors.ts           TsPf.Error.<CODE> (protocol), Error.<CODE> (declared, same data shape everywhere), else <path>.Error.<CODE>; responses grouped by status
-  hoist.ts            createHoister: normalize each schema, lift root $defs to components (<id> / <id>Input split, same-side conflicts throw, Zod __schemaN per host), shapeKey
+  hoist.ts            createHoister: normalize each schema, lift root $defs / definitions to components (<id> / <id>Input split; same-side conflicts, taken <id>Input, name collisions throw; Zod __schemaN per host), shapeKey
   normalize.ts        drop nested $schema; outputs drop additionalProperties: false
   refs.ts / walk.ts   $ref helpers; keyword-aware schema map (never touches const / enum / default)
   envelope.ts / names.ts  protocol envelopes (stay closed); component names (sanitized)

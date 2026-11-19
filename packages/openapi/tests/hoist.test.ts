@@ -71,6 +71,13 @@ describe('hoisted $defs', () => {
     })
   })
 
+  it('splits a closed object used on both sides (inputs stay closed)', () => {
+    const Tag = z.strictObject({ name: z.string() }).meta({ id: 'Tag' })
+    const schemas = build(router({ save: procedure.input(Tag).output(Tag) }))
+    expect(schemas.TagInput).toHaveProperty('additionalProperties', false)
+    expect(schemas.Tag).not.toHaveProperty('additionalProperties')
+  })
+
   it('throws when one id has two shapes on the same side', () => {
     const a = z.object({ id: z.string() }).meta({ id: 'Item' })
     const b = z.object({ id: z.number() }).meta({ id: 'Item' })
