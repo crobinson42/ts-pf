@@ -287,6 +287,27 @@ describe('createClient', () => {
     await expect(guarded.planet.list()).rejects.toBe(thrown)
   })
 
+  it('rethrows a PFError from another copy of @ts-pf/protocol', async () => {
+    vi.resetModules()
+    const copy = await import('@ts-pf/protocol')
+    expect(copy.PFError).not.toBe(PFError)
+    const thrown = new copy.PFError({ code: 'UNAUTHORIZED', status: 401 })
+    const guarded = createClient<typeof contract>(
+      new FetchLink({
+        url: 'http://localhost/rpc',
+        fetch: fetchImpl,
+        interceptors: [
+          async () => {
+            throw thrown
+          },
+        ],
+      }),
+    )
+    const error = await guarded.planet.list().catch((e: unknown) => e)
+    expect(error).toBe(thrown)
+    expect(isLocalFailure(error)).toBe(false)
+  })
+
   it('asResult() returns a result union', async () => {
     const result = await asResult(client.planet.find({ id: -1 }))
     expect(result.ok).toBe(false)

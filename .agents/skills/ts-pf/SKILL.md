@@ -47,7 +47,7 @@ packages/contract/src/
   errors.ts           ErrorDef, ErrorMap, InferErrorData
   infer.ts            InferContractProcedure / IsContractProcedure (the one builder-or-ContractProcedure match; `[X] extends [never]`, never `X extends never`), InferContract*, InferContractErrors, ClientError, ContractClient, ContractResultPromise, CallOptions, ContractProtocolErrorCode (hand-written duplicate of the protocol set; no protocol import)
 packages/protocol/src/
-  error.ts            PFError (status? with no default; cause?; local?; toJSON omits status/cause/local), localFailure (status 0 + local), ProtocolErrorCode (closed set; source of truth)
+  error.ts            PFError (status? with no default; cause?; local?; toJSON omits status/cause/local; non-enumerable Symbol.for('ts-pf.PFError') brand on the prototype, never per instance), isPFError (instanceof, then the brand — holds across two copies of protocol; never raw instanceof PFError elsewhere), localFailure (status 0 + local), ProtocolErrorCode (closed set; source of truth)
   envelope.ts         RpcRequest/Response, PROTOCOL_MAJOR (1 as const) → PROTOCOL_VERSION ('1'), PFResultPromise
   wire-error.ts       toWireError (PFError → toJSON; unknown throw → fixed INTERNAL "Internal server error", no leak) — the only copy of that mapping
   is-async-iterable.ts isAsyncIterable (object or function with a Symbol.asyncIterator function; ReadableStream is NOT excluded — wire sites compose a local isItemStream)
