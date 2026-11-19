@@ -175,6 +175,14 @@ export class ServerCall {
     try {
       const output = await dispatch()
       if (this.cancelled) {
+        // Cancelled before the handler resolved: nothing will pull this
+        // stream, so close it. A generator never pulled completes without
+        // running its body (its `finally` included); cleanup hangs off
+        // `signal`, which `cancel()` already aborted.
+        if (isItemStream(output)) {
+          this.iterator = output[Symbol.asyncIterator]()
+          this.closeIterator()
+        }
         return
       }
       if (isItemStream(output)) {

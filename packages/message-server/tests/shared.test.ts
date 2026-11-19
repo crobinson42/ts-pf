@@ -662,6 +662,62 @@ describe('shared unary dispatch', () => {
     server.close()
   })
 
+  it('cancel before the handler resolves closes the stream it then returns, once', async () => {
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    let started!: () => void
+    const running = new Promise<void>((resolve) => {
+      started = resolve
+    })
+    let returns = 0
+    let pulls = 0
+    const chatContract = router({
+      chat: procedure,
+    })
+    const chatImpl = createImplementer(chatContract)
+    const app = chatImpl.router({
+      chat: chatImpl.chat.handler(async () => {
+        started()
+        await gate
+        return {
+          [Symbol.asyncIterator]() {
+            return {
+              async next() {
+                pulls += 1
+                return { done: false, value: { token: 'late' } }
+              },
+              async return() {
+                returns += 1
+                return { done: true as const, value: undefined }
+              },
+            }
+          },
+        }
+      }),
+    })
+    const { client, frames, server } = openPair(app)
+    await Promise.all([server.ready, client.ready])
+
+    expect(client.send({ type: 'call', id: '1', path: ['chat'] }).ok).toBe(true)
+    await running
+    expect(client.send({ type: 'cancel', id: '1' }).ok).toBe(true)
+    for (let i = 0; i < 10; i++) {
+      await nextTurn()
+    }
+    release()
+    for (let i = 0; i < 40; i++) {
+      await nextTurn()
+    }
+    expect(returns).toBe(1)
+    expect(pulls).toBe(0)
+    expect(frames.some((frame) => 'id' in frame && frame.id === '1')).toBe(
+      false,
+    )
+    server.close()
+  })
+
   it('oversize encoded result becomes PAYLOAD_TOO_LARGE', async () => {
     const output = { id: 1, name: 'X'.repeat(200) }
     const app = planetApp(async () => output)
