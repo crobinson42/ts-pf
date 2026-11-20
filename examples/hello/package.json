@@ -12,11 +12,11 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/client": "0.5.0",
-    "@ts-pf/client-http": "0.5.0",
-    "@ts-pf/contract": "0.5.0",
-    "@ts-pf/server": "0.5.0",
-    "@ts-pf/server-http": "0.5.0",
+    "@ts-pf/client": "0.5.1",
+    "@ts-pf/client-http": "0.5.1",
+    "@ts-pf/contract": "0.5.1",
+    "@ts-pf/server": "0.5.1",
+    "@ts-pf/server-http": "0.5.1",
     "typebox": "^1.4.6",
     "zod": "^4.0.0"
   }

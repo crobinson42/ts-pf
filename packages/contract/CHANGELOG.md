@@ -1,5 +1,11 @@
 # @ts-pf/contract
 
+## 0.5.1
+
+### Patch Changes
+
+- [#61](https://github.com/crobinson42/ts-pf/pull/61) [`6fca318`](https://github.com/crobinson42/ts-pf/commit/6fca3182b414f0223dd7d58b2d8f97f048692ce2) Thanks [@crobinson42](https://github.com/crobinson42)! - Docs: link the new "Clients in other languages" guide from `PROTOCOL.md`, the conformance fixtures README, the protocol and openapi READMEs, the protocol and openapi skills, and the `ts-pf-app` hub skill. The fixtures README gains a "Getting the files" section with version-pinned jsDelivr / unpkg URLs, and the openapi README says to generate models only (the call layer classifies by envelope, not HTTP status).
+
 ## 0.5.0
 
 ### Minor Changes
