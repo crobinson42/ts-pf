@@ -66,6 +66,8 @@ const spec = openapi(catalog(contract, { prefix: '/rpc' }), {
 })
 ```
 
+Use the generator for models only and write the call layer yourself: generated REST clients read the outcome from the HTTP status, which is wrong for ts-pf. The guide [Clients in other languages](https://github.com/crobinson42/ts-pf/blob/main/docs/other-languages.md) walks through it.
+
 The profile describes the same POST JSON RPC paths and envelopes: no GET, no path params, no REST. It sets the options below to their `codegen` column (`streams`, `enumNames`, and `catalogHash` are never set by the profile). Each one can also be set alone, and an option you pass yourself wins over the profile (`{ profile: 'codegen', naming: 'path' }` keeps dotted names).
 
 | Option | Default | `codegen` | Effect |

@@ -677,7 +677,9 @@ There is no session resumption: a new connection starts with `hello`, and no id,
 
 Language-neutral test vectors for this document live in [`conformance/`](https://github.com/crobinson42/ts-pf/tree/main/packages/protocol/conformance) next to it, and ship in the `@ts-pf/protocol` npm package: `http.json` (unary JSON requests and response classification), `http-stream.json` (`application/jsonl` output streams), and `ws.json` (WebSocket frame scripts, which also cover stdio and `MessagePort` minus binary messages and close codes). They are plain JSON data, not schemas. A client in any language replays them against its own code, with no server and no network; the directory's `README.md` defines the format, how a runner replays each file, and how to report results.
 
-Each file carries `"protocol": 1` and the `"revision"` of this document it was written against, and each case cites the sections it checks. Where a case and this document disagree, this document wins. The TypeScript reference client (`FetchLink`, `FetchLink` with `StreamCodec`, `WsLink`) replays every file in this repository's CI.
+Each file carries `"protocol": 1` and the `"revision"` of this document it was written against, and each case cites the sections it checks. Where a case and this document disagree, this document wins. The TypeScript reference client (`FetchLink`, `FetchLink` with `StreamCodec`, `WsLink`) replays every file in this repository's CI. Test against a pinned package version, for example `https://cdn.jsdelivr.net/npm/@ts-pf/protocol@<version>/conformance/ws.json` (the fixtures README lists the options).
+
+For a walkthrough of building a client in another language from this document (models, transport, response classification, streams, fixtures, drift), see the guide [Clients in other languages](https://github.com/crobinson42/ts-pf/blob/main/docs/other-languages.md).
 
 ## Appendix: TypeScript reference client
 

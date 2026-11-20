@@ -8,6 +8,7 @@ Human-oriented guides that sit between the root [README](../README.md) (happy pa
 | [Concepts](concepts.md) | Contract vs implementer vs app, `$context` and context inference, `.use()` vs `.useAfter()`, links and adapters, codec pairing, the three interceptor kinds, validation defaults |
 | [Errors](errors.md) | `PFError`, declared errors, the closed protocol code set and its JSON, `asResult` narrowing, `status` per transport, `httpStatus()`, mapping domain errors in middleware, `onError` and default logging |
 | [Evolving a contract](evolution.md) | Safe vs breaking contract changes, unknown codes and enum values on old clients, deprecating, shared vs per-procedure error maps, catalog diffs in CI, wire version vs contract version |
+| [Clients in other languages](other-languages.md) | Calling a ts-pf server from Dart, Swift, Kotlin, Python, Go, …: models from the codegen-profile OpenAPI, a thin HTTP transport in pseudocode, classifying responses, error mapping, streams and the WebSocket protocol, conformance fixtures, drift checks |
 | [Testing](testing.md) | In-process testing through a `fetch` stub or `createLocalClient`, declared errors, middleware context, streams, running the repo's examples |
 | [Coming from tRPC / oRPC](coming-from-trpc-orpc.md) | Name mapping tables and a factual list of what is different |
 

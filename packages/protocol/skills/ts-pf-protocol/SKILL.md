@@ -11,7 +11,7 @@ Install: `npm i @ts-pf/protocol`
 
 Link for agents: `npx skills experimental_sync -y`
 
-Wire spec ships as `PROTOCOL.md` in this package (revision 1.2). Building a client in another language: start from its "HTTP client checklist" / "WebSocket client checklist" and "Classifying an HTTP response" sections; TypeScript-only conventions (`local`, `status: 0`, `isLocalFailure`) are in its appendix. Prove the client with the language-neutral fixtures in this package's `conformance/` (`http.json`, `http-stream.json`, `ws.json`; plain JSON versioned with the spec revision; `conformance/README.md` says how to replay them). TypeScript runners import them typed from `@ts-pf/protocol/conformance`.
+Wire spec ships as `PROTOCOL.md` in this package (revision 1.2). Building a client in another language: the guide [Clients in other languages](https://github.com/crobinson42/ts-pf/blob/main/docs/other-languages.md) walks through models, transport, streams, fixtures, and drift. Normatively, start from `PROTOCOL.md`'s "HTTP client checklist" / "WebSocket client checklist" and "Classifying an HTTP response" sections; TypeScript-only conventions (`local`, `status: 0`, `isLocalFailure`) are in its appendix. Prove the client with the language-neutral fixtures in this package's `conformance/` (`http.json`, `http-stream.json`, `ws.json`; plain JSON versioned with the spec revision; `conformance/README.md` says how to replay them). TypeScript runners import them typed from `@ts-pf/protocol/conformance`.
 
 ## Do
 
