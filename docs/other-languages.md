@@ -95,13 +95,14 @@ classify(response) -> Result
       return Stream(response)                         // read it as in section 5
 
   // 3. Decode the envelope.
-  body = try parseJson(response.text)
+  body = try parseJson(utf8(response.body))
   if body is an object:
       if body.ok is the JSON boolean true:
           return Success(body.output)                 // "output" absent = no value
       if body.ok is the JSON boolean false and body.error is an object
-         and body.error.code is a non-empty string    // these two checks are the spec's SHOULD:
-         and body.error.message is a string:          // recommended
+         and body.error.code is a non-empty string    // object, non-empty code, string message:
+         and body.error.message is a string:          // the spec's SHOULD (its MUST rejects only a
+                                                      // missing, null, or primitive error)
           return RemoteError(body.error.code, body.error.message, body.error.data)
 
   // 4. Anything else is not an answer from your API.
@@ -113,7 +114,7 @@ A response without the `x-ts-pf-protocol` header whose body decodes is still a r
 ```text
 Result =
     Success(output?)
-  | Stream(items)                       // only when you asked for a stream (section 5)
+  | Stream(response)                    // only when you asked for a stream; read it as in section 5
   | RemoteError(code, message, data?)   // the server answered: switch on code (section 4)
   | TransportFailure(status?)           // a body that is not an envelope; the status is a hint only
   | VersionMismatch                     // the server speaks another wire major
@@ -152,7 +153,7 @@ toAppFailure(result) -> AppFailure
 - **Two kinds of code.** The protocol's own codes are a closed set: `BAD_REQUEST`, `VALIDATION`, `NOT_FOUND`, `METHOD_NOT_ALLOWED`, `PAYLOAD_TOO_LARGE`, `INTERNAL`. Your server declares the rest. `x-ts-pf-errors` on an operation lists that procedure's declared codes plus the protocol codes it can return. The OpenAPI `ErrorCode` enum is the union of these lists. Neither lists the protocol `NOT_FOUND` a removed procedure returns (unless a procedure also declares `NOT_FOUND`), which is one more reason to keep a catch-all.
 - **Map once.** Do it in one place at the edge of your network layer, so the rest of the app never sees protocol shapes.
 - **Keep local and remote apart.** "The server said no" (`RemoteError`) and "no answer arrived" (`LocalFailure`, `TransportFailure`) lead to different decisions. Do not merge them.
-- **Retry policy is yours.** The protocol says only that `Unsupported protocol version` must never be retried.
+- **Retry policy is yours.** The protocol says only that a client SHOULD NOT retry `Unsupported protocol version`.
 
 ## 5. Streams
 
@@ -174,7 +175,7 @@ readStream(response) -> sequence of items, or a failure
   for each line in response.body (UTF-8; split on "\n", trim surrounding whitespace):
       if line is empty: continue
       env = try parseJson(line)
-      if env is an object and env.ok == true:        yield env.output       // absent = no value
+      if env is an object and env.ok is the JSON boolean true:  yield env.output  // absent = no value
       else if env is a failure envelope:             fail RemoteError(...)  // in-band error; nothing follows
       else:                                          fail TransportFailure  // never skip a bad line
   clean end of body: complete successfully
@@ -206,7 +207,7 @@ connect():
   calls made before ready wait for it; send no "call" frame before ready
 
 call(path, input):                                // path is a list: ["planet", "find"]
-  if aborted before ready: fail locally, send nothing (there is no id yet)
+  wait for ready
   id = nextId()                                   // a non-empty STRING: "1", "2", ...
   send { "type": "call", "id": id, "path": path, "input": input }    // omit "input" when there is none
   the first frame for id decides the shape:
@@ -224,14 +225,17 @@ call(path, input):                                // path is a list: ["planet", 
     result ok:true, unknown type, extra done      -> ignore
 
 callWithInputStream(path, values):                // only if the procedure's input is a stream
+  wait for ready and assign id as in call(); then:
   send { "type": "call", "id": id, "path": path, "stream": true }    // no "input" key at all
   for each value: send { "type": "in-item", "id": id, "input": value }
   then send { "type": "in-done", "id": id }       // if producing values fails: send cancel instead
   stop sending once a terminal frame (result / done) arrives for id
+  replies follow call()'s first-frame rules
 
-cancel(id):                                       // timeout, user abort, unsubscribe
-  send { "type": "cancel", "id": id }
-  forget id: ignore anything that still arrives for it, and do not reuse it
+cancel(call):                                     // timeout, user abort, unsubscribe
+  if the call has no id yet (waiting for ready): fail it locally; send nothing; keep the connection
+  send { "type": "cancel", "id": call.id }
+  forget call.id: ignore anything that still arrives for it, and do not reuse it
 
 onMessage(message):
   binary message                                  -> close with code 1002
@@ -244,11 +248,12 @@ onMessage(message):
 
 onClose(), whoever closed:
   fail every in-flight call and open stream locally ("connection closed")
-  if the handshake had not finished: fail the connect and every call waiting for ready
+  if the handshake had not finished: fail the connect (unless it already failed, e.g. with
+  a hello-error) and every call waiting for ready with that same failure
 ```
 
 Details that are easy to get wrong ([Frame types](../packages/protocol/PROTOCOL.md#frame-types), [First frame](../packages/protocol/PROTOCOL.md#first-frame-client)):
-- **Exact types.** Ids are strings (`1`, a number, is invalid), and `v` is the JSON number `1`, not `"1"`. Check JSON types strictly: in some languages `true == 1`, but `{"ok": 1}` is not a success and `"v": true` is not version 1. Send compact JSON (no spaces or newlines).
+- **Exact types.** Ids are strings (`1`, a number, is invalid), and `v` is the JSON number `1`, not `"1"`. Check JSON types strictly: in some languages `true == 1`, but `{"ok": 1}` is not a success and `"v": true` is not version 1. Send compact JSON (no spaces or newlines), and never `NaN` or `Infinity`, which are not JSON.
 - **Omit what has no value.** Leave out `input` and `meta` when you have none. The fixtures compare frames exactly, and an absent key is not the same as `null`.
 - **The server does not label calls.** Your transport must resolve a first `item` or `done` as a stream, even for a procedure you expect to be unary; the fixtures check this. A typed layer above the transport may then reject a stream where it expected a value, as a local "invalid response". If it does, it sends `cancel` for that id so the server stops, and never reuses the id.
 - **Nothing acknowledges `cancel`.**
@@ -261,7 +266,7 @@ Details that are easy to get wrong ([Frame types](../packages/protocol/PROTOCOL.
   3. Fetch the current state with a unary call.
   4. Apply later items on top of it, discarding items older than the snapshot (by a version or timestamp your app puts in them).
 - **Back off with jitter.** Wait a random delay between 0 and `min(cap, base × 2^attempt)`, and reset the attempt count once a connection has reached `hello-ok` and stayed up.
-- **Never reconnect after a version mismatch:** a `hello-error` `Unsupported protocol version`, or a `hello-ok` whose `v` is not `1`. Show "update the app" instead.
+- **Never reconnect after a version mismatch:** a `hello-error` `Unsupported protocol version`, or a `hello-ok` whose `v` is a number other than `1`. Show "update the app" instead.
 - **The credential is fixed at `hello`.** A new token means a new connection.
 
 **Close codes.** ([Close codes](../packages/protocol/PROTOCOL.md#close-codes-websocket).)
