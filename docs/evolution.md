@@ -69,7 +69,7 @@ The same holds for outputs. A client's types list the enum values and union vari
 
 The same rules apply to any HTTP client: switch on `error.code` and treat an unknown code as a generic failure (the protocol requires a catch-all: see [Protocol errors](../packages/protocol/PROTOCOL.md#protocol-errors)), ignore unknown object keys, and accept enum strings you do not recognise.
 
-The [HTTP and WebSocket client checklists](../packages/protocol/PROTOCOL.md#http-client-checklist) in `PROTOCOL.md` list everything such a client must handle, and the [conformance fixtures](../packages/protocol/conformance/README.md) let it prove it.
+[Clients in other languages](other-languages.md) walks through building such a client, and the [conformance fixtures](../packages/protocol/conformance/README.md) let it prove it.
 
 ## Prefer a discriminated union over widening an enum
 

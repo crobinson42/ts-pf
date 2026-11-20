@@ -44,7 +44,7 @@ Post-processing by component name? Use these names; older versions emitted `<pat
 
 ## Codegen profile (non-TypeScript generators)
 
-For openapi-generator, Kiota, orval, or swagger_parser, pass `profile: 'codegen'` instead of writing a post-processor. It is still POST JSON RPC (no GET, path params, or REST):
+For openapi-generator, Kiota, orval, or swagger_parser, pass `profile: 'codegen'` instead of writing a post-processor. It is still POST JSON RPC (no GET, path params, or REST). Generate models only; the client writes a thin call layer that classifies by envelope, not HTTP status (guide: [Clients in other languages](https://github.com/crobinson42/ts-pf/blob/main/docs/other-languages.md)):
 
 ```ts
 import { catalog } from '@ts-pf/docs'

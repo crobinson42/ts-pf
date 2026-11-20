@@ -153,6 +153,8 @@ ESLint: `no-restricted-imports` with the same names under `paths`. List exact na
 
 Changing a contract clients already use (safe vs breaking changes, catch-all branches for new codes and enum values, `docs({ deprecated: true })`, shared vs per-procedure error maps, catalog diffs in CI): [Evolving a contract](https://github.com/crobinson42/ts-pf/blob/main/docs/evolution.md).
 
+Calling the server from another language (Dart, Swift, Kotlin, Python, Go): models from `openapi(…, { profile: 'codegen' })`, a hand-written call layer that classifies by envelope (not HTTP status), and the conformance fixtures: [Clients in other languages](https://github.com/crobinson42/ts-pf/blob/main/docs/other-languages.md).
+
 ## Capabilities
 
 | I want | Install | Then load |

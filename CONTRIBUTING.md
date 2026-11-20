@@ -6,7 +6,7 @@ ts-pf is a contract-first TypeScript RPC library published as 20 `@ts-pf/*` pack
 - **Why each rule exists**: [`DECISIONS.md`](DECISIONS.md). Read it before proposing to change a lock.
 - **Architecture map and "how to add things"**: [`.agents/skills/ts-pf/SKILL.md`](.agents/skills/ts-pf/SKILL.md).
 - **Wire format**: [`packages/protocol/PROTOCOL.md`](packages/protocol/PROTOCOL.md).
-- **User guides** (tutorial, concepts, errors, testing, migration): [`docs/README.md`](docs/README.md). Their `ts` blocks are covered by `check:snippets`. The Starlight site ([`site/`](site/README.md)) copies these files and every published package README at build time; do not edit the generated copies.
+- **User guides** (tutorial, concepts, errors, evolution, clients in other languages, testing, migration): [`docs/README.md`](docs/README.md). Their `ts` blocks are covered by `check:snippets`. The Starlight site ([`site/`](site/README.md)) copies these files and every published package README at build time; do not edit the generated copies.
 - **Security reports**: [`SECURITY.md`](SECURITY.md), not an issue.
 
 ## Setup

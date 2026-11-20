@@ -29,7 +29,7 @@ scripts/check-deps.mjs                   @ts-pf/* DAG allow-list (mirrors rules.
 scripts/check-exports.mjs
 scripts/check-snippets.mjs                tsc over fenced ```ts in README.md, docs/**/*.md, packages/*/README.md, SKILL.md, example READMEs against dist (flags: `no-check`, `bundler`)
 scripts/bench.mjs                        `npm run bench`: ops/s for local / Fetch / MessagePort unary, declared error, and 2000-item streams (relative numbers; run before and after hot-path changes, see CONTRIBUTING "Benchmarks")
-docs/                                    human guides (tutorial, concepts, errors, evolution, testing, coming-from); site/ copies these
+docs/                                    human guides (tutorial, concepts, errors, evolution, other-languages, testing, coming-from); site/ copies these
 site/                                    Starlight docs site (`@ts-pf/site`, private). Not `packages/docs`. Generated from READMEs + `docs/` + `packages/protocol/PROTOCOL.md`; GitHub Pages `/ts-pf`
 skills/README.md                         consumer skill index (not published)
 packages/*/skills/ts-pf-<pkg>/SKILL.md   consumer usage (hub catalog ts-pf-app on contract)
@@ -359,7 +359,7 @@ Runtime `validateSchema`: user `registerSchemaAdapter` (first `accept` match) â†
 | AsyncIterable streams | `@ts-pf/stream` `StreamCodec` + `stream()` on `.input()` / `.output()`. Root only. JSONL envelopes. Nested streams and File/Blob in items are `BAD_REQUEST`. |
 | SSE output | `@ts-pf/sse` `SseCodec` on `FetchHandler` / `FetchLink`. Same `stream()` contracts. |
 | API docs / procedure catalog | `@ts-pf/docs` `docs()` + `catalog()`. |
-| A human guide (concepts, errors, a walkthrough) | `docs/<name>.md` (index it in `docs/README.md`). `check:snippets` type-checks fenced `ts`. The Starlight site copies it; do not add a second page under `site/src/content/docs/`. |
+| A human guide (concepts, errors, a walkthrough) | `docs/<name>.md` (index it in `docs/README.md` and the root README "Guides" list, and add it to `GUIDE_ORDER` in `site/scripts/sync-docs.mjs` or the site sorts it last). `check:snippets` type-checks fenced `ts`. The Starlight site copies it; do not add a second page under `site/src/content/docs/`. |
 | A package page on the docs site | that package's `README.md`. `site/` generates the Starlight page. Do not hand-write `site/src/content/docs/packages/<pkg>.md`. |
 | OpenAPI 3.1 document | `@ts-pf/openapi` `openapi(catalog(contract), { info })`. POST JSON RPC only. |
 | Split-repo typed client | `@ts-pf/codegen` `emit(catalog)` (one `.d.ts`). Large contracts: `emitFiles(catalog)` (one file per group and procedure; entry composes them; `_phantom.d.ts` only if some error has data). JSDoc from `docs()`; other `.meta()` stays on catalog JSON. |

@@ -10,6 +10,20 @@ Language-neutral test vectors for [`PROTOCOL.md`](../PROTOCOL.md). A client in a
 
 The files are data, not schemas: plain JSON, readable without a validator. They ship in the `@ts-pf/protocol` npm package (`conformance/`), and TypeScript can import them typed from `@ts-pf/protocol/conformance`.
 
+Building a client from scratch? The guide [Clients in other languages](https://github.com/crobinson42/ts-pf/blob/main/docs/other-languages.md) puts the spec, the fixtures, and code generation in order.
+
+## Getting the files
+
+Pin the package version you test against, and never follow `latest`: a new revision may add cases. You do not need npm:
+
+| Source   | URL or command                                                                          |
+| -------- | --------------------------------------------------------------------------------------- |
+| jsDelivr | `https://cdn.jsdelivr.net/npm/@ts-pf/protocol@<version>/conformance/<file>.json`        |
+| unpkg    | `https://unpkg.com/@ts-pf/protocol@<version>/conformance/<file>.json`                   |
+| npm      | `npm pack @ts-pf/protocol@<version>`, then read `package/conformance/` from the tarball |
+
+Commit the files your tests use next to a note of the version (or download them in CI from a pinned URL), so a fixture change reaches you as a reviewed diff.
+
 ## Versioning
 
 Every file starts with:
@@ -135,7 +149,7 @@ Open the connection before the first step, configured with `options` when the ca
 | `receive`       | Deliver this frame to the client as one compact JSON text message. Some are invalid on purpose.                                                                                         |
 | `receiveText`   | Deliver this exact string as a text message (it need not be JSON).                                                                                                                      |
 | `receiveBinary` | Deliver these bytes (base64) as a binary message.                                                                                                                                       |
-| `serverClose`   | The server closes the connection (the value is `{}`).                                                                                                                                   |     |
+| `serverClose`   | The server closes the connection (the value is `{}`).                                                                                                                                   |
 | `call`          | The caller starts a call labelled by the value (`"a"`) with `path` and `input` (absent: no input), or with `inputStream`: a streamed input that yields those values and then completes. |
 | `abort`         | The caller gives up on call `"a"`: abort it if it is still pending, or stop reading it if it resolved to a stream.                                                                      |
 | `expect`        | An outcome the caller observes, below.                                                                                                                                                  |
