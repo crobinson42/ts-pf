@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/openapi",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Opt-in OpenAPI 3.1 document from catalog() (POST JSON RPC)",
   "keywords": [
     "ts-pf",
@@ -49,11 +49,11 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/docs": "0.5.0"
+    "@ts-pf/docs": "0.5.1"
   },
   "devDependencies": {
-    "@ts-pf/contract": "0.5.0",
-    "@ts-pf/stream": "0.5.0",
+    "@ts-pf/contract": "0.5.1",
+    "@ts-pf/stream": "0.5.1",
     "typebox": "^1.4.6",
     "zod": "^4.0.0"
   }

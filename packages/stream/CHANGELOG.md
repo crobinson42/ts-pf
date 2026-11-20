@@ -1,5 +1,14 @@
 # @ts-pf/stream
 
+## 0.5.1
+
+### Patch Changes
+
+- Updated dependencies [[`6fca318`](https://github.com/crobinson42/ts-pf/commit/6fca3182b414f0223dd7d58b2d8f97f048692ce2)]:
+  - @ts-pf/protocol@0.5.1
+  - @ts-pf/contract@0.5.1
+  - @ts-pf/http@0.5.1
+
 ## 0.5.0
 
 ### Patch Changes
