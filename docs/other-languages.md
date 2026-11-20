@@ -91,7 +91,8 @@ classify(response) -> Result
       return VersionMismatch                          // never retry; surface "update the app"
 
   // 2. A stream, if you asked for one: decided by media type, before reading any line.
-  if you accept streams and mediaType(response.header("content-type")) == "application/jsonl":
+  if you accept streams and mediaType(response.header("content-type")) is "application/jsonl"
+     (or "text/event-stream", if you read SSE):
       return Stream(response)                         // read it as in section 5
 
   // 3. Decode the envelope.
@@ -202,7 +203,8 @@ connect():
                                                              // only if your app authenticates this way
   wait for the first message (with a timeout):
     { "type": "hello-ok", "v": 1 }  (v is the JSON number 1) -> ready
-    { "type": "hello-error", "error": e }                    -> fail connect with RemoteError(e); close (1000)
+    { "type": "hello-error", "error": e }                    -> fail connect, and every call waiting for
+                                                                ready, with RemoteError(e); close (1000)
     anything else, or no answer in time                      -> fail connect locally; close
   calls made before ready wait for it; send no "call" frame before ready
 
@@ -233,7 +235,7 @@ callWithInputStream(path, values):                // only if the procedure's inp
   replies follow call()'s first-frame rules
 
 cancel(call):                                     // timeout, user abort, unsubscribe
-  if the call has no id yet (waiting for ready): fail it locally; send nothing; keep the connection
+  if the call has no id yet (waiting for ready): fail it locally; send nothing; keep the connection; stop
   send { "type": "cancel", "id": call.id }
   forget call.id: ignore anything that still arrives for it, and do not reuse it
 
@@ -248,8 +250,8 @@ onMessage(message):
 
 onClose(), whoever closed:
   fail every in-flight call and open stream locally ("connection closed")
-  if the handshake had not finished: fail the connect (unless it already failed, e.g. with
-  a hello-error) and every call waiting for ready with that same failure
+  if the handshake had not finished: fail the connect and every call waiting for ready
+  locally (unless a hello-error already failed them)
 ```
 
 Details that are easy to get wrong ([Frame types](../packages/protocol/PROTOCOL.md#frame-types), [First frame](../packages/protocol/PROTOCOL.md#first-frame-client)):
@@ -314,7 +316,8 @@ for each case in ws.json:
         receiveText   -> deliver this exact string as a text message
         receiveBinary -> deliver these bytes as a binary message
         serverClose   -> close the socket from the server side
-        call / abort  -> start call "a" / abort it (or stop reading its stream)
+        call          -> start call "a" with path and input (or inputStream)
+        abort         -> abort call "a" (or stop reading its stream)
         expect        -> assert what the caller observed
     at the end: let the client run until idle
     fail the case if the client sent any message no send step matched
