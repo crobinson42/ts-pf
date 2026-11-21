@@ -1,5 +1,12 @@
 # @ts-pf/http
 
+## 0.6.0
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @ts-pf/protocol@0.6.0
+
 ## 0.5.2
 
 ### Patch Changes
