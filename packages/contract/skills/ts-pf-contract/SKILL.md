@@ -32,7 +32,7 @@ export const contract = router({
 })
 ```
 
-Schemas: Standard Schema (Zod, Valibot, ArkType) or TypeBox. More via `registerSchemaAdapter`. `.output()` is optional (`unknown` if omitted). `.input()` once.
+Schemas: Standard Schema (Zod, Valibot, ArkType) or TypeBox. More via `registerSchemaAdapter`. `.output()` is optional (`unknown` if omitted). `.input()` once. Callers send the input schema's input type (a `.default()` field is optional, a `.transform()` takes its source type); the handler receives the parsed output type.
 
 `.errors()` `status` is optional HTTP / OpenAPI metadata (omitted → HTTP 400). `ClientError` carries `status?: number`: the HTTP response status over Fetch, `undefined` on message transports and mid-stream items. Narrow on `code`; guard `status`.
 
@@ -45,7 +45,7 @@ Nest slice routers: `router({ planet: planetContract, star: starContract })`. Pi
 - `isContractProcedure`, `isContractRouter`
 - `ClientError`, `ContractClient`, `CallOptions`
 - `InferContractInputs`, `InferContractOutputs`, `InferContractErrors`, `InferErrorData`
-- `InferContractProcedure<T>` (type) — `{ input, output, errors, meta }` of one procedure type, or `never`; `IsContractProcedure<T>` (type) — `true` / `false`. For tooling that walks a contract type (a builder or a codegen `ContractProcedure`) without re-deriving the match.
+- `InferContractProcedure<T>` (type) — `{ input, parsedInput, output, errors, meta }` of one procedure type, or `never` (`input` is what a caller sends, `parsedInput` what the handler receives; a codegen `ContractProcedure<I, O>` has both as `I`); `IsContractProcedure<T>` (type) — `true` / `false`. For tooling that walks a contract type (a builder or a codegen `ContractProcedure`) without re-deriving the match.
 - `ContractProtocolErrorCode` (type) — the closed protocol codes `ClientError` falls back to
 
 ## Pair with

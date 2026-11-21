@@ -31,7 +31,7 @@ export const contract = router({
 })
 ```
 
-`.input()` once, `.output()` optional (`unknown` if omitted), `.errors()` declares typed failures the handler throws and the client narrows on. Nest slices with `router({ planet: planetContract, star: starContract })`.
+`.input()` once, `.output()` optional (`unknown` if omitted), `.errors()` declares typed failures the handler throws and the client narrows on. Callers send the input schema's input type (a `.default()` field is optional, a `.transform()` takes its source type); the handler receives the parsed output type. Nest slices with `router({ planet: planetContract, star: starContract })`.
 
 ## Use it on both sides
 
@@ -77,7 +77,7 @@ Serving `app` over HTTP (`FetchHandler`) and the rest of the happy path: [root R
 - `isContractProcedure`, `isContractRouter`
 - `ClientError`, `ContractClient`, `CallOptions`
 - `InferContractInputs`, `InferContractOutputs`, `InferContractErrors`, `InferErrorData`
-- `InferContractProcedure<T>` (type) — `{ input, output, errors, meta }` of one procedure type, or `never`; `IsContractProcedure<T>` (type) — `true` / `false`. For tooling that walks a contract type (a builder or a codegen `ContractProcedure`) without re-deriving the match.
+- `InferContractProcedure<T>` (type) — `{ input, parsedInput, output, errors, meta }` of one procedure type, or `never` (`input` is what a caller sends, `parsedInput` what the handler receives; a codegen `ContractProcedure<I, O>` has both as `I`); `IsContractProcedure<T>` (type) — `true` / `false`. For tooling that walks a contract type (a builder or a codegen `ContractProcedure`) without re-deriving the match.
 - `ContractProtocolErrorCode` (type) — the closed protocol codes `ClientError` falls back to
 
 ## Agent skills

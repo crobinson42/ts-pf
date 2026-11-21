@@ -349,7 +349,7 @@ describe('all({ inject }) on intersection inputs', () => {
     // validates like Zod, but has no JSON Schema
     const opaque = {
       '~standard': { ...input['~standard'], jsonSchema: undefined },
-    } as unknown as z.ZodType<z.infer<typeof input>>
+    } as unknown as z.ZodType<z.output<typeof input>, z.input<typeof input>>
     const opaqueContract = router({
       x: { find: procedure.input(opaque).output(z.string()) },
     })
@@ -402,7 +402,7 @@ describe('all({ inject }) with open inputs', () => {
     const input = z.object({ tenantId: z.string() })
     const opaque = {
       '~standard': { ...input['~standard'], jsonSchema: undefined },
-    } as unknown as z.ZodType<z.infer<typeof input>>
+    } as unknown as z.ZodType<z.output<typeof input>, z.input<typeof input>>
     const mixed = router({
       user: {
         find: procedure

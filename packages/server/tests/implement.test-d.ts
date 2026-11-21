@@ -458,3 +458,44 @@ describe('createLocalClient context', () => {
     createLocalClient(handBuilt, { context: undefined })
   })
 })
+
+describe('defaulted and transformed input', () => {
+  const posts = router({
+    create: procedure
+      .input(
+        z.object({
+          title: z.string(),
+          status: z.enum(['draft', 'published']).default('draft'),
+        }),
+      )
+      .output(z.object({ status: z.string() })),
+  })
+  const postsImpl = createImplementer(posts)
+
+  it('handler and .useAfter() see the parsed input', () => {
+    postsImpl.create
+      .useAfter(async ({ input, next }) => {
+        expectTypeOf(input).toEqualTypeOf<{
+          title: string
+          status: 'draft' | 'published'
+        }>()
+        return next()
+      })
+      .handler(({ input }) => {
+        expectTypeOf(input.status).toEqualTypeOf<'draft' | 'published'>()
+        return { status: input.status }
+      })
+  })
+
+  it('a local client may omit the defaulted field', () => {
+    const app = postsImpl.router({
+      create: postsImpl.create.handler(({ input }) => ({
+        status: input.status,
+      })),
+    })
+    const client = createLocalClient(app, { context: {} })
+    expectTypeOf(client.create).toBeCallableWith({ title: 'x' })
+    // @ts-expect-error title is still required
+    client.create({})
+  })
+})

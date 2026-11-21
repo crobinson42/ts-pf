@@ -1,8 +1,8 @@
 import type {
   ClientError,
-  ContractBuilder,
-  ContractProcedure,
   ErrorMap,
+  InferContractProcedure,
+  IsContractProcedure,
   ProcedureClient,
 } from '@ts-pf/contract'
 
@@ -89,19 +89,14 @@ export type SwrProcedureUtils<I, O, E extends ErrorMap> = ProcedureClient<
     call: ProcedureClient<I, O, E>
   }
 
-type InferProc<T> =
-  T extends ContractBuilder<infer I, infer O, infer E, infer M>
-    ? { input: I; output: O; errors: E; meta: M }
-    : T extends ContractProcedure<infer I, infer O, infer E, infer M>
-      ? { input: I; output: O; errors: E; meta: M }
-      : never
-
 export type SwrClient<T> = {
-  [K in keyof T as K extends '~pf' ? never : K]: InferProc<T[K]> extends never
+  [K in keyof T as K extends '~pf' ? never : K]: IsContractProcedure<
+    T[K]
+  > extends false
     ? SwrClient<T[K]>
     : SwrProcedureUtils<
-        InferProc<T[K]>['input'],
-        InferProc<T[K]>['output'],
-        InferProc<T[K]>['errors']
+        InferContractProcedure<T[K]>['input'],
+        InferContractProcedure<T[K]>['output'],
+        InferContractProcedure<T[K]>['errors']
       >
 } & SwrRouterUtils

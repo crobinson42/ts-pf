@@ -262,7 +262,7 @@ export type Implementer<T, TCtx> = {
 
 type ProcedureBuilderFor<TContract, TCtx> =
   ContractShape<TContract> extends {
-    input: infer I
+    parsedInput: infer I
     output: infer O
     errors: infer E extends Record<string, unknown>
   }

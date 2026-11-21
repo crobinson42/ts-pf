@@ -16,6 +16,9 @@ const contract = router({
     describe: procedure
       .input(z.object({ id: z.number() }))
       .output(stream(z.object({ token: z.string() }))),
+    search: procedure
+      .input(z.object({ q: z.string(), limit: z.number().default(10) }))
+      .output(z.array(z.string())),
   },
 })
 
@@ -28,6 +31,12 @@ describe('SwrClient types', () => {
     >()
     expectTypeOf<Client['planet']['list']['key']>().parameters.toEqualTypeOf<
       [({ input?: undefined } | undefined)?]
+    >()
+  })
+
+  it('types key() input with the schema input (defaults optional)', () => {
+    expectTypeOf<Client['planet']['search']['key']>().parameters.toEqualTypeOf<
+      [{ input: { q: string; limit?: number | undefined } }]
     >()
   })
 

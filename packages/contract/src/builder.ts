@@ -5,21 +5,30 @@ import {
   isContractProcedure,
 } from './procedure.js'
 import { assertContractRouter, type ContractRouterBrand } from './router.js'
-import type { AnySchema, InferSchemaOutput } from './schema.js'
+import type {
+  AnySchema,
+  InferSchemaInput,
+  InferSchemaOutput,
+} from './schema.js'
 
 export class ContractBuilder<
   TInput = void,
   TOutput = unknown,
   TErrors extends ErrorMap = {},
   TMeta extends Record<string, unknown> = {},
-> implements ContractProcedure<TInput, TOutput, TErrors, TMeta>
+  TParsedInput = TInput,
+> implements ContractProcedure<TInput, TOutput, TErrors, TMeta, TParsedInput>
 {
   readonly '~pf': ContractProcedureDef<TErrors, TMeta>
   // Phantom, like on `ContractProcedure`; `declare` emits nothing. It makes a
-  // builder structurally a `ContractProcedure<I, O, E, M>`, so one
+  // builder structurally a `ContractProcedure<I, O, E, M, P>`, so one
   // `InferContractProcedure` branch reads both, and two builders with
   // different input / output are no longer mutually assignable.
-  declare readonly '~types'?: { input: TInput; output: TOutput }
+  declare readonly '~types'?: {
+    input: TInput
+    parsedInput: TParsedInput
+    output: TOutput
+  }
 
   constructor(def?: Partial<ContractProcedureDef<TErrors, TMeta>>) {
     this['~pf'] = {
@@ -31,55 +40,84 @@ export class ContractBuilder<
     }
   }
 
+  /**
+   * Callers send the schema's input type (a `.default()` field is optional);
+   * the handler gets its output type (the parsed value).
+   */
   input<S>(
     schema: S,
-  ): ContractBuilder<InferSchemaOutput<S>, TOutput, TErrors, TMeta> {
+  ): ContractBuilder<
+    InferSchemaInput<S>,
+    TOutput,
+    TErrors,
+    TMeta,
+    InferSchemaOutput<S>
+  > {
     if (this['~pf'].input !== undefined) {
       throw new Error('input already set')
     }
     return new ContractBuilder({
       ...this['~pf'],
       input: schema as AnySchema,
-    }) as ContractBuilder<InferSchemaOutput<S>, TOutput, TErrors, TMeta>
+    }) as ContractBuilder<
+      InferSchemaInput<S>,
+      TOutput,
+      TErrors,
+      TMeta,
+      InferSchemaOutput<S>
+    >
   }
 
   output<S>(
     schema: S,
-  ): ContractBuilder<TInput, InferSchemaOutput<S>, TErrors, TMeta> {
+  ): ContractBuilder<
+    TInput,
+    InferSchemaOutput<S>,
+    TErrors,
+    TMeta,
+    TParsedInput
+  > {
     if (this['~pf'].output !== undefined) {
       throw new Error('output already set')
     }
     return new ContractBuilder({
       ...this['~pf'],
       output: schema as AnySchema,
-    }) as ContractBuilder<TInput, InferSchemaOutput<S>, TErrors, TMeta>
+    }) as ContractBuilder<
+      TInput,
+      InferSchemaOutput<S>,
+      TErrors,
+      TMeta,
+      TParsedInput
+    >
   }
 
   errors<E extends ErrorMap>(
     map: E,
-  ): ContractBuilder<TInput, TOutput, E, TMeta> {
+  ): ContractBuilder<TInput, TOutput, E, TMeta, TParsedInput> {
     return new ContractBuilder({
       ...this['~pf'],
       errors: map,
-    }) as unknown as ContractBuilder<TInput, TOutput, E, TMeta>
+    }) as unknown as ContractBuilder<TInput, TOutput, E, TMeta, TParsedInput>
   }
 
   meta<M extends Record<string, unknown>>(
     meta: M,
-  ): ContractBuilder<TInput, TOutput, TErrors, TMeta & M> {
+  ): ContractBuilder<TInput, TOutput, TErrors, TMeta & M, TParsedInput> {
     return new ContractBuilder({
       ...this['~pf'],
       meta: { ...this['~pf'].meta, ...meta },
-    }) as ContractBuilder<TInput, TOutput, TErrors, TMeta & M>
+    }) as ContractBuilder<TInput, TOutput, TErrors, TMeta & M, TParsedInput>
   }
 
   $meta<M extends Record<string, unknown>>(): ContractBuilder<
     TInput,
     TOutput,
     TErrors,
-    M
+    M,
+    TParsedInput
   > {
-    return new ContractBuilder({
+    return new ContractBuilder<TInput, TOutput, TErrors, M, TParsedInput>({
       ...this['~pf'],
       meta: {} as M,
     })

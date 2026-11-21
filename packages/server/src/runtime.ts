@@ -23,15 +23,18 @@ export type HandlerFn = (opts: {
 }) => unknown | Promise<unknown>
 
 /**
- * The `{ input, output, errors }` of a contract procedure type, or `never`
- * for anything else: contract's `InferContractProcedure` minus `meta`, so
- * procedures that differ only in `.meta()` share a brand. Brands compare this
+ * The `{ input, parsedInput, output, errors }` of a contract procedure type,
+ * or `never` for anything else: contract's `InferContractProcedure` minus
+ * `meta`, so procedures that differ only in `.meta()` share a brand. Brands compare this
  * shape, not the procedure type itself, so a handler for `star.find` cannot
  * fill the `planet.find` slot even when the two types are assignable.
  */
 export type ContractShape<T> = [InferContractProcedure<T>] extends [never]
   ? never
-  : Pick<InferContractProcedure<T>, 'input' | 'output' | 'errors'>
+  : Pick<
+      InferContractProcedure<T>,
+      'input' | 'parsedInput' | 'output' | 'errors'
+    >
 
 /** String keys of a contract router, minus the `~pf` brand. */
 export type ContractKeys<T> = Exclude<keyof T & string, '~pf'>
