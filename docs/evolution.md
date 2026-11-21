@@ -9,7 +9,7 @@ Servers and clients rarely ship at the same moment: a browser tab keeps an old b
 | Change | Why an old client keeps working |
 |---|---|
 | Add a procedure | Old clients never call it. |
-| Add an optional input field | Old clients omit it. Make it `.optional()`, or `.default(x)` so the handler always gets a value. |
+| Add an optional input field | Old clients omit it. Make it `.optional()`, or `.default(x)` so the handler always gets a value (the field stays optional in the client's type). |
 | Add an output field | Old clients ignore keys they do not know (see [Open outputs, closed inputs](#open-outputs-closed-inputs)). |
 | Add an enum value or union variant to an output | Safe on the wire, as long as old clients [tolerate unknown values](#unknown-enum-values-and-union-variants). |
 | Add an error code | Safe on the wire, as long as old clients [keep a catch-all branch](#unknown-error-codes). |

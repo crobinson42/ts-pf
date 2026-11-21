@@ -6,7 +6,7 @@ The mental model behind ts-pf, in the order you meet it: contract, implementer, 
 
 A **contract** is a plain object of `procedure` builders inside `router()`. It holds schemas and declared error codes and nothing else: no handlers, no HTTP, no runtime. Both the server and the client import it (the client imports it as a type only).
 
-An **implementer** is `createImplementer(contract)`. It mirrors the contract's keys and hands you a `handler()` builder for each procedure, typed from that procedure's input, output, and errors. `impl.router({ ... })` checks that every contract key has exactly one handler and produces the **app**: the implemented router that every server adapter runs.
+An **implementer** is `createImplementer(contract)`. It mirrors the contract's keys and hands you a `handler()` builder for each procedure, typed from that procedure's parsed input (a `.default()` field is always present), output, and errors. Callers are typed with the input schema's input type, so they may omit that field. `impl.router({ ... })` checks that every contract key has exactly one handler and produces the **app**: the implemented router that every server adapter runs.
 
 ```ts
 // contract.ts
@@ -68,7 +68,7 @@ Only a tree produced by `impl.router()` carries the brand; a plain object of han
 
 ## Middleware: `.use()` and `.useAfter()`
 
-Middleware wraps the handler inside one procedure, on the implementer (`impl.use(mw)` applies to every procedure below it) or on a single builder (`impl.planet.find.use(mw)`). `impl.middleware(fn)` names a reusable middleware; it fits `impl.use()` and a per-procedure `.use()` alike (both see `input: unknown`). A per-procedure `.useAfter()` is typed with that procedure's input and output, so it takes an inline function.
+Middleware wraps the handler inside one procedure, on the implementer (`impl.use(mw)` applies to every procedure below it) or on a single builder (`impl.planet.find.use(mw)`). `impl.middleware(fn)` names a reusable middleware; it fits `impl.use()` and a per-procedure `.use()` alike (both see `input: unknown`). A per-procedure `.useAfter()` is typed with that procedure's parsed input and output, so it takes an inline function.
 
 - `.use()` runs **before** input validation. It sees `input: unknown`. Use it for auth, logging, anything that must run even when the input is garbage.
 - `.useAfter()` runs **after** input validation. It sees the typed, parsed input (when the input check ran; with `validation.input: false` it sees the raw value). Use it for per-record authorization that needs the parsed id.

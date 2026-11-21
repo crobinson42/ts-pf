@@ -19,6 +19,8 @@ new FetchLink({ url: '/rpc', codec })
 procedure.output(stream(z.object({ token: z.string() })))
 ```
 
+An input `stream(item)` takes items of the item schema's input type from the sender; the handler iterates parsed items.
+
 Use the same codec on the handler and the link. A `stream()` procedure on the default `JSONCodec` (or `MultipartCodec`) answers `400 BAD_REQUEST` `Stream procedure requires a streaming codec` before the handler runs.
 
 Put cleanup on the handler's `signal`, not in a generator's `finally`: a cancel calls the stream's `return()`, and an async generator that was never pulled completes on `return()` without running its body, so its `finally` never runs, and a generator waiting on an `await` between yields does not see `return()` until its next `yield`. Over HTTP the handler's `signal` is `request.signal`, which fires on disconnect when your host aborts it.
