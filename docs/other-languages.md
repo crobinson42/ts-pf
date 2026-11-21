@@ -42,6 +42,8 @@ The profile gives generators what they need:
 - `discriminator` mappings on tagged unions.
 - With `streams: 'components'`, an `x-ts-pf-streams` map giving each stream procedure's input (or streamed `inputItem`), its `item` (or unary `output`), and its `errors` codes.
 
+With or without the profile, a procedure with `.expand()` has `x-ts-pf-expand: { key, at, fields }` on its operation. The response schema is the wide one, so in generated models each listed field is a union of its plain and expanded forms. Narrow it from the `key` list you sent.
+
 Use `streams: 'components'` when streams run over a message transport such as a WebSocket. The default (`'operation'`) describes them as HTTP JSONL operations.
 
 Run your platform's OpenAPI generator (openapi-generator, Kiota, swift-openapi-generator, swagger_parser, …) in **models-only** mode, and write the transport yourself (section 2). The client classes generators produce assume REST. They pick the outcome from the HTTP status, which is wrong for ts-pf (section 3), and the call layer ts-pf needs is small.

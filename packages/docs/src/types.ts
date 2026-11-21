@@ -14,6 +14,17 @@ export type CatalogError = {
   data?: CatalogSchema
 }
 
+/**
+ * A procedure's `.expand()`: the input field listing what to expand, the key
+ * path to the expandable object in the output, and each field's expanded
+ * schema. The output schema is the wide one (every field in either form).
+ */
+export type CatalogExpand = {
+  key: string
+  at: string[]
+  fields: Record<string, CatalogSchema>
+}
+
 export type CatalogProcedure = {
   path: string[]
   key: string
@@ -22,6 +33,7 @@ export type CatalogProcedure = {
   meta: Record<string, unknown>
   input?: CatalogSchema
   output?: CatalogSchema
+  expand?: CatalogExpand
   errors: CatalogError[]
 }
 

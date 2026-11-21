@@ -184,6 +184,45 @@ describe('catalog', () => {
     expect(find?.errors[0]?.data?.kind).toBe('json')
   })
 
+  it('records expand with each field as an output schema', () => {
+    const Ref = z.object({ id: z.string() })
+    const expanding = router({
+      posts: {
+        find: procedure
+          .input(
+            z.object({ populate: z.array(z.enum(['authorId'])).optional() }),
+          )
+          .output(
+            z.object({
+              docs: z.array(z.object({ authorId: z.union([z.string(), Ref]) })),
+            }),
+          )
+          .expand({ key: 'populate', at: ['docs'], fields: { authorId: Ref } }),
+        list: procedure.output(z.array(z.string())),
+      },
+    })
+    const result = catalog(expanding)
+    const find = result.procedures.find((p) => p.key === 'posts/find')
+    expect(find?.expand).toEqual({
+      key: 'populate',
+      at: ['docs'],
+      fields: {
+        authorId: {
+          kind: 'json',
+          jsonSchema: expect.objectContaining({
+            type: 'object',
+            properties: { id: { type: 'string' } },
+          }),
+          vendor: expect.any(String),
+        },
+      },
+    })
+    const list = result.procedures.find((p) => p.key === 'posts/list')
+    expect(list).not.toHaveProperty('expand')
+    const bare = catalog(expanding, { schemas: false })
+    expect(bare.procedures[0]).not.toHaveProperty('expand')
+  })
+
   it('marks ts-pf stream schemas as kind stream without converting the iterable', async () => {
     const { stream } = await import('@ts-pf/stream')
     const streamed = router({

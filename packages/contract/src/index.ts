@@ -1,6 +1,7 @@
 export { toValidationIssues } from './adapters/standard-schema.js'
 export { ContractBuilder, procedure, router } from './builder.js'
 export type { ErrorDef, ErrorMap, InferErrorData } from './errors.js'
+export type { ContractExpandDef, Expansion } from './expand.js'
 export type {
   CallOptions,
   ClientError,
@@ -12,6 +13,7 @@ export type {
   InferContractInputs,
   InferContractOutputs,
   InferContractProcedure,
+  InferExpandedOutput,
   IsContractProcedure,
   ProcedureClient,
 } from './infer.js'

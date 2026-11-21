@@ -108,6 +108,7 @@ describe('InferContractProcedure', () => {
       output: { id: number; name: string }
       errors: Find['~pf']['errors']
       meta: {}
+      expand: never
     }>()
     expectTypeOf<InferContractProcedure<Written>['input']>().toEqualTypeOf<
       InferContractProcedure<Find>['input']
@@ -125,6 +126,7 @@ describe('InferContractProcedure', () => {
       output: string[]
       errors: {}
       meta: {}
+      expand: never
     }>()
   })
 

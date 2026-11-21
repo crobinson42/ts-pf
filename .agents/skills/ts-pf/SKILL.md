@@ -42,13 +42,14 @@ packages/openapi/tests/fixtures/         golden documents: app-contract.openapi.
 packages/mcp/bench/gen.mjs               400-procedure type-cost fixture (`npm run bench:types -w @ts-pf/mcp`; manual, not in verify)
 packages/contract/src/
   builder.ts          procedure singleton, router()
-  procedure.ts        ContractProcedure brand
+  procedure.ts        ContractProcedure brand (6th param TExpand, default never)
+  expand.ts           Expansion (hand-writable), ExpandResult / ExpandedOutput (wide minus expanded; `at` walk), ExpandCheck ('~error' messages for .expand())
   router.ts           nested-object brand + walk
   schema.ts           validateSchema dispatch
   typebox-static.ts   structural Static (no typebox import; optional peer stays optional in published types)
   adapters/           standard-schema (toValidationIssues: Standard Schema issues → ValidationIssue[], exported), typebox
   errors.ts           ErrorDef, ErrorMap, InferErrorData
-  infer.ts            InferContractProcedure / IsContractProcedure (the one builder-or-ContractProcedure match; `[X] extends [never]`, never `X extends never`), InferContract*, InferContractErrors, ClientError, ContractClient, ContractResultPromise, CallOptions, ContractProtocolErrorCode (hand-written duplicate of the protocol set; no protocol import)
+  infer.ts            InferContractProcedure / IsContractProcedure (the one builder-or-ContractProcedure match; `[X] extends [never]`, never `X extends never`), InferContract*, InferContractErrors, ClientError, ContractClient, ContractResultPromise, CallOptions, ContractProtocolErrorCode (hand-written duplicate of the protocol set; no protocol import) ProcedureClient (4th param X: an expanding call generic in a const tuple), InferExpandedOutput, InferExpansionKeys.
 packages/protocol/src/
   error.ts            PFError (status? with no default; cause?; local?; toJSON omits status/cause/local; non-enumerable Symbol.for('ts-pf.PFError') brand on the prototype, never per instance), isPFError (instanceof, then the brand — holds across two copies of protocol; never raw instanceof PFError elsewhere), localFailure (status 0 + local), ProtocolErrorCode (closed set; source of truth)
   envelope.ts         RpcRequest/Response, PROTOCOL_MAJOR (1 as const) → PROTOCOL_VERSION ('1'), PFResultPromise
@@ -122,11 +123,11 @@ packages/docs/src/
   index.ts            catalog, docs, getDocs, walkContract, toJsonSchema, registerJsonSchemaConverter, canonicalize
   canonicalize.ts     canonicalize — sorted-keys copy (byte-stable JSON); catalogHash in codegen hashes it; no node: imports
   docs.ts             docs() overloads: docs(description) ≡ docs({ description }); the object form's const generics keep tags / hidden literal (mcp type filters); getDocs
-  catalog.ts          catalog(); protocolErrors derived from ProtocolErrorCode + PROTOCOL_HTTP_STATUS (no local table); requireDescription (after filter; description or summary, non-blank; one Error listing every key)
+  catalog.ts          catalog(); protocolErrors derived from ProtocolErrorCode + PROTOCOL_HTTP_STATUS (no local table); requireDescription (after filter; description or summary, non-blank; one Error listing every key) expand → CatalogExpand (fields as output schemas; omitted with schemas: false).
 packages/openapi/src/
   index.ts            openapi, OpenAPIOptions, OpenAPIDocument
   openapi.ts          document assembly: resolveProfile, streams: 'omit' catalog filter, protocol / shared error components (or shared-errors.ts), one path per procedure (or an x-ts-pf-streams entry), hoister.finish() → data component names, catalogHash → info, applySchemaPasses
-  operation.ts        one POST operation: <path>.Request / Success envelopes (inline under envelopes: 'inline') around <path>.Input / Output (procedureSchemas); emptyInputNull; x-ts-pf-errors
+  operation.ts        one POST operation: <path>.Request / Success envelopes (inline under envelopes: 'inline') around <path>.Input / Output (procedureSchemas); emptyInputNull; x-ts-pf-errors, x-ts-pf-expand
   streams.ts          isStreamProcedure; streams: 'components' x-ts-pf-streams entry (input / inputItem / item / output refs + error codes)
   errors.ts           operationErrors (declared then protocol codes, pure) + errorResponses (grouped by status); TsPf.Error.<CODE> (protocol), Error.<CODE> (declared, same data shape everywhere), else <path>.Error.<CODE>
   profile.ts          OpenAPIOptions profile: resolveProfile (defaults / PROFILES table, explicit options win; enumNames / catalogHash are not profile keys), applySchemaPasses (naming → enumNames → closeInputs → dropFormatPatterns → constAsEnum → hoist → discriminators → canonical; all off by default)
@@ -149,7 +150,7 @@ packages/codegen/src/
   hash.ts             catalogHash = sha256 of @ts-pf/docs canonicalize(catalog) (node:crypto)
   files.ts            emitFiles — flat group + procedure .d.ts; entry contract.d.ts; _phantom.d.ts only if some error has data; catalogHash on the entry only; headers are role + path/call/parent (procedure `group:`, group `parent:`)
   cli.ts              emit / pull / hash / diff; --out-dir; diff exits 2 on breaking, 1 on usage / read / parse errors (not exported from ".")
-  diff.ts             diffCatalog — catalog / procedure level: protocol version, procedures by key, unary ↔ stream, schema slots (input = sent, output + error data = received), errors by code, deprecation
+  diff.ts             diffCatalog — catalog / procedure level: protocol version, procedures by key, unary ↔ stream, schema slots (input = sent, output + error data = received), errors by code, deprecation expand (key / at / fields; removal breaking, addition safe; field schemas compared as output).
   diff-schema.ts      JSON Schema walker for diffCatalog (internal): local $ref / $defs, type (integer ⊂ number), null, enum / const, properties / required / additionalProperties, anyOf / oneOf (const-tag or equal-schema matching), items, min* / max* bounds; other keywords → safe unknown-change
   schema-util.ts      isRecord / normalizeType / resolvePointer / escapePointer / unescapePointer shared by print-type.ts and diff-schema.ts (internal)
   jsdoc.ts            JSDoc from catalog docs() (internal; not exported)
@@ -340,7 +341,7 @@ Client: `createClient` / `intercept()` call interceptors (path + input + signal)
 
 ## Schemas
 
-`procedure.input` / `.output` accept unconstrained `S`. `.input(S)` sets two types: the caller side (`ContractProcedure`'s first parameter, `InferContractProcedure['input']`, read by `ContractClient`, `InferContractInputs`, swr, and mcp) is `InferSchemaInput<S>`, so a `.default()` field is optional; the handler side (the fifth parameter, `['parsedInput']`, read by `ProcedureBuilder` through `ContractShape`) is `InferSchemaOutput<S>`. `.output(S)` is `InferSchemaOutput<S>` on both sides (output checks default off, so the client gets what the handler returned). `stream(item)` follows the same split per item. This matches the catalog (`io: 'input'` for inputs), so codegen's `ContractProcedure<I, O>` is the caller type. Both infer types read, in order:
+`procedure.input` / `.output` accept unconstrained `S`. `.input(S)` sets two types: the caller side (`ContractProcedure`'s first parameter, `InferContractProcedure['input']`, read by `ContractClient`, `InferContractInputs`, swr, and mcp) is `InferSchemaInput<S>`, so a `.default()` field is optional; the handler side (the fifth parameter, `['parsedInput']`, read by `ProcedureBuilder` through `ContractShape`) is `InferSchemaOutput<S>`. `.output(S)` is `InferSchemaOutput<S>` on both sides (output checks default off, so the client gets what the handler returned). `stream(item)` follows the same split per item. This matches the catalog (`io: 'input'` for inputs), so codegen's `ContractProcedure<I, O>` is the caller type. `.expand({ key, at?, fields })` adds the 6th parameter, `Expansion<Key, At, ExpandFields<F>>` (`InferSchemaOutput` per field: types, not schemas, so codegen and hand-written contracts write the same thing); `.output()` stays the wide schema, the only one the server, catalog `output`, openapi, and mcp see. Both infer types read, in order:
 
 1. Zod 4-style `_zod.input` / `_zod.output`
 2. TypeBox `~kind` walk (`typebox-static.ts`). Do not import `typebox`'s `Static`: that import would be emitted into published types and make the optional peer required for `skipLibCheck: false`.

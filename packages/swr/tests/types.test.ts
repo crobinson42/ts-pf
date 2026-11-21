@@ -73,3 +73,43 @@ describe('SwrClient types', () => {
     >()
   })
 })
+
+describe('SwrClient with an expansion', () => {
+  const Ref = z.object({ id: z.string(), email: z.string() })
+  const expanding = router({
+    posts: {
+      get: procedure
+        .input(
+          z.object({
+            id: z.string(),
+            populate: z.array(z.enum(['authorId'])).optional(),
+          }),
+        )
+        .output(
+          z.object({ id: z.string(), authorId: z.union([z.string(), Ref]) }),
+        )
+        .expand({ key: 'populate', fields: { authorId: Ref } }),
+    },
+  })
+  type Get = SwrClient<typeof expanding>['posts']['get']
+  const get = {} as Get
+
+  it('narrows the callable and call()', () => {
+    // Type-only: never called.
+    const _check = async () => {
+      expectTypeOf((await get({ id: 'p' })).authorId).toEqualTypeOf<string>()
+      expectTypeOf(
+        (await get({ id: 'p', populate: ['authorId'] })).authorId,
+      ).toEqualTypeOf<{ id: string; email: string }>()
+      expectTypeOf(
+        (await get.call({ id: 'p', populate: ['authorId'] })).authorId,
+      ).toEqualTypeOf<{ id: string; email: string }>()
+    }
+  })
+
+  it('fetcher() gives the wide output', () => {
+    expectTypeOf<
+      Awaited<ReturnType<ReturnType<Get['fetcher']>>>['authorId']
+    >().toEqualTypeOf<string | { id: string; email: string }>()
+  })
+})

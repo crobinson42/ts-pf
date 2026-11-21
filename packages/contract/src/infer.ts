@@ -1,18 +1,27 @@
 import type { ErrorMap, InferErrorData } from './errors.js'
+import type { ExpandResult, Expansion } from './expand.js'
 import type { ContractProcedure } from './procedure.js'
 import type { ValidationIssue } from './schema-types.js'
 
 /**
- * The `{ input, parsedInput, output, errors, meta }` of one contract procedure
+ * The `{ input, parsedInput, output, errors, meta, expand }` of one contract procedure
  * type, or `never` for anything else (a router object, a plain value).
  * `input` is what a caller sends; `parsedInput` is what the handler receives.
  * Matches a `ContractBuilder` (which implements `ContractProcedure`, phantom
  * `~types` included) and a hand-written `ContractProcedure<I, O, E, M>`
  * (codegen output) alike, so consumers need one branch, not two.
+ * `expand` is the procedure's `Expansion`, or `never`.
  */
 export type InferContractProcedure<T> =
-  T extends ContractProcedure<infer I, infer O, infer E, infer M, infer P>
-    ? { input: I; parsedInput: P; output: O; errors: E; meta: M }
+  T extends ContractProcedure<
+    infer I,
+    infer O,
+    infer E,
+    infer M,
+    infer P,
+    infer X
+  >
+    ? { input: I; parsedInput: P; output: O; errors: E; meta: M; expand: X }
     : never
 
 /** `true` when `T` is a contract procedure type (builder or hand-written). */
@@ -96,9 +105,52 @@ export interface ContractResultPromise<T, E> extends Promise<T> {
 
 export type CallOptions = { signal?: AbortSignal }
 
-export type ProcedureClient<I, O, E extends ErrorMap> = I extends void
+/**
+ * One procedure's call signature. With an `Expansion` (`X`), the call is
+ * generic in the expansion list it passes: a literal list narrows the
+ * output, no list gives the plain output, a non-literal array the wide one.
+ */
+export type ProcedureClient<I, O, E extends ErrorMap, X = never> = [X] extends [
+  never,
+]
+  ? PlainProcedureClient<I, O, E>
+  : X extends Expansion
+    ? ExpandingProcedureClient<I, O, E, X>
+    : PlainProcedureClient<I, O, E>
+
+type PlainProcedureClient<I, O, E extends ErrorMap> = I extends void
   ? (opts?: CallOptions) => ContractResultPromise<O, ClientError<E>>
   : (input: I, opts?: CallOptions) => ContractResultPromise<O, ClientError<E>>
+
+type ExpandingProcedureClient<I, O, E extends ErrorMap, X extends Expansion> = <
+  const P extends readonly (keyof X['fields'] & string)[] = readonly [],
+>(
+  input: I & { readonly [K in X['key']]?: P | undefined },
+  opts?: CallOptions,
+) => ContractResultPromise<ExpandResult<O, X, P>, ClientError<E>>
+
+/** The expandable field names of procedure `T`, or `never`. */
+export type InferExpansionKeys<T> =
+  InferContractProcedure<T>['expand'] extends infer X extends Expansion
+    ? keyof X['fields'] & string
+    : never
+
+/**
+ * The output procedure `T` returns for the expansion list `P` (a tuple, e.g.
+ * `['authorId']`), as a call passing that list would type it. Without an
+ * expansion it is the output. Use it to annotate what a call does not type,
+ * e.g. `useSWR<InferExpandedOutput<typeof contract.posts.get, ['authorId']>>`.
+ */
+export type InferExpandedOutput<
+  T,
+  P extends readonly InferExpansionKeys<T>[] = readonly [],
+> = [InferContractProcedure<T>] extends [never]
+  ? never
+  : [InferContractProcedure<T>['expand']] extends [never]
+    ? InferContractProcedure<T>['output']
+    : InferContractProcedure<T>['expand'] extends infer X extends Expansion
+      ? ExpandResult<InferContractProcedure<T>['output'], X, P>
+      : InferContractProcedure<T>['output']
 
 export type ContractClient<T> = {
   [K in keyof T as K extends '~pf' ? never : K]: IsContractProcedure<
@@ -108,6 +160,7 @@ export type ContractClient<T> = {
     : ProcedureClient<
         InferContractProcedure<T[K]>['input'],
         InferContractProcedure<T[K]>['output'],
-        InferContractProcedure<T[K]>['errors']
+        InferContractProcedure<T[K]>['errors'],
+        InferContractProcedure<T[K]>['expand']
       >
 }

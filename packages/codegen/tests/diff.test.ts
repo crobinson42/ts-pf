@@ -574,3 +574,53 @@ describe('diffCatalog', () => {
     })
   })
 })
+
+describe('diffCatalog: expand', () => {
+  const Ref = z.object({ id: z.string() })
+  const Doc = z.object({
+    authorId: z.union([z.string(), Ref]),
+    editorId: z.union([z.string(), Ref]),
+  })
+  const input = z.object({
+    populate: z.array(z.enum(['authorId', 'editorId'])).optional(),
+  })
+  const base = procedure.input(input).output(z.object({ docs: z.array(Doc) }))
+  const page = (fields: Record<string, z.ZodType>, at = ['docs']) =>
+    one(base.expand({ key: 'populate', at, fields } as never))
+
+  it('adding expand or a field is safe; removing either is breaking', () => {
+    expect(compare(one(base), page({ authorId: Ref }))).toEqual({
+      breaking: [],
+      safe: ['expand-added planet/find /expand'],
+    })
+    expect(compare(page({ authorId: Ref }), one(base))).toEqual({
+      breaking: ['expand-removed planet/find /expand'],
+      safe: [],
+    })
+    expect(
+      compare(page({ authorId: Ref }), page({ authorId: Ref, editorId: Ref })),
+    ).toEqual({
+      breaking: [],
+      safe: ['expand-field-added planet/find /expand/fields/editorId'],
+    })
+    expect(
+      compare(page({ authorId: Ref, editorId: Ref }), page({ authorId: Ref })),
+    ).toEqual({
+      breaking: ['expand-field-removed planet/find /expand/fields/editorId'],
+      safe: [],
+    })
+  })
+
+  it('moving the expansion is breaking', () => {
+    expect(
+      compare(page({ authorId: Ref }), page({ authorId: Ref }, [])).breaking,
+    ).toEqual(['expand-changed planet/find /expand/at'])
+  })
+
+  it('compares a field schema as output', () => {
+    const narrower = z.object({ id: z.string(), email: z.string() })
+    const diff = compare(page({ authorId: Ref }), page({ authorId: narrower }))
+    expect(diff.breaking).toEqual([])
+    expect(diff.safe.join('\n')).toContain('/expand/fields/authorId')
+  })
+})

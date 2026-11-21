@@ -7,7 +7,7 @@ Hub `ts-pf-app` on `@ts-pf/contract` is the capability catalog. `npx skills expe
 | Skill | Path | Job |
 |---|---|---|
 | `ts-pf-app` | `packages/contract/skills/ts-pf-app/` | Catalog: Fetch happy path, compose, opt-in map |
-| `ts-pf-contract` | `packages/contract/skills/ts-pf-contract/` | `procedure` / `router`, schemas, typed errors |
+| `ts-pf-contract` | `packages/contract/skills/ts-pf-contract/` | `procedure` / `router`, schemas, typed errors, `.expand()` |
 | `ts-pf-protocol` | `packages/protocol/skills/ts-pf-protocol/` | `PFError`, envelope, `PROTOCOL.md` |
 | `ts-pf-server` | `packages/server/skills/ts-pf-server/` | `createImplementer`, middleware, `runProcedure` |
 | `ts-pf-client` | `packages/client/skills/ts-pf-client/` | `createClient`, `asResult`, call plugins |

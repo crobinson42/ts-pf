@@ -74,11 +74,18 @@ type SwrStreamHelpers<I, O, E extends ErrorMap> = [O] extends [
     }
   : {}
 
-export type SwrProcedureUtils<I, O, E extends ErrorMap> = ProcedureClient<
+/**
+ * With an expansion (`X`), the callable and `call` narrow per call; `key`,
+ * `fetcher`, and `mutator` give the wide output (SWR infers data from the
+ * fetcher, which cannot see the key's list). For narrowed `useSWR` data,
+ * pass a fetcher that calls the procedure: `() => utils.posts.get(input)`.
+ */
+export type SwrProcedureUtils<
   I,
   O,
-  E
-> &
+  E extends ErrorMap,
+  X = never,
+> = ProcedureClient<I, O, E, X> &
   SwrRouterUtils<I> &
   SwrStreamHelpers<I, O, E> & {
     key: I extends void
@@ -86,7 +93,7 @@ export type SwrProcedureUtils<I, O, E extends ErrorMap> = ProcedureClient<
       : (options: SwrKeyOptions<I>) => SwrKey<I>
     fetcher: () => SwrFetcher<I, O>
     mutator: () => SwrMutator<I, O>
-    call: ProcedureClient<I, O, E>
+    call: ProcedureClient<I, O, E, X>
   }
 
 export type SwrClient<T> = {
@@ -97,6 +104,7 @@ export type SwrClient<T> = {
     : SwrProcedureUtils<
         InferContractProcedure<T[K]>['input'],
         InferContractProcedure<T[K]>['output'],
-        InferContractProcedure<T[K]>['errors']
+        InferContractProcedure<T[K]>['errors'],
+        InferContractProcedure<T[K]>['expand']
       >
 } & SwrRouterUtils

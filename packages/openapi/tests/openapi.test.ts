@@ -198,3 +198,35 @@ describe('openapi', () => {
     expect(noPrefix.paths).not.toHaveProperty('/rpc/planet/find')
   })
 })
+
+describe('openapi: expand', () => {
+  it('adds x-ts-pf-expand with the field names; the response stays the wide schema', () => {
+    const Ref = z.object({ id: z.string() })
+    const contract = router({
+      posts: {
+        find: procedure
+          .input(
+            z.object({ populate: z.array(z.enum(['authorId'])).optional() }),
+          )
+          .output(
+            z.object({
+              docs: z.array(z.object({ authorId: z.union([z.string(), Ref]) })),
+            }),
+          )
+          .expand({ key: 'populate', at: ['docs'], fields: { authorId: Ref } }),
+        list: procedure.output(z.array(z.string())),
+      },
+    })
+    const doc = openapi(catalog(contract, { prefix: '/rpc' }), {
+      info: { title: 'Posts', version: '1.0.0' },
+    })
+    expect(doc.paths['/rpc/posts/find']?.post?.['x-ts-pf-expand']).toEqual({
+      key: 'populate',
+      at: ['docs'],
+      fields: ['authorId'],
+    })
+    expect(doc.paths['/rpc/posts/list']?.post).not.toHaveProperty(
+      'x-ts-pf-expand',
+    )
+  })
+})

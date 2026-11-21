@@ -32,6 +32,8 @@ import type { Contract } from './contract.js'
 const client = createClient<Contract>(new FetchLink({ url: '/rpc' }))
 ```
 
+A procedure with `.expand()` is emitted with all six `ContractProcedure` arguments, ending in `Expansion<'populate', ['docs'], { authorId: … }>`, so the generated client narrows per call just as the source contract does.
+
 `emit()` prints JSDoc from `docs()` (`description` / `summary` / `@deprecated`) onto `Contract` members. Other `.meta()` stays on the catalog — ship `catalog.json` beside the `.d.ts` for runtime policy (`CachePlugin` `key`, etc.). Hover on `client.planet.find` may not show that JSDoc (`ContractClient` is a mapped type).
 
 A large catalog: `emitFiles()` writes one entry plus a file per group and procedure. `_phantom.d.ts` is added only when some error has `data`. The entry stays `createClient<Contract>`. Open the group file for the scope, the procedure file for one endpoint. `catalogHash` is on the entry only. Each file's header starts with `role:` (`entry`, `group`, `procedure`, `phantom`). Group files name `path:`, `exports:`, and `parent:`. Procedure files name `path:`, `call:` (`client.planet.find(input)`), `exports:`, and `group:` when nested, plus a one-line `summary:` when `docs()` has one. `_phantom.d.ts` says it is internal.
@@ -70,7 +72,7 @@ const diff = diffCatalog(previous, catalog(contract, { prefix: '/rpc' }))
 diff.breaking // CatalogChange[]: { kind, path?, pointer?, message }
 ```
 
-Direction decides: inputs are what old clients send, outputs and error `data` what they receive. Breaking: procedure removed / renamed, unary ↔ stream, protocol version, input schema added where there was none, input required property added or optional → required, input narrowed (enum value / union variant removed, `number` → `integer`, tighter bounds, `null` dropped, object closed, property removed from a closed object), output required property removed or required → optional, output type changed / widened (now `null`, looser bounds), output or error `data` schema removed. Safe: procedure added, optional input property, output property / enum value / union variant added or removed, output narrowed, error code added or removed, error `status` change, `docs({ deprecated: true })`. Docs text and `format` are ignored; unmodeled keywords (`pattern`, `prefixItems` tuples, `allOf`, …) are a safe `unknown-change`.
+Direction decides: inputs are what old clients send, outputs and error `data` what they receive. Breaking: procedure removed / renamed, unary ↔ stream, protocol version, input schema added where there was none, input required property added or optional → required, input narrowed (enum value / union variant removed, `number` → `integer`, tighter bounds, `null` dropped, object closed, property removed from a closed object), output required property removed or required → optional, output type changed / widened (now `null`, looser bounds), output or error `data` schema removed. Safe: procedure added, optional input property, output property / enum value / union variant added or removed, output narrowed, error code added or removed, error `status` change, `docs({ deprecated: true })`. Expansion (`.expand()`): removing it, changing its `key` or `at`, or removing a field is breaking (`expand-removed` / `expand-changed` / `expand-field-removed`); adding one or a field is safe; a field's schema is compared as output (`/expand/fields/<name>`). Docs text and `format` are ignored; unmodeled keywords (`pattern`, `prefixItems` tuples, `allOf`, …) are a safe `unknown-change`.
 
 ## API
 

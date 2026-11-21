@@ -1,5 +1,6 @@
 import type {
   CatalogError,
+  CatalogExpand,
   CatalogProcedure,
   CatalogSchema,
   ProcedureCatalog,
@@ -23,6 +24,11 @@ export type CatalogChange = {
     | 'error-added'
     | 'error-removed'
     | 'error-status-changed'
+    | 'expand-added'
+    | 'expand-removed'
+    | 'expand-changed'
+    | 'expand-field-added'
+    | 'expand-field-removed'
     | 'deprecated'
     | SchemaChangeKind
   /** Procedure key (`planet/find`). Absent for catalog-level changes. */
@@ -31,7 +37,8 @@ export type CatalogChange = {
    * Location inside the procedure entry: `/input` / `/output` (`/item` for a
    * stream item) / `/errors/<code>/data`, then the JSON Schema path
    * (`/input/properties/id`); or `/errors/<code>`, `/errors/<code>/status`,
-   * `/docs/deprecated`. Catalog level: `/protocol/version`. Error codes are
+   * `/expand`, `/expand/key`, `/expand/at`, `/expand/fields/<name>` (then
+   * the JSON Schema path), `/docs/deprecated`. Catalog level: `/protocol/version`. Error codes are
    * JSON-pointer escaped.
    */
   pointer?: string
@@ -127,6 +134,90 @@ function diffProcedure(
     label: 'output',
   })
   diffErrors(prev.errors, next.errors, path, report)
+  diffExpand(prev.expand, next.expand, path, report)
+}
+
+// A caller that passes the expansion list relies on it: losing it, moving it,
+// or losing a field is breaking; gaining one is not.
+function diffExpand(
+  prev: CatalogExpand | undefined,
+  next: CatalogExpand | undefined,
+  path: string,
+  report: Report,
+): void {
+  if (prev === undefined || next === undefined) {
+    if (prev !== next) {
+      const added = prev === undefined
+      report(
+        {
+          kind: added ? 'expand-added' : 'expand-removed',
+          path,
+          pointer: '/expand',
+          message: `expand ${added ? 'added' : 'removed'}`,
+        },
+        !added,
+      )
+    }
+    return
+  }
+  if (prev.key !== next.key) {
+    report(
+      {
+        kind: 'expand-changed',
+        path,
+        pointer: '/expand/key',
+        message: `expand key ${prev.key} -> ${next.key}`,
+      },
+      true,
+    )
+  }
+  if (prev.at.join('\0') !== next.at.join('\0')) {
+    report(
+      {
+        kind: 'expand-changed',
+        path,
+        pointer: '/expand/at',
+        message: `expand at [${prev.at.join(', ')}] -> [${next.at.join(', ')}]`,
+      },
+      true,
+    )
+  }
+  for (const [name, schema] of Object.entries(prev.fields)) {
+    const pointer = `/expand/fields/${escapePointer(name)}`
+    const match = next.fields[name]
+    if (match === undefined) {
+      report(
+        {
+          kind: 'expand-field-removed',
+          path,
+          pointer,
+          message: `expand field ${name} removed`,
+        },
+        true,
+      )
+      continue
+    }
+    diffSlot(schema, match, {
+      path,
+      report,
+      direction: 'output',
+      pointer,
+      label: `expand field ${name}`,
+    })
+  }
+  for (const name of Object.keys(next.fields)) {
+    if (!(name in prev.fields)) {
+      report(
+        {
+          kind: 'expand-field-added',
+          path,
+          pointer: `/expand/fields/${escapePointer(name)}`,
+          message: `expand field ${name} added`,
+        },
+        false,
+      )
+    }
+  }
 }
 
 function diffErrors(

@@ -26,6 +26,8 @@ const { data, error } = useSWR(
 
 Skip with a null key: `id ? swr.planet.find.key({ input: { id } }) : null`. Mutations: `useSWRMutation(swr.planet.list.key(), swr.planet.create.mutator())`. Pass `{ prefix: 'user' }` when two trees would share keys.
 
+A procedure with `.expand()`: the callable and `.call` narrow per call, but `useSWR(key, fetcher())` data is the wide output, because SWR infers data from the fetcher and the fetcher cannot see the key's `populate` list. Pass a fetcher that calls the procedure instead: `useSWR(swr.posts.get.key({ input }), () => swr.posts.get(input))`, where `input` is the literal `{ id, populate: ['authorId'] }`, narrows. `InferExpandedOutput<typeof contract.posts.get, ['authorId']>` (`@ts-pf/contract`) names that type.
+
 SWR `error` is the thrown `PFError`. Fetchers do not wrap `asResult`. Streams: `.subscriber()` / `.liveSubscriber()`.
 
 ## API

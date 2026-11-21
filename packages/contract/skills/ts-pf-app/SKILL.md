@@ -160,6 +160,7 @@ Calling the server from another language (Dart, Swift, Kotlin, Python, Go): mode
 | I want | Install | Then load |
 |---|---|---|
 | Contract / errors | `@ts-pf/contract` / `@ts-pf/protocol` | `ts-pf-contract` / `ts-pf-protocol` |
+| Output that follows a `populate` / `expand` list in the input | `@ts-pf/contract` (`.expand()`) | `ts-pf-contract` |
 | Implement / call | `@ts-pf/server` / `@ts-pf/client` | `ts-pf-server` / `ts-pf-client` |
 | HTTP Fetch | `@ts-pf/server-http` + `@ts-pf/client-http` | `ts-pf-server-http` / `ts-pf-client-http` |
 | CDN-cacheable GET reads / public REST facade | userland on `@ts-pf/server-http` + `@ts-pf/client-http` (no extra package) | `ts-pf-server-http` ("Cacheable reads and public REST") / `ts-pf-client-http` |

@@ -10,6 +10,7 @@ export {
 } from './json-schema.js'
 export type {
   CatalogError,
+  CatalogExpand,
   CatalogProcedure,
   CatalogSchema,
   JsonSchema,

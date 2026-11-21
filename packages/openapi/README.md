@@ -88,7 +88,9 @@ The profile describes the same POST JSON RPC paths and envelopes: no GET, no pat
 
 The passes run in a fixed order, so each sees the previous one's result: `naming`, `enumNames`, `closeInputs`, `dropFormatPatterns`, `constAsEnum`, `hoist` (names come from final parent names; shapes are compared after the rewrites), `discriminators` (mappings use final names and see one-value enums), then `canonical`.
 
-`x-ts-pf-errors`, `x-ts-pf-streams`, and `x-ts-pf-catalog-hash` are the only `x-` extensions the document uses. Generators ignore extensions they do not know.
+A procedure with `.expand()` (`@ts-pf/contract`) gets `x-ts-pf-expand: { key, at, fields }` on its operation, with or without options: the request field that lists what to expand, the key path to the expandable object (arrays pass through), and the field names. The response schema is the contract's wide output, so each of those fields already allows both forms.
+
+`x-ts-pf-errors`, `x-ts-pf-streams`, `x-ts-pf-expand`, and `x-ts-pf-catalog-hash` are the only `x-` extensions the document uses. Generators ignore extensions they do not know.
 
 #### Streams without paths
 

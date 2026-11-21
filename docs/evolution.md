@@ -13,6 +13,7 @@ Servers and clients rarely ship at the same moment: a browser tab keeps an old b
 | Add an output field | Old clients ignore keys they do not know (see [Open outputs, closed inputs](#open-outputs-closed-inputs)). |
 | Add an enum value or union variant to an output | Safe on the wire, as long as old clients [tolerate unknown values](#unknown-enum-values-and-union-variants). |
 | Add an error code | Safe on the wire, as long as old clients [keep a catch-all branch](#unknown-error-codes). |
+| Add a `.expand()` expansion, or a field to one | Old clients do not ask for it, so they get the plain form they expect. The wide output schema already allowed both forms. |
 
 The last two are only as safe as the client code that reads them. Write clients so they are.
 
@@ -29,6 +30,7 @@ The last two are only as safe as the client code that reads them. Write clients 
 | Change an output field's type | A value of the wrong type, with no error until the client uses it. |
 | Rename or remove an error code | The client's branch for it never matches again; the failure falls into the catch-all. |
 | Change what a code means, or its `data` shape | The client's branch matches and does the wrong thing, or reads `data` that is not there. |
+| Remove a `.expand()` expansion or one of its fields, or change its `key` / `at` | The client still asks for the field and its type promises the expanded form, but the server may send the plain one. |
 | Switch a procedure between unary and stream | The result changes shape (a value vs an `AsyncIterable`), and the response framing with it. |
 
 A breaking change ships as a new procedure next to the old one, or in a release that updates every client together (see [Wire version vs contract version](#wire-version-vs-contract-version)).

@@ -71,6 +71,65 @@ describe('procedure builder', () => {
     )
   })
 
+  describe('expand()', () => {
+    const input = z.object({
+      populate: z.array(z.enum(['authorId'])).optional(),
+    })
+    const Ref = z.object({ id: z.string() })
+    const output = z.object({ authorId: z.union([z.string(), Ref]) })
+
+    it('records key, at (default root), and the field schemas', () => {
+      const root = procedure
+        .input(input)
+        .output(output)
+        .expand({ key: 'populate', fields: { authorId: Ref } })
+      expect(root['~pf'].expand).toEqual({
+        key: 'populate',
+        at: [],
+        fields: { authorId: Ref },
+      })
+      const page = procedure
+        .input(input)
+        .output(z.object({ docs: z.array(output) }))
+        .expand({ key: 'populate', at: ['docs'], fields: { authorId: Ref } })
+      expect(page['~pf'].expand?.at).toEqual(['docs'])
+    })
+
+    it('survives errors() and meta()', () => {
+      const proc = procedure
+        .input(input)
+        .output(output)
+        .expand({ key: 'populate', fields: { authorId: Ref } })
+        .errors({ NOT_FOUND: {} })
+        .meta({ tag: 'posts' })
+      expect(proc['~pf'].expand?.key).toBe('populate')
+    })
+
+    it('throws before input and output, twice, or with no fields', () => {
+      const bad = procedure as unknown as {
+        expand(spec: unknown): unknown
+      }
+      expect(() =>
+        bad.expand({ key: 'populate', fields: { authorId: Ref } }),
+      ).toThrow(/input\(\) and \.output\(\)/)
+      const once = procedure
+        .input(input)
+        .output(output)
+        .expand({ key: 'populate', fields: { authorId: Ref } }) as unknown as {
+        expand(spec: unknown): unknown
+      }
+      expect(() =>
+        once.expand({ key: 'populate', fields: { authorId: Ref } }),
+      ).toThrow(/already set/)
+      const empty = procedure.input(input).output(output) as unknown as {
+        expand(spec: unknown): unknown
+      }
+      expect(() => empty.expand({ key: 'populate', fields: {} })).toThrow(
+        /at least one field/,
+      )
+    })
+  })
+
   it('router() brands a nested object', () => {
     const contract = router({
       planet: {

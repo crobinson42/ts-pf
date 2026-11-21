@@ -42,7 +42,7 @@ const spec = catalog(contract, { prefix: '/rpc' })
 console.log(JSON.stringify(spec, null, 2))
 ```
 
-JSON Schema conversion uses Standard JSON Schema (`~standard.jsonSchema`) then TypeBox. Register more with `registerJsonSchemaConverter` (same accept-first pattern as `registerSchemaAdapter`). Unconverted schemas become `{ kind: 'unavailable', reason }` — they do not fail the catalog. `stream()` is `{ kind: 'stream', item? }` (the iterable is not converted; the item schema is). Protocol `VALIDATION` includes its `data.issues` schema on `protocolErrors`.
+JSON Schema conversion uses Standard JSON Schema (`~standard.jsonSchema`) then TypeBox. Register more with `registerJsonSchemaConverter` (same accept-first pattern as `registerSchemaAdapter`). Unconverted schemas become `{ kind: 'unavailable', reason }` — they do not fail the catalog. `stream()` is `{ kind: 'stream', item? }` (the iterable is not converted; the item schema is). A procedure with `.expand()` (`@ts-pf/contract`) carries `expand: { key, at, fields }`, each field an output `CatalogSchema` (omitted with `schemas: false`). Codegen and OpenAPI read it. Protocol `VALIDATION` includes its `data.issues` schema on `protocolErrors`.
 
 `catalog(contract, { requireDescription: true })` throws an `Error` listing every procedure in the catalog (after `filter`, so hidden ones are skipped by default) that has no non-blank `docs()` `description` or `summary` (the `docs()` fields `@ts-pf/mcp` and `@ts-pf/codegen` read; for MCP tool-level descriptions, including `.describe()` / `mcp()`, use `@ts-pf/mcp`'s `audit()`). Run it in a test or a build script to keep the API documented. Default `false`.
 
