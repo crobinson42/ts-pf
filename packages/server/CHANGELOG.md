@@ -1,5 +1,13 @@
 # @ts-pf/server
 
+## 0.6.0
+
+### Patch Changes
+
+- Updated dependencies [[`eeff84e`](https://github.com/crobinson42/ts-pf/commit/eeff84e41a400aed328b5f791bd706d06c407fa1)]:
+  - @ts-pf/contract@0.6.0
+  - @ts-pf/protocol@0.6.0
+
 ## 0.5.2
 
 ### Patch Changes
