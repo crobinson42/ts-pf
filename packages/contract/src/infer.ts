@@ -3,15 +3,16 @@ import type { ContractProcedure } from './procedure.js'
 import type { ValidationIssue } from './schema-types.js'
 
 /**
- * The `{ input, output, errors, meta }` of one contract procedure type, or
- * `never` for anything else (a router object, a plain value). Matches a
- * `ContractBuilder` (which implements `ContractProcedure`, phantom `~types`
- * included) and a hand-written `ContractProcedure<I, O, E, M>` (codegen
- * output) alike, so consumers need one branch, not two.
+ * The `{ input, parsedInput, output, errors, meta }` of one contract procedure
+ * type, or `never` for anything else (a router object, a plain value).
+ * `input` is what a caller sends; `parsedInput` is what the handler receives.
+ * Matches a `ContractBuilder` (which implements `ContractProcedure`, phantom
+ * `~types` included) and a hand-written `ContractProcedure<I, O, E, M>`
+ * (codegen output) alike, so consumers need one branch, not two.
  */
 export type InferContractProcedure<T> =
-  T extends ContractProcedure<infer I, infer O, infer E, infer M>
-    ? { input: I; output: O; errors: E; meta: M }
+  T extends ContractProcedure<infer I, infer O, infer E, infer M, infer P>
+    ? { input: I; parsedInput: P; output: O; errors: E; meta: M }
     : never
 
 /** `true` when `T` is a contract procedure type (builder or hand-written). */

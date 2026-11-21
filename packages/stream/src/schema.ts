@@ -1,23 +1,31 @@
 import type { StandardSchemaV1 } from '@standard-schema/spec'
-import { type InferSchemaOutput, validateSchema } from '@ts-pf/contract'
+import {
+  type InferSchemaInput,
+  type InferSchemaOutput,
+  validateSchema,
+} from '@ts-pf/contract'
 import { PFError } from '@ts-pf/protocol'
 import { isItemStream } from './item-stream.js'
 
+/**
+ * A stream of `item`s. The sender's items are the item schema's input type;
+ * after the per-item check (a validated input stream) they are its output.
+ */
 export function stream<S>(
   item: S,
 ): StandardSchemaV1<
-  AsyncIterable<InferSchemaOutput<S>>,
+  AsyncIterable<InferSchemaInput<S>>,
   AsyncIterable<InferSchemaOutput<S>>
 > {
   const schema: StandardSchemaV1<
-    AsyncIterable<InferSchemaOutput<S>>,
+    AsyncIterable<InferSchemaInput<S>>,
     AsyncIterable<InferSchemaOutput<S>>
   > & { '~pfStream': { item: S } } = {
     '~standard': {
       version: 1,
       vendor: 'ts-pf',
       types: {
-        input: 0 as unknown as AsyncIterable<InferSchemaOutput<S>>,
+        input: 0 as unknown as AsyncIterable<InferSchemaInput<S>>,
         output: 0 as unknown as AsyncIterable<InferSchemaOutput<S>>,
       },
       validate: async (value) => {

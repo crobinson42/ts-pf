@@ -27,7 +27,7 @@ new FetchLink({ url: '/rpc', codec })
 procedure.output(stream(z.object({ token: z.string() })))
 ```
 
-Root only. Same codec on handler and link. A failure line after the stream started rejects the iterator with a `PFError` whose `status` is `undefined` (the response was already 200); switch on `code`. Item checks follow the server validation flags. Stream input items are checked unless `validation.input` is `false`. Stream output items are checked only when `validation.output` is `true`:
+Root only. Same codec on handler and link. A failure line after the stream started rejects the iterator with a `PFError` whose `status` is `undefined` (the response was already 200); switch on `code`. Item checks follow the server validation flags. Stream input items are checked unless `validation.input` is `false`. Stream output items are checked only when `validation.output` is `true`. An input `stream(item)` takes items of the item schema's input type from the sender; the handler iterates parsed items:
 
 ```ts no-check
 new FetchHandler(app, { codec, validation: { output: true } })

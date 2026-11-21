@@ -156,8 +156,9 @@ describe('io schema matrix (codegen)', () => {
     })
   })
 
-  it('locks catalog io vs live InferSchemaOutput for pipes and defaults', () => {
-    // procedure.input types InferSchemaOutput (parsed). catalog input uses io: 'input'.
+  it('prints catalog input with the schema input type (pipes, defaults)', () => {
+    // Matches the builder: callers send InferSchemaInput (catalog io: 'input');
+    // handlers get InferSchemaOutput.
     expect(printed('zod/io/pipe', 'input').ts).toBe('string')
     expect(printed('zod/io/pipe', 'output').ts).toBe('number')
     expect(printed('zod/io/defaulted', 'input').ts).toBe('{ a?: string }')

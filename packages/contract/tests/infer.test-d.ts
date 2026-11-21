@@ -104,6 +104,7 @@ describe('InferContractProcedure', () => {
     >
     expectTypeOf<InferContractProcedure<Find>>().toEqualTypeOf<{
       input: { id: number }
+      parsedInput: { id: number }
       output: { id: number; name: string }
       errors: Find['~pf']['errors']
       meta: {}
@@ -111,12 +112,16 @@ describe('InferContractProcedure', () => {
     expectTypeOf<InferContractProcedure<Written>['input']>().toEqualTypeOf<
       InferContractProcedure<Find>['input']
     >()
+    expectTypeOf<
+      InferContractProcedure<Written>['parsedInput']
+    >().toEqualTypeOf<InferContractProcedure<Find>['parsedInput']>()
     expectTypeOf<InferContractProcedure<Written>['output']>().toEqualTypeOf<
       InferContractProcedure<Find>['output']
     >()
     type List = InferContractProcedure<typeof contract.planet.list>
     expectTypeOf<List['input']>().toBeVoid()
-    expectTypeOf<Omit<List, 'input'>>().toEqualTypeOf<{
+    expectTypeOf<List['parsedInput']>().toBeVoid()
+    expectTypeOf<Omit<List, 'input' | 'parsedInput'>>().toEqualTypeOf<{
       output: string[]
       errors: {}
       meta: {}
@@ -256,5 +261,60 @@ describe('procedure meta typing', () => {
     type Outputs = InferContractOutputs<{ proc: typeof proc }>
     expectTypeOf<Inputs['proc']>().toEqualTypeOf<{ id: number }>()
     expectTypeOf<Outputs['proc']>().toEqualTypeOf<string>()
+  })
+})
+
+describe('input: caller type vs parsed type', () => {
+  const posts = router({
+    create: procedure
+      .input(
+        z.object({
+          title: z.string(),
+          status: z.enum(['draft', 'published']).default('draft'),
+          tags: z.array(z.string()).optional(),
+        }),
+      )
+      .output(z.object({ id: z.string() })),
+    count: procedure.input(z.string().transform((value) => value.length)),
+  })
+  type Create = InferContractProcedure<typeof posts.create>
+
+  it('types the caller side with the schema input (defaults optional)', () => {
+    expectTypeOf<Create['input']>().toEqualTypeOf<{
+      title: string
+      status?: 'draft' | 'published' | undefined
+      tags?: string[] | undefined
+    }>()
+    expectTypeOf<InferContractInputs<typeof posts>['create']>().toEqualTypeOf<
+      Create['input']
+    >()
+    const client = {} as ContractClient<typeof posts>
+    expectTypeOf(client.create).toBeCallableWith({ title: 'x' })
+    expectTypeOf(client.create).toBeCallableWith({
+      title: 'x',
+      status: 'published',
+    })
+    expectTypeOf(client.count).toBeCallableWith('abc')
+  })
+
+  it('types the handler side with the schema output (defaults filled)', () => {
+    expectTypeOf<Create['parsedInput']>().toEqualTypeOf<{
+      title: string
+      status: 'draft' | 'published'
+      tags?: string[] | undefined
+    }>()
+    expectTypeOf<
+      InferContractProcedure<typeof posts.count>['parsedInput']
+    >().toEqualTypeOf<number>()
+  })
+
+  it('keeps the split through .errors() and .meta()', () => {
+    const p = procedure
+      .input(z.object({ a: z.string().default('x') }))
+      .errors({ GONE: { status: 410 } })
+      .meta({ tag: 1 })
+    type P = InferContractProcedure<typeof p>
+    expectTypeOf<P['input']>().toEqualTypeOf<{ a?: string | undefined }>()
+    expectTypeOf<P['parsedInput']>().toEqualTypeOf<{ a: string }>()
   })
 })
