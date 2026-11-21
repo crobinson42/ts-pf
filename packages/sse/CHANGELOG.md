@@ -1,5 +1,14 @@
 # @ts-pf/sse
 
+## 0.5.2
+
+### Patch Changes
+
+- Updated dependencies [[`13e63db`](https://github.com/crobinson42/ts-pf/commit/13e63db9186f9fd093c2f934dec2cabcd35beef3)]:
+  - @ts-pf/stream@0.5.2
+  - @ts-pf/http@0.5.2
+  - @ts-pf/protocol@0.5.2
+
 ## 0.5.1
 
 ### Patch Changes

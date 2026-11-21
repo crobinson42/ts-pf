@@ -1,5 +1,13 @@
 # @ts-pf/swr
 
+## 0.5.2
+
+### Patch Changes
+
+- [#64](https://github.com/crobinson42/ts-pf/pull/64) [`13e63db`](https://github.com/crobinson42/ts-pf/commit/13e63db9186f9fd093c2f934dec2cabcd35beef3) Thanks [@crobinson42](https://github.com/crobinson42)! - Type client input with the input schema's input type, so a `.default()` field is optional at the call site (`client.posts.create({ title })`) and a `.transform()` input takes its source type. Handlers and `.useAfter()` still receive the parsed output type. `ContractProcedure` gains a fifth type parameter, `TParsedInput` (defaults to `TInput`, so hand-written and codegen `ContractProcedure<I, O>` types are unchanged), and `InferContractProcedure` returns `parsedInput` beside `input`. `stream(item)` input items follow the same split. `@ts-pf/swr` keys use the caller input type. Type-only: no runtime or wire change.
+- Updated dependencies [[`13e63db`](https://github.com/crobinson42/ts-pf/commit/13e63db9186f9fd093c2f934dec2cabcd35beef3)]:
+  - @ts-pf/contract@0.5.2
+
 ## 0.5.1
 
 ### Patch Changes
