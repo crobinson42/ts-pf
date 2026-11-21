@@ -46,13 +46,13 @@ emit(spec, {
 catalogHash(spec) // 'sha256:<hex>' of canonical JSON
 ```
 
-Generated procedures are `ContractProcedure<I, O, E>`, where `I` is the input schema's input type (catalog `io: 'input'`), the same caller type a builder contract gives, with Phantom Standard Schema leaves so `InferErrorData` / `asResult` still narrow `error.code === 'NOT_FOUND'`. Protocol errors stay out of the generated error map (`ClientError` already unions them). No-input is `void`. Streams are `AsyncIterable<Item>`.
+Generated procedures are `ContractProcedure<I, O, E>`, where `I` is the input schema's input type (catalog `io: 'input'`), the same caller type a builder contract gives, with Phantom Standard Schema leaves so `InferErrorData` / `asResult` still narrow `error.code === 'NOT_FOUND'`. Protocol errors stay out of the generated error map (`ClientError` already unions them). No-input is `void`. Streams are `AsyncIterable<Item>`. A procedure with `.expand()` is printed with all six arguments, `ContractProcedure<I, O, E | {}, {}, I, Expansion<'populate', ['docs'], { authorId: … }>>`, with the input named once (`PostsGetInput`), so the generated client narrows per call like the source contract.
 
 `docs()` on a procedure becomes JSDoc on that generated member (`description`, `summary`, `@deprecated`). Tags stay OpenAPI grouping; other `.meta()` keys are not printed. JSDoc is on `Contract` members — `ContractClient` is a mapped type, so hover on `client.planet.find` may not show it.
 
 Runtime policy (cache vs write, auth, …) stays on the catalog. Ship `catalog.json` next to `contract.d.ts` and look up `procedures[].meta` by path. `createClient<Contract>` is still type-only.
 
-The generated file uses `import type { ContractProcedure } from '@ts-pf/contract'`. This package does not import contract at runtime.
+The generated file uses `import type { ContractProcedure } from '@ts-pf/contract'` (plus `Expansion` when some procedure has `.expand()`). This package does not import contract at runtime.
 
 ## `emitFiles`
 
@@ -136,7 +136,9 @@ for (const change of diff.breaking) {
 if (diff.breaking.length > 0) process.exitCode = 2
 ```
 
-`path` is the procedure key (`planet/find`); it is absent for a catalog-level change (`pointer: '/protocol/version'`). `pointer` is the location inside that entry: `/input` or `/output` (plus `/item` for a stream item) or `/errors/<code>/data`, then the JSON Schema path (`/input/properties/id`); also `/errors/<code>`, `/errors/<code>/status`, and `/docs/deprecated`. Errors are addressed by code (JSON-pointer escaped), not array index. `kind` names the rule (`procedure-removed`, `required-property-added`, `type-changed`, …). Changes are plain JSON.
+`path` is the procedure key (`planet/find`); it is absent for a catalog-level change (`pointer: '/protocol/version'`). `pointer` is the location inside that entry: `/input` or `/output` (plus `/item` for a stream item) or `/errors/<code>/data`, then the JSON Schema path (`/input/properties/id`); also `/errors/<code>`, `/errors/<code>/status`, `/expand`, `/expand/key`, `/expand/at`, `/expand/fields/<name>` (then the JSON Schema path), and `/docs/deprecated`. Errors are addressed by code (JSON-pointer escaped), not array index. `kind` names the rule (`procedure-removed`, `required-property-added`, `type-changed`, …). Changes are plain JSON.
+
+A `.expand()` expansion is checked from the caller's side. Removing it, changing its `key` or `at`, or removing a field is breaking: a caller that passes that field relies on getting it expanded. Adding an expansion or a field is safe. Each field's schema is compared as output.
 
 Direction decides. Inputs are what an old client **sends**; outputs and error `data` are what it **receives**.
 

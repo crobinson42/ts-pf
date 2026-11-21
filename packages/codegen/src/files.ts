@@ -3,8 +3,10 @@ import {
   assertSupportedCatalog,
   catalogBanner,
   collectProcedure,
+  contractImport,
   type EmitOptions,
   generatedHeader,
+  procedureArgs,
 } from './emit.js'
 import { jsDocLines } from './jsdoc.js'
 import { aliasName, fileStem, quoteKey } from './names.js'
@@ -168,7 +170,7 @@ function printProcedureFile(
   const lines: string[] = [
     generatedHeader(header),
     '',
-    "import type { ContractProcedure } from '@ts-pf/contract'",
+    contractImport(slots.expand !== undefined),
   ]
   if (usesPhantom) {
     lines.push("import type { Phantom } from './_phantom.js'")
@@ -188,10 +190,15 @@ function printProcedureFile(
     lines.push('')
     lines.push(...docs)
   }
-  const args =
-    slots.errors === undefined
-      ? [`${name}Input`, `${name}Output`]
-      : [`${name}Input`, `${name}Output`, `${name}Errors`]
+  const args = procedureArgs(
+    {
+      ...slots,
+      input: `${name}Input`,
+      output: `${name}Output`,
+      ...(slots.errors !== undefined ? { errors: `${name}Errors` } : {}),
+    },
+    `${name}Input`,
+  )
   lines.push(
     `export type ${name} = ContractProcedure<\n${args.map((arg) => `  ${arg}`).join(',\n')}\n>`,
   )

@@ -135,6 +135,13 @@ function toOperation(
   if (sharedErrors) {
     operation['x-ts-pf-errors'] = errorCodes(errors)
   }
+  if (proc.expand !== undefined) {
+    operation['x-ts-pf-expand'] = {
+      key: proc.expand.key,
+      at: [...proc.expand.at],
+      fields: Object.keys(proc.expand.fields),
+    }
+  }
   if (proc.docs?.summary !== undefined) {
     operation.summary = proc.docs.summary
   }

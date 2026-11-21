@@ -1,6 +1,6 @@
 ---
 name: ts-pf-contract
-description: "Use when defining a ts-pf contract with procedure, router, schemas, typed errors, or InferContract* types. Triggers: @ts-pf/contract, procedure, router, registerSchemaAdapter, toValidationIssues, ClientError, .errors(), .input(), .output()."
+description: "Use when defining a ts-pf contract with procedure, router, schemas, typed errors, expandable outputs, or InferContract* types. Triggers: @ts-pf/contract, procedure, router, registerSchemaAdapter, toValidationIssues, ClientError, .errors(), .input(), .output(), .expand(), populate, Expansion, InferExpandedOutput."
 ---
 
 # @ts-pf/contract
@@ -36,6 +36,22 @@ Schemas: Standard Schema (Zod, Valibot, ArkType) or TypeBox. More via `registerS
 
 `.errors()` `status` is optional HTTP / OpenAPI metadata (omitted → HTTP 400). `ClientError` carries `status?: number`: the HTTP response status over Fetch, `undefined` on message transports and mid-stream items. Narrow on `code`; guard `status`.
 
+Expandable outputs, where a `populate` / `expand` list in the input picks which fields come back expanded: `.output()` gets the **wide** schema (each field in either form), and `.expand()` lists each field's expanded schema. Every client then narrows per call, with no wrapper type.
+
+```ts
+import { procedure } from '@ts-pf/contract'
+import { z } from 'zod'
+
+const User = z.object({ id: z.string(), name: z.string() })
+export const get = procedure
+  .input(z.object({ id: z.string(), populate: z.array(z.enum(['authorId'])).optional() }))
+  .output(z.object({ id: z.string(), authorId: z.union([z.string(), User]) }))
+  .expand({ key: 'populate', fields: { authorId: User } }) // add `at: ['docs']` for a page's items
+// client.get({ id }) → authorId: string; client.get({ id, populate: ['authorId'] }) → authorId: User
+```
+
+The plain type is the wide type minus the expanded one. A field that is only `undefined` when plain (an optional list such as `categories?: Link[]`) exists only when expanded. A non-literal `K[]` list gives the wide output. A hand-written contract type writes `Expansion<'populate', ['docs'], { authorId: User }>` (output **types**) as the 6th `ContractProcedure` parameter.
+
 Nest slice routers: `router({ planet: planetContract, star: starContract })`. Pick a procedure into a smaller tree: `router({ list: users.list })`. No `mergeRouters`.
 
 ## API
@@ -45,8 +61,9 @@ Nest slice routers: `router({ planet: planetContract, star: starContract })`. Pi
 - `isContractProcedure`, `isContractRouter`
 - `ClientError`, `ContractClient`, `CallOptions`
 - `InferContractInputs`, `InferContractOutputs`, `InferContractErrors`, `InferErrorData`
-- `InferContractProcedure<T>` (type) — `{ input, parsedInput, output, errors, meta }` of one procedure type, or `never` (`input` is what a caller sends, `parsedInput` what the handler receives; a codegen `ContractProcedure<I, O>` has both as `I`); `IsContractProcedure<T>` (type) — `true` / `false`. For tooling that walks a contract type (a builder or a codegen `ContractProcedure`) without re-deriving the match.
+- `InferContractProcedure<T>` (type) — `{ input, parsedInput, output, errors, meta, expand }` of one procedure type, or `never` (`input` is what a caller sends, `parsedInput` what the handler receives; a codegen `ContractProcedure<I, O>` has both as `I`; `expand` is its `Expansion` or `never`); `IsContractProcedure<T>` (type) — `true` / `false`. For tooling that walks a contract type (a builder or a codegen `ContractProcedure`) without re-deriving the match.
 - `ContractProtocolErrorCode` (type) — the closed protocol codes `ClientError` falls back to
+- `.expand({ key, at?, fields })`; `Expansion<Key, At, Fields>` (type, the 6th `ContractProcedure` parameter); `InferExpandedOutput<T, ['authorId']>` (type; `InferContractOutputs` gives the wide output); `ContractExpandDef` (type, `~pf.expand`)
 
 ## Pair with
 
@@ -60,4 +77,5 @@ Nest slice routers: `router({ planet: planetContract, star: starContract })`. Pi
 - `.docs()` on the builder — use `docs()` from `@ts-pf/docs` inside `.meta()`.
 - Stacked `.input()` merge/pipe. oRPC `oc`.
 - `mergeRouters` — nest `router({ planet: planetContract })`.
+- Separate `getPopulated` procedures, or a hand-written client type that is generic in `populate` — use `.expand()`. Do not give `.output()` the plain shape when the server may send expanded fields: the output must be the wide schema.
 - Redeclare `VALIDATION`, `INTERNAL`, `BAD_REQUEST`, `METHOD_NOT_ALLOWED`, or `PAYLOAD_TOO_LARGE` on `.errors()`.

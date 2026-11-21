@@ -1,6 +1,6 @@
 ---
 name: ts-pf-openapi
-description: "Use when projecting a ts-pf catalog() to OpenAPI 3.1 with openapi(). Triggers: @ts-pf/openapi, openapi(), OpenAPI 3.1, POST JSON RPC spec, profile: 'codegen', openapi-generator / Kiota / orval / swagger_parser, discriminator, x-ts-pf-streams."
+description: "Use when projecting a ts-pf catalog() to OpenAPI 3.1 with openapi(). Triggers: @ts-pf/openapi, openapi(), OpenAPI 3.1, POST JSON RPC spec, profile: 'codegen', openapi-generator / Kiota / orval / swagger_parser, discriminator, x-ts-pf-streams, x-ts-pf-expand."
 ---
 
 # @ts-pf/openapi
@@ -77,7 +77,9 @@ Never set by the profile:
 - `enumNames: { BookStatus: ['available', 'loaned'] }`: every inline `enum` with that value set (any order) → `$ref` to `BookStatus`. Prefer `.meta({ id })`. Unused entries warn; an invalid name, an entry with no values, two entries with one value set, or a name an existing component has with a different schema throws.
 - `catalogHash`: written to `info['x-ts-pf-catalog-hash']`; pass `catalogHash(cat)` from `@ts-pf/codegen`.
 
-`x-ts-pf-errors`, `x-ts-pf-streams`, and `x-ts-pf-catalog-hash` are the only `x-` extensions.
+A procedure with `.expand()` gets `x-ts-pf-expand: { key, at, fields: [names] }` on its operation, whatever the options. The response schema is the wide one, so each expandable field already allows both forms. Generators do not narrow per call; read the extension if yours can.
+
+`x-ts-pf-errors`, `x-ts-pf-streams`, `x-ts-pf-expand`, and `x-ts-pf-catalog-hash` are the only `x-` extensions.
 
 Security schemes and extra components stay userland: mutate the returned document.
 

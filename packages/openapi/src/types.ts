@@ -160,6 +160,18 @@ export type OpenAPIOperation = {
   responses: Record<string, OpenAPIResponse>
   /** The error codes this operation can return (`errors: 'shared'`). */
   'x-ts-pf-errors'?: string[]
+  /**
+   * The procedure's `.expand()`: the request field (`key`) listing which
+   * `fields` of the object at `at` (a key path; arrays pass through) the
+   * response carries expanded. The response schema already allows both forms.
+   */
+  'x-ts-pf-expand'?: OpenAPIExpand
+}
+
+export type OpenAPIExpand = {
+  key: string
+  at: string[]
+  fields: string[]
 }
 
 export type PathItem = {

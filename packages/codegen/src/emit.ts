@@ -54,7 +54,12 @@ export function collectProcedure(
   proc: CatalogProcedure,
   aliases: Array<{ name: string; ts: string }>,
   failOnUnavailable: boolean,
-): { input: string; output: string; errors: string | undefined } {
+): {
+  input: string
+  output: string
+  errors: string | undefined
+  expand: string | undefined
+} {
   const input = printSlot(proc.input, {
     path: proc.path,
     suffix: 'Input',
@@ -77,7 +82,67 @@ export function collectProcedure(
     aliases,
     failOnUnavailable,
   )
-  return { input, output, errors }
+  const expand = printExpansion(proc, aliases, failOnUnavailable)
+  return { input, output, errors, expand }
+}
+
+/** `Expansion<key, at, { field: type }>`, or undefined without `.expand()`. */
+function printExpansion(
+  proc: CatalogProcedure,
+  aliases: Array<{ name: string; ts: string }>,
+  failOnUnavailable: boolean,
+): string | undefined {
+  if (proc.expand === undefined) {
+    return undefined
+  }
+  const { key, at, fields } = proc.expand
+  const body = Object.entries(fields).map(([field, schema]) => {
+    const ts = printSlot(schema, {
+      path: proc.path,
+      suffix: `Expand${pascalCase(field)}`,
+      missing: 'unknown',
+      slot: `expand ${field}`,
+      aliases,
+      failOnUnavailable,
+    })
+    const lines = ts.split('\n')
+    return [`${quoteKey(field)}: ${lines[0]}`, ...lines.slice(1)]
+      .map((line) => `  ${line}`)
+      .join('\n')
+  })
+  const path = `[${at.map(quoteString).join(', ')}]`
+  return `Expansion<${quoteString(key)}, ${path}, {\n${body.join('\n')}\n}>`
+}
+
+/**
+ * Type arguments for `ContractProcedure`. With an expansion, every slot up
+ * to the 6th is written: errors `{}` when none, meta `{}`, and the parsed
+ * input the same as the input (`inputRef`, a name, so it is not printed twice).
+ */
+export function procedureArgs(
+  slots: ReturnType<typeof collectProcedure>,
+  inputRef: string,
+): string[] {
+  if (slots.expand !== undefined) {
+    return [
+      inputRef,
+      slots.output,
+      slots.errors ?? '{}',
+      '{}',
+      inputRef,
+      slots.expand,
+    ]
+  }
+  return slots.errors === undefined
+    ? [slots.input, slots.output]
+    : [slots.input, slots.output, slots.errors]
+}
+
+/** The `@ts-pf/contract` type import for generated files. */
+export function contractImport(usesExpansion: boolean): string {
+  return usesExpansion
+    ? "import type { ContractProcedure, Expansion } from '@ts-pf/contract'"
+    : "import type { ContractProcedure } from '@ts-pf/contract'"
 }
 
 export function emit(
@@ -98,7 +163,11 @@ export function emit(
     lines.push(catalogBanner(catalog))
     lines.push('')
   }
-  lines.push("import type { ContractProcedure } from '@ts-pf/contract'")
+  lines.push(
+    contractImport(
+      catalog.procedures.some((proc) => proc.expand !== undefined),
+    ),
+  )
   lines.push('')
   lines.push(PHANTOM_SOURCE)
   lines.push('')
@@ -142,12 +211,14 @@ function printProcedure(
   aliases: Array<{ name: string; ts: string }>,
   failOnUnavailable: boolean,
 ): string {
-  const { input, output, errors } = collectProcedure(
-    proc,
-    aliases,
-    failOnUnavailable,
-  )
-  const args = errors === undefined ? [input, output] : [input, output, errors]
+  const slots = collectProcedure(proc, aliases, failOnUnavailable)
+  let inputRef = slots.input
+  if (slots.expand !== undefined && !/^[A-Za-z_$][\w$]*$/.test(slots.input)) {
+    // The input is both the 1st and the 5th argument: name it once.
+    inputRef = aliasName(proc.path, 'Input')
+    aliases.push({ name: inputRef, ts: slots.input })
+  }
+  const args = procedureArgs(slots, inputRef)
   const compact = args.every((arg) => !arg.includes('\n'))
   if (compact) {
     return `ContractProcedure<${args.join(', ')}>`

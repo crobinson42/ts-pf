@@ -137,6 +137,11 @@ function toProcedure(
       >
       input?: unknown
       output?: unknown
+      expand?: {
+        key: string
+        at: readonly string[]
+        fields: Record<string, unknown>
+      }
     }
   },
   prefix: string | undefined,
@@ -174,6 +179,18 @@ function toProcedure(
     }
     if (def.output !== undefined) {
       proc.output = toCatalogSchema(def.output, 'output')
+    }
+    if (def.expand !== undefined) {
+      proc.expand = {
+        key: def.expand.key,
+        at: [...def.expand.at],
+        fields: Object.fromEntries(
+          Object.entries(def.expand.fields).map(([name, schema]) => [
+            name,
+            toCatalogSchema(schema, 'output'),
+          ]),
+        ),
+      }
     }
   }
   return proc

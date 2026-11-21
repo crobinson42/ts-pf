@@ -35,6 +35,8 @@ SWR’s `error` is the thrown `PFError`. `error.code` still narrows declared err
 
 Skip a request with a null key: `id ? swr.planet.find.key({ input: { id } }) : null`.
 
+A procedure with `.expand()` ([`@ts-pf/contract`](https://github.com/crobinson42/ts-pf/tree/main/packages/contract#expandable-outputs)): `swr.posts.get(...)` and `.call(...)` narrow per call, but `useSWR(key, fetcher())` data is the wide output, because SWR infers data from the fetcher, which cannot see the key's list. Pass a fetcher that calls the procedure instead: `useSWR(swr.posts.get.key({ input }), () => swr.posts.get(input))` with the literal `input`. `InferExpandedOutput<typeof contract.posts.get, ['authorId']>` names the narrowed type.
+
 ## Infinite queries
 
 ```ts no-check
