@@ -1,5 +1,14 @@
 # @ts-pf/message-client
 
+## 0.5.2
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @ts-pf/client@0.5.2
+  - @ts-pf/message@0.5.2
+  - @ts-pf/protocol@0.5.2
+
 ## 0.5.1
 
 ### Patch Changes

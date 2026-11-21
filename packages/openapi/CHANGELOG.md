@@ -1,5 +1,12 @@
 # @ts-pf/openapi
 
+## 0.5.2
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @ts-pf/docs@0.5.2
+
 ## 0.5.1
 
 ### Patch Changes
