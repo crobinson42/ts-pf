@@ -1,5 +1,12 @@
 # @ts-pf/message
 
+## 0.7.0
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @ts-pf/protocol@0.7.0
+
 ## 0.6.1
 
 ### Patch Changes
