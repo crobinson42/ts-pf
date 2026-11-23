@@ -1,5 +1,5 @@
 import type { JsonSchema } from '@ts-pf/docs'
-import type { Effect } from './meta.js'
+import type { McpEffect } from './meta.js'
 
 /** What a caller brings to `McpTools.list` / `McpTools.call`. */
 export type McpCallInfo = {
@@ -39,7 +39,7 @@ export type McpToolDefinition = {
   /** Only when the tool declares `.output(schema, map)`; results are then checked. */
   outputSchema?: JsonSchema
   annotations: McpToolAnnotations
-  effect: Effect
+  effect: McpEffect
 }
 
 export type McpToolResult = {

@@ -27,7 +27,6 @@
       "@ts-pf/protocol",
       "@ts-pf/server",
       "@ts-pf/server-http",
-      "@ts-pf/sse",
       "@ts-pf/stream",
       "@ts-pf/swr"
     ]

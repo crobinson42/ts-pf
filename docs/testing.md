@@ -145,7 +145,7 @@ it('lets a user through', async () => {
 })
 ```
 
-Keys that middleware adds or reads (`user`) are declared on `$context<AppCtx>()` as optional, so a test can pre-fill them and skip the real `auth()`. A `PFError` thrown by middleware with an undeclared code (`UNAUTHORIZED` above) reaches the client at runtime, but it is not in the `ClientError` union (declared codes plus protocol codes, no catch-all), so `result.error.code === 'UNAUTHORIZED'` does not type-check. Assert through `expect(...).toBe(...)` as above, or declare the code on `.errors()` of the procedures the middleware guards.
+Here the adapter supplies `user` (optional on `$context<AppCtx>()`) and middleware only reads it, so a test can pre-fill it and skip the real `auth()`. A key that middleware adds with `next({ context })` is typed for handlers built after it and needs no placeholder. A `PFError` thrown by middleware with an undeclared code (`UNAUTHORIZED` above) reaches the client at runtime, but it is not in the `ClientError` union (declared codes plus protocol codes, no catch-all), so `result.error.code === 'UNAUTHORIZED'` does not type-check. Assert through `expect(...).toBe(...)` as above, or declare the code on `.errors()` of the procedures the middleware guards.
 
 ## Streams
 

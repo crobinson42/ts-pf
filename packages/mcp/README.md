@@ -256,5 +256,6 @@ Checked against MCP Inspector 2.12 (CLI, HTTP and stdio, both protocol eras) and
 - `McpCallInfo`
 - `McpToolDefinition`
 - `McpToolResult`
+- `MapperOptions` (the options argument of a tool `.map()` callback)
 
-`mcp` (with `Effect`, `McpMeta`) is `@ts-pf/mcp/meta`. `createMcpFactory` and `McpFactoryOptions` are `@ts-pf/mcp/sdk`. The rest are `@ts-pf/mcp`, which also exports the types that appear in inferred toolkit values (`Toolkit`, `ToolkitNode`, `ToolBuilder`, `Toolset`, `Host`, `AllTools`, `CompositeTool`, …) so a toolset can be exported under `declaration: true`.
+`mcp` (with `McpEffect`, `McpMeta`) is `@ts-pf/mcp/meta`. `createMcpFactory` and `McpFactoryOptions` are `@ts-pf/mcp/sdk`. The rest are `@ts-pf/mcp`, which also exports the types that appear in inferred toolkit values (`Toolkit`, `ToolkitNode`, `ToolBuilder`, `Toolset`, `Host`, `AllTools`, `CompositeTool`, …) so a toolset can be exported under `declaration: true`.

@@ -47,7 +47,7 @@ Naming: the contract helper is `router`, so the implemented tree is always `app`
 
 ## Context
 
-`$context<C>()` is the **only** source of the context type. It declares what every handler receives, including keys that middleware will add later (`user?: User`). Middleware runtime-merges what it passes to `next({ context })` but does not widen the type the handler sees, so declare optional keys up front. This is a known cost, recorded in [`DECISIONS.md`](../DECISIONS.md) ("Middleware does not narrow context").
+`$context<C>()` declares the context every adapter supplies. Middleware adds to it: `next({ context: { user } })` merges at runtime, and `user` is typed for the middleware and handlers built after it (`impl.use(requireUser).planet.create.handler(...)`). An added key may narrow a declared one (`user?: User` → `User`) but not change its type. [`DECISIONS.md`](../DECISIONS.md) ("Middleware narrows context") records the design.
 
 `impl.router()` carries that type on the app as a type-only brand (`ImplementedRouter<T, TCtx>`). Every adapter reads it from there, so you declare the context type once and the `context` you pass to an adapter is checked against it:
 
@@ -82,13 +82,16 @@ import { createImplementer } from '@ts-pf/server'
 import { PFError } from '@ts-pf/protocol'
 import { contract } from './contract.js'
 
-const impl = createImplementer(contract).$context<{ db: Db; token?: string; user?: User }>()
+const impl = createImplementer(contract).$context<{ db: Db; token?: string }>()
 
 const requireUser = impl.middleware(async ({ context, next }) => {
   const user = await auth(context.token)
   if (!user) throw new PFError({ code: 'UNAUTHORIZED', status: 401 })
-  return next({ context: { user } }) // merged; the handler still sees user?: User
+  return next({ context: { user } }) // merged; typed downstream
 })
+
+// Handlers built from `authed` see `context.user: User`.
+const authed = impl.use(requireUser)
 ```
 
 ## Links and adapters: every wire is an adapter
@@ -104,7 +107,7 @@ const requireUser = impl.middleware(async ({ context, next }) => {
 
 ## Codecs
 
-Over HTTP, a **codec** decides how the envelope becomes a body. `JSONCodec` is the default and emits `application/json`. The opt-in codecs wrap it without changing the contract: `MultipartCodec` (`@ts-pf/file`) for `File` / `Blob` values, `StreamCodec` (`@ts-pf/stream`) for root `AsyncIterable` as JSONL, `SseCodec` (`@ts-pf/sse`) for SSE output framing.
+Over HTTP, a **codec** decides how the envelope becomes a body. `JsonCodec` is the default and emits `application/json`. The opt-in codecs wrap it without changing the contract: `MultipartCodec` (`@ts-pf/file`) for `File` / `Blob` values, `StreamCodec` (`@ts-pf/stream`) for root `AsyncIterable` as JSONL, `SseCodec` (also `@ts-pf/stream`) for SSE output framing.
 
 The handler and the link **must use the same codec**. A `FetchLink` with `StreamCodec` talking to a `FetchHandler` without it gets a JSON body where it expects JSONL frames; a handler with `MultipartCodec` behind a plain link never receives a file. A `stream()` procedure on a handler without `StreamCodec` / `SseCodec` answers `400 BAD_REQUEST` `Stream procedure requires a streaming codec`; other mismatches surface as a `BAD_REQUEST` or a silently wrong shape, not a message that says "codec mismatch", so construct the codec in one shared module and pass `{ codec }` to both constructors. Message transports do not use codecs at all; they frame the same envelopes as JSON text.
 
@@ -116,9 +119,9 @@ There are three places to hook a call, and they see different things:
 |---|---|---|---|
 | `HandlerPlugin` (`CORSPlugin`, `RequestLimitPlugin`, header plugins) | `@ts-pf/server-http` | HTTP `Request` / `Response`, context | `FetchHandler` only (`plugins`) |
 | `CallInterceptor` / `CallPlugin` (`onStart`, `DedupePlugin`, `RetryPlugin`, `CachePlugin`) | `@ts-pf/server` and `@ts-pf/client` | `path`, `input`, result; on the server also `context` and `procedure` | Around `runProcedure` (server: `FetchHandler` / message handlers / `createLocalClient` `{ interceptors }`) or around `Link.call` (client: `createClient(link, { plugins, interceptors })`) |
-| Fetch `Interceptor` | `@ts-pf/client-http` | Raw `fetch` `Request` / `Response` / throws | `FetchLink` (`interceptors`) |
+| `FetchInterceptor` | `@ts-pf/client-http` | Raw `fetch` `Request` / `Response` / throws | `FetchLink` (`interceptors`) |
 
-The one-line rule: **if it needs a `Request` or `Response`, it is a `HandlerPlugin` (server) or a Fetch `Interceptor` (client); if it needs the procedure path, input, or result, it is a call interceptor; if it changes what the handler receives as context, it is middleware.** Mapping domain errors to declared codes is middleware too (see [Errors](errors.md#mapping-domain-errors-to-declared-codes)): it must run before the declared-error check.
+The one-line rule: **if it needs a `Request` or `Response`, it is a `HandlerPlugin` (server) or a `FetchInterceptor` (client); if it needs the procedure path, input, or result, it is a call interceptor; if it changes what the handler receives as context, it is middleware.** Mapping domain errors to declared codes is middleware too (see [Errors](errors.md#mapping-domain-errors-to-declared-codes)): it must run before the declared-error check.
 
 Two details that bite:
 

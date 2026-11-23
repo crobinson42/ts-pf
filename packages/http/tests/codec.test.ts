@@ -1,6 +1,6 @@
 import { PFError } from '@ts-pf/protocol'
 import { describe, expect, it } from 'vitest'
-import { JSONCodec, type RpcBodySource } from '../src/index.js'
+import { JsonCodec, type RpcBodySource } from '../src/index.js'
 
 function source(body: string, contentType = 'application/json'): RpcBodySource {
   return {
@@ -23,8 +23,8 @@ function bytes(body: string): ReadableStream<Uint8Array> | null {
   })
 }
 
-describe('JSONCodec', () => {
-  const codec = new JSONCodec()
+describe('JsonCodec', () => {
+  const codec = new JsonCodec()
 
   it('declares that it cannot carry streams', () => {
     expect(codec.streams).toBe(false)

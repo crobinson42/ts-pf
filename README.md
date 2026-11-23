@@ -14,7 +14,7 @@ Requires Node.js 22+.
 npm install @ts-pf/contract @ts-pf/server @ts-pf/server-http @ts-pf/client @ts-pf/client-http
 ```
 
-Every `@ts-pf/*` package releases on one version. Keep them all on that version and update them together in one install command; a mixed set installs duplicate copies of shared packages.
+Every `@ts-pf/*` package releases on one version and follows semver from 1.0. Keep them all on the same major; within it, packages depend on each other with `^` ranges, so `npm update` (or grouped or ungrouped Renovate / Dependabot updates) keeps one copy of each. Cross a major in one install command for every `@ts-pf/*` package.
 
 `@ts-pf/protocol` (`PFError`) comes along as a dependency of `server` and `client`; import it directly, and add it to your own `dependencies` if your package manager blocks undeclared transitive imports.
 
@@ -30,12 +30,11 @@ The packages are ESM and ship `exports` only, so `tsconfig.json` needs `"moduleR
 | [`@ts-pf/protocol`](packages/protocol) | Portable JSON envelope, `PFError`, `PROTOCOL_VERSION` |
 | [`@ts-pf/server`](packages/server) | `createImplementer()`, middleware, `runProcedure`, `lookupProcedure`, `createLocalClient()`, call interceptors / `DedupePlugin` |
 | [`@ts-pf/client`](packages/client) | `createClient()`, `Link`, `intercept()` / `CallPlugin`, `RetryPlugin` / `DedupePlugin` / `CachePlugin`, `asResult()`, `isLocalFailure()` |
-| [`@ts-pf/http`](packages/http) | HTTP wire helpers: `JSONCodec`, `RpcCodec`, `PROTOCOL_HEADER`, path helpers, `httpStatus` |
+| [`@ts-pf/http`](packages/http) | HTTP wire helpers: `JsonCodec`, `RpcCodec`, `PROTOCOL_HEADER`, path helpers, `httpStatus` |
 | [`@ts-pf/server-http`](packages/server-http) | `FetchHandler`, `HandlerPlugin` (CORS / limits / headers) |
 | [`@ts-pf/client-http`](packages/client-http) | `FetchLink`, Fetch interceptors |
 | [`@ts-pf/file`](packages/file) | Opt-in `MultipartCodec` for `File`/`Blob` attachments |
 | [`@ts-pf/stream`](packages/stream) | Opt-in `StreamCodec` for root `AsyncIterable` (JSONL) |
-| [`@ts-pf/sse`](packages/sse) | Opt-in `SseCodec` for SSE output framing of the same envelopes |
 | [`@ts-pf/docs`](packages/docs) | Opt-in procedure catalog from a contract (`docs()`, `catalog()`) |
 | [`@ts-pf/openapi`](packages/openapi) | Opt-in OpenAPI 3.1 from `catalog()` (POST JSON RPC) |
 | [`@ts-pf/codegen`](packages/codegen) | Opt-in `.d.ts` from `catalog()` for split repos; catalog breaking-change check |
@@ -104,9 +103,8 @@ import { FetchHandler } from '@ts-pf/server-http'
 import { PFError } from '@ts-pf/protocol'
 import { contract } from './contract.js'
 
-// Declare every key middleware will add (`user`) here. `next({ context })`
-// takes a Partial of this type; it does not infer new keys.
-export type AppCtx = { db: Db; req: Request; user?: User }
+// What the adapter supplies. Middleware adds the rest (`user`), typed.
+export type AppCtx = { db: Db; req: Request }
 
 const impl = createImplementer(contract).$context<AppCtx>()
 
@@ -135,7 +133,7 @@ export const app = impl.use(requireUser).router({
 export const handler = new FetchHandler(app)
 ```
 
-`Db`, `User`, `db`, and `auth()` are your app's types and values. `$context<AppCtx>()` is the only source of context types: middleware runtime-merges what it passes to `next({ context })` but does not widen the type, so declare optional keys such as `user?` up front. `impl.router()` carries that type on `app`: `FetchHandler`, the message handlers, `createLocalClient`, and `@ts-pf/astro` read it from there and reject a `context` that does not match (a plain object of handlers that did not go through `impl.router()` infers `unknown` instead), and `impl.router()` itself rejects a missing or extra key, a handler placed under another procedure's key, or a slice built with a different `$context`, naming the key in the error.
+`Db`, `User`, `db`, and `auth()` are your app's types and values. `$context<AppCtx>()` is the context the adapter supplies. A middleware's `next({ context: { user } })` adds `user` to the type of the middleware and handlers built after it (`const authed = impl.use(requireUser)`, then `authed.planet.create.handler(...)`; see the [`@ts-pf/server` README](packages/server/README.md#keys-middleware-adds)). `impl.router()` carries `AppCtx` on `app`: `FetchHandler`, the message handlers, `createLocalClient`, and `@ts-pf/astro` read it from there and reject a `context` that does not match (a plain object of handlers that did not go through `impl.router()` infers `unknown` instead), and `impl.router()` itself rejects a missing or extra key, a handler placed under another procedure's key, or a slice built with a different `$context`, naming the key in the error.
 
 `.use()` runs before input validation. `.useAfter()` runs after, with typed input when the input check ran. Input schemas are checked unless `validation.input` is `false`. Output schemas, including stream output items, are checked only when `validation.output` is `true` (`FetchHandler`, message handlers, `createLocalClient`, and `runProcedure`).
 

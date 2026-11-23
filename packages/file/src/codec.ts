@@ -1,7 +1,7 @@
 import {
   type EnvelopeTextCodec,
   isJsonContentType,
-  JSONCodec,
+  JsonCodec,
   jsonBodySource,
   mimeType,
   type RpcBodySource,
@@ -39,7 +39,7 @@ export class MultipartCodec implements RpcCodec {
     maxFiles?: number
     maxFileSize?: number
   }) {
-    this.inner = options?.inner ?? new JSONCodec()
+    this.inner = options?.inner ?? new JsonCodec()
     this.maxFiles = options?.maxFiles ?? DEFAULT_MAX_FILES
     this.maxFileSize = options?.maxFileSize ?? DEFAULT_MAX_FILE_SIZE
   }

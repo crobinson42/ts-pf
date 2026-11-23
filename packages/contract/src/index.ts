@@ -1,5 +1,5 @@
 export { toValidationIssues } from './adapters/standard-schema.js'
-export { ContractBuilder, procedure, router } from './builder.js'
+export { type ContractBuilder, procedure, router } from './builder.js'
 export type { ErrorDef, ErrorMap, InferErrorData } from './errors.js'
 export type { ContractExpandDef, Expansion } from './expand.js'
 export type {
@@ -23,7 +23,6 @@ export {
   isContractProcedure,
 } from './procedure.js'
 export {
-  assertContractRouter,
   type ContractRouter,
   type ContractRouterBrand,
   isContractRouter,
@@ -32,7 +31,6 @@ export {
   type AnySchema,
   type InferSchemaInput,
   type InferSchemaOutput,
-  isStandardSchema,
   registerSchemaAdapter,
   type SchemaAdapter,
   type SchemaResult,

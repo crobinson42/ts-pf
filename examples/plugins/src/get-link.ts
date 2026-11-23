@@ -1,4 +1,4 @@
-import type { Interceptor } from '@ts-pf/client-http'
+import type { FetchInterceptor } from '@ts-pf/client-http'
 import { PROTOCOL_HEADER } from '@ts-pf/http'
 
 /** Longer URLs stay POST: CDNs and proxies commonly cap URLs near 8 KB. */
@@ -13,7 +13,7 @@ export const GET_MAX_URL = 8192
  * cross-origin read is a simple request unless your own headers add a
  * preflight.
  */
-export function getInterceptor(pathnames: readonly string[]): Interceptor {
+export function getInterceptor(pathnames: readonly string[]): FetchInterceptor {
   const gets = new Set(pathnames)
   return async ({ request, next }) => {
     const url = new URL(request.url)

@@ -45,8 +45,6 @@ const backpressure: BackpressureOptions = {
 
 `onStall` sees `action: 'paused'` once per call (normal flow control on a busy link, not logged by default) and `action: 'aborted'` when the drain timeout fires (logged by default); a throw from it is swallowed and never changes the call. A bad value is a `TypeError` naming the option from the binding's constructor. The validated form and the per-call drain wait (`resolveBackpressure`, `DrainWaiter`) are exported for the two bindings and marked `@internal`; a custom `Duplex` needs neither. `createPushQueue({ highWaterMark, onPause, onResume })` (`PushQueueOptions`) bounds the queue: `push(value, size)` counts `size` (default 1) against the mark, `onPause` fires once above it, `onResume` once the consumer drains it to half or on `end` / `fail`; nothing is dropped.
 
-`localFailure` is still re-exported for compatibility but is deprecated — import it from `@ts-pf/protocol`.
-
 Wire spec: [`packages/protocol/PROTOCOL.md`](../protocol/PROTOCOL.md) (Message transports).
 
 ## API
@@ -55,5 +53,5 @@ Wire spec: [`packages/protocol/PROTOCOL.md`](../protocol/PROTOCOL.md) (Message t
 - `createMemoryDuplex`, `createPortDuplex`, `createWsDuplex`, `WebSocketLike`
 - `createPushQueue`, `PushQueue`, `PushQueueOptions`
 - `BackpressureOptions`, `StallInfo` (`resolveBackpressure` / `DrainWaiter` are exported `@internal` for the bindings)
-- `errorFromEnvelope`; `localFailure` (deprecated re-export — use `@ts-pf/protocol`)
+- `errorFromEnvelope` (`localFailure` is in `@ts-pf/protocol`)
 - `createStdioDuplex` from `./stdio` only

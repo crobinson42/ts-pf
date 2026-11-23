@@ -7,7 +7,7 @@ import type {
   KeysOfUnion,
   Meta,
 } from './infer.js'
-import type { Effect } from './meta.js'
+import type { McpEffect } from './meta.js'
 import { type ToolName, toolName } from './names.js'
 import { type AnyNode, type NodeBrand, type NodeCtx, nodeInfo } from './node.js'
 import { type InputKeys, procedureInputKeys } from './schema.js'
@@ -42,7 +42,7 @@ export type ExcludedPath<X> = X extends AnyTool
 /** Effect from typed meta `{ mcp: { effect } }`; unclassified counts as `write`. */
 type ToolEffect<Tl> =
   Tl extends ToolBuilder<infer _T, infer P, infer _C, infer _Path, infer _S>
-    ? Meta<P> extends { mcp: { effect: infer E extends Effect } }
+    ? Meta<P> extends { mcp: { effect: infer E extends McpEffect } }
       ? E
       : 'write'
     : 'write'
@@ -234,7 +234,7 @@ function checkDeclared(requested: readonly string[], declared: Set<string>) {
 export function all<
   N extends AnyNode,
   const X extends readonly (AnyTool | AnyNode)[] = [],
-  const E extends Effect = Effect,
+  const E extends McpEffect = McpEffect,
   Inj extends object = {},
   const Tg extends string = never,
 >(

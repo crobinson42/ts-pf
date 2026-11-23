@@ -48,7 +48,7 @@ Writing a codec or transport adapter: `toWireError(error)` is the failure envelo
 
 ## Don't
 
-- `JSONCodec`, `RpcCodec`, `PROTOCOL_HEADER`, or `FetchHandler` here.
+- `JsonCodec`, `RpcCodec`, `PROTOCOL_HEADER`, or `FetchHandler` here.
 - `instanceof PFError` to detect a failure (misses a second copy of the package); use `isPFError`.
 - Put `status`, `cause`, or `local` in the JSON envelope (`toJSON` omits them).
 - Redeclare `VALIDATION`, `INTERNAL`, `BAD_REQUEST`, `METHOD_NOT_ALLOWED`, `PAYLOAD_TOO_LARGE` on `.errors()`.

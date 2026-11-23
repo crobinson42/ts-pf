@@ -1,8 +1,7 @@
 import { procedure, router } from '@ts-pf/contract'
 import { createImplementer } from '@ts-pf/server'
 import { FetchHandler } from '@ts-pf/server-http'
-import { SseCodec } from '@ts-pf/sse'
-import { stream } from '@ts-pf/stream'
+import { SseCodec, stream } from '@ts-pf/stream'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 

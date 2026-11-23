@@ -2,7 +2,7 @@
 import { describe, expectTypeOf, it } from 'vitest'
 import {
   type EnvelopeTextCodec,
-  JSONCodec,
+  JsonCodec,
   type RpcCodec,
 } from '../src/index.js'
 
@@ -14,7 +14,7 @@ describe('RpcCodec.streams', () => {
     >()
   })
 
-  it('is false on JSONCodec, typed as boolean', () => {
-    expectTypeOf(new JSONCodec().streams).toEqualTypeOf<boolean>()
+  it('is false on JsonCodec, typed as boolean', () => {
+    expectTypeOf(new JsonCodec().streams).toEqualTypeOf<boolean>()
   })
 })

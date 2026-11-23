@@ -9,11 +9,11 @@ Contract-first TypeScript RPC. One procedure model; Fetch is an adapter. This sk
 
 Install: `npm i @ts-pf/contract @ts-pf/server @ts-pf/server-http @ts-pf/client @ts-pf/client-http`
 
-Keep every `@ts-pf/*` package on the same version (they release together on one version); update them together, in one install command, never one at a time. Internal dependencies are exact pins, so a mixed set installs duplicate copies (TypeScript private-member checks then fail across copies, and so does raw `instanceof PFError`; use `isPFError`).
+Keep every `@ts-pf/*` package on the same major (they release together on one version and follow semver). Internal dependencies are `^` ranges, so `npm update` within a major keeps one copy of each; cross a major in one install command for every `@ts-pf/*` package. Two copies (two majors) break TypeScript private-member checks and raw `instanceof PFError`; use `isPFError`.
 
 Link for agents (after install or `npm update`): `npx skills experimental_sync -y`
 
-`experimental_sync` copies skills from **installed** packages only. If `ts-pf-<pkg>` is not in the project skill dir: `npm i @ts-pf/<pkg>@<version> && npx skills experimental_sync -y` (`<version>` = the installed `@ts-pf/contract` version, or upgrade every `@ts-pf/*` dependency in the same command), then load that skill. Do not invent APIs from a package name. Do not assume an opt-in package is already a dependency.
+`experimental_sync` copies skills from **installed** packages only. If `ts-pf-<pkg>` is not in the project skill dir: `npm i @ts-pf/<pkg>@^<major> && npx skills experimental_sync -y` (`<major>` = the installed `@ts-pf/contract` major), then load that skill. Do not invent APIs from a package name. Do not assume an opt-in package is already a dependency.
 
 ## Do
 
@@ -167,7 +167,7 @@ Calling the server from another language (Dart, Swift, Kotlin, Python, Go): mode
 | Codec helpers | `@ts-pf/http` | `ts-pf-http` |
 | File / Blob attachments | `@ts-pf/file` | `ts-pf-file` |
 | Root `AsyncIterable` (JSONL) | `@ts-pf/stream` | `ts-pf-stream` |
-| SSE output framing | `@ts-pf/sse` (needs `stream()`) | `ts-pf-sse` |
+| SSE output framing | `@ts-pf/stream` (`SseCodec`) | `ts-pf-stream` |
 | WS / stdio / MessagePort | `@ts-pf/message` + `-server` / `-client` | `ts-pf-message` / `-server` / `-client` |
 | Procedure catalog | `@ts-pf/docs` | `ts-pf-docs` |
 | OpenAPI 3.1 | `@ts-pf/openapi` | `ts-pf-openapi` |
@@ -208,13 +208,12 @@ new FetchLink({ url: '/rpc', codec })
 procedure.output(stream(z.object({ token: z.string() })))
 ```
 
-### SSE — `@ts-pf/sse` → `ts-pf-sse`
+### SSE — `@ts-pf/stream` → `ts-pf-stream`
 
 ```ts
 import { procedure } from '@ts-pf/contract'
 import { z } from 'zod'
-import { stream } from '@ts-pf/stream'
-import { SseCodec } from '@ts-pf/sse'
+import { SseCodec, stream } from '@ts-pf/stream'
 import { FetchHandler } from '@ts-pf/server-http'
 import { FetchLink } from '@ts-pf/client-http'
 
@@ -225,7 +224,7 @@ new FetchLink({ url: '/rpc', codec })
 procedure.output(stream(z.object({ token: z.string() })))
 ```
 
-Contracts still use `stream()` from `@ts-pf/stream`.
+`@ts-pf/sse` was merged into `@ts-pf/stream` at 1.0; do not install it.
 
 ### Message — `@ts-pf/message*` → `ts-pf-message` / `-server` / `-client`
 

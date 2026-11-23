@@ -1,7 +1,7 @@
 import {
   type EnvelopeTextCodec,
   isJsonContentType,
-  JSONCodec,
+  JsonCodec,
   jsonBodySource,
   mimeType,
   type RpcBodySource,
@@ -66,7 +66,7 @@ export class StreamCodec implements RpcCodec {
   private readonly inner: EnvelopeTextCodec
 
   constructor(options?: { inner?: EnvelopeTextCodec }) {
-    this.inner = options?.inner ?? new JSONCodec()
+    this.inner = options?.inner ?? new JsonCodec()
   }
 
   async encodeRequest(req: RpcRequest): Promise<RpcEncodedBody> {

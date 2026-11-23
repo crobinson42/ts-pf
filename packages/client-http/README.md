@@ -1,6 +1,6 @@
 # @ts-pf/client-http
 
-`FetchLink` and Fetch `Interceptor`s. Implements `Link` from [`@ts-pf/client`](../client). Analog of [`@ts-pf/message-client`](../message-client).
+`FetchLink` and `FetchInterceptor`s. Implements `Link` from [`@ts-pf/client`](../client). Analog of [`@ts-pf/message-client`](../message-client).
 
 Agent skill: [`skills/ts-pf-client-http/`](skills/ts-pf-client-http/). Sync with `npx skills experimental_sync -y`.
 

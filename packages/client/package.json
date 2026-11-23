@@ -48,8 +48,8 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/contract": "0.7.0",
-    "@ts-pf/protocol": "0.7.0"
+    "@ts-pf/contract": "^0.7.0",
+    "@ts-pf/protocol": "^0.7.0"
   },
   "devDependencies": {
     "zod": "^4.0.0"

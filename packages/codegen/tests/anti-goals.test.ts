@@ -15,7 +15,6 @@ describe('anti-goals', () => {
       '@ts-pf/client',
       '@ts-pf/server',
       '@ts-pf/stream',
-      '@ts-pf/sse',
       '@ts-pf/file',
       'zod',
       'typebox',

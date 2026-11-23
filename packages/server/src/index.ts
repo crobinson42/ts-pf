@@ -8,7 +8,13 @@ export {
   type ProcedureBuilder,
 } from './implement.js'
 export { mapStreamErrors } from './map-stream-errors.js'
-export type { ErrorFactory, MiddlewareFn, NextFn } from './middleware.js'
+export type {
+  ErrorFactory,
+  MergeContext,
+  MiddlewareFn,
+  MiddlewareResult,
+  NextFn,
+} from './middleware.js'
 export { applyPlugins, type CallPlugin } from './plugin.js'
 export {
   type ImplementedProcedure,

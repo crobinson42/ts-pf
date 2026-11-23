@@ -1,6 +1,6 @@
 # @ts-pf/http
 
-HTTP wire helpers for [ts-pf](https://github.com/crobinson42/ts-pf#readme): `JSONCodec`, the `RpcCodec` interface, `PROTOCOL_HEADER`, `joinProcedurePath` / `parseProcedurePath`, `httpStatus`, and the content-type / body-source helpers the wrapping codecs share. `FetchHandler` (`@ts-pf/server-http`) and `FetchLink` (`@ts-pf/client-http`) are built on these; use them directly for a raw `fetch` call, a custom codec, or your own adapter. Does **not** include `FetchHandler` or `FetchLink`.
+HTTP wire helpers for [ts-pf](https://github.com/crobinson42/ts-pf#readme): `JsonCodec`, the `RpcCodec` interface, `PROTOCOL_HEADER`, `joinProcedurePath` / `parseProcedurePath`, `httpStatus`, and the content-type / body-source helpers the wrapping codecs share. `FetchHandler` (`@ts-pf/server-http`) and `FetchLink` (`@ts-pf/client-http`) are built on these; use them directly for a raw `fetch` call, a custom codec, or your own adapter. Does **not** include `FetchHandler` or `FetchLink`.
 
 ## Install
 
@@ -13,7 +13,7 @@ npm i @ts-pf/contract @ts-pf/server @ts-pf/server-http @ts-pf/client @ts-pf/clie
 ## Use
 
 ```ts
-import { httpStatus, JSONCodec, joinProcedurePath, PROTOCOL_HEADER } from '@ts-pf/http'
+import { httpStatus, JsonCodec, joinProcedurePath, PROTOCOL_HEADER } from '@ts-pf/http'
 import { PFError, PROTOCOL_VERSION } from '@ts-pf/protocol'
 
 // Call a ts-pf endpoint with plain fetch — what curl or a non-TS client sends.
@@ -29,22 +29,22 @@ const envelope = await res.json()
 
 // What FetchHandler does with a thrown PFError: body from the codec, status
 // from the table (VALIDATION 422, NOT_FOUND 404, INTERNAL 500, …).
-const codec = new JSONCodec() // the default RpcCodec; FetchHandler / FetchLink take { codec }
+const codec = new JsonCodec() // the default RpcCodec; FetchHandler / FetchLink take { codec }
 httpStatus(new PFError({ code: 'NOT_FOUND', status: 404 })) // 404
 ```
 
-A custom body encoding implements `RpcCodec` (`encode` returns `{ contentType, body }`; `decode` takes `{ contentType, text(), formData(), body() }`) and goes on `FetchHandler` / `FetchLink` via `{ codec }`. Set `RpcCodec.streams`: `true` when `encodeSuccess` encodes an `AsyncIterable` output (as a `ReadableStream` body) and `decodeRequest` yields an `AsyncIterable` input, `false` when it cannot (`JSONCodec` and `MultipartCodec` are `false`; `StreamCodec` and `SseCodec` are `true`). `FetchHandler` answers a stream procedure on a `streams: false` codec with `BAD_REQUEST` before the body is read; with the flag unset it only finds out after the handler returns. First-party codecs: `@ts-pf/file`, `@ts-pf/stream`, `@ts-pf/sse`. The message-transport analog is `@ts-pf/message`.
+A custom body encoding implements `RpcCodec` (`encode` returns `{ contentType, body }`; `decode` takes `{ contentType, text(), formData(), body() }`) and goes on `FetchHandler` / `FetchLink` via `{ codec }`. Set `RpcCodec.streams`: `true` when `encodeSuccess` encodes an `AsyncIterable` output (as a `ReadableStream` body) and `decodeRequest` yields an `AsyncIterable` input, `false` when it cannot (`JsonCodec` and `MultipartCodec` are `false`; `StreamCodec` and `SseCodec` are `true`). `FetchHandler` answers a stream procedure on a `streams: false` codec with `BAD_REQUEST` before the body is read; with the flag unset it only finds out after the handler returns. First-party codecs: `@ts-pf/file` (`MultipartCodec`) and `@ts-pf/stream` (`StreamCodec`, `SseCodec`). The message-transport analog is `@ts-pf/message`.
 
 ### Wrapping codecs
 
-`MultipartCodec`, `StreamCodec`, and `SseCodec` embed one JSON envelope per multipart `rpc` part, JSONL line, or SSE event, so their `inner` codec must produce text. That role is `EnvelopeTextCodec`: an `RpcCodec` whose encoded bodies are `RpcEncodedText` (`body: string`). `JSONCodec` implements it; handlers and links still accept any `RpcCodec`. The helpers they share are exported for your own wrapper:
+`MultipartCodec`, `StreamCodec`, and `SseCodec` embed one JSON envelope per multipart `rpc` part, JSONL line, or SSE event, so their `inner` codec must produce text. That role is `EnvelopeTextCodec`: an `RpcCodec` whose encoded bodies are `RpcEncodedText` (`body: string`). `JsonCodec` implements it; handlers and links still accept any `RpcCodec`. The helpers they share are exported for your own wrapper:
 
 ```ts
-import { type EnvelopeTextCodec, isJsonContentType, JSONCodec, jsonBodySource, mimeType } from '@ts-pf/http'
+import { type EnvelopeTextCodec, isJsonContentType, JsonCodec, jsonBodySource, mimeType } from '@ts-pf/http'
 
 mimeType('application/json; charset=utf-8') // 'application/json' (lower-cased, no parameters; '' when missing)
-isJsonContentType(null) // true — a missing Content-Type is treated as JSON, like JSONCodec does
-const inner: EnvelopeTextCodec = new JSONCodec()
+isJsonContentType(null) // true — a missing Content-Type is treated as JSON, like JsonCodec does
+const inner: EnvelopeTextCodec = new JsonCodec()
 const line = (await inner.encodeSuccess({ id: 1 })).body // a string, by type
 await inner.decodeResponse(jsonBodySource(line)) // { ok: true, output: { id: 1 } }
 ```
@@ -55,7 +55,7 @@ Wire spec: [`PROTOCOL.md`](https://github.com/crobinson42/ts-pf/blob/main/packag
 
 ## API
 
-- `JSONCodec`, `RpcCodec` (optional `streams` flag), `RpcEncodedBody`, `RpcBodySource`
+- `JsonCodec`, `RpcCodec` (optional `streams` flag), `RpcEncodedBody`, `RpcBodySource`
 - `EnvelopeTextCodec`, `RpcEncodedText` (the `inner` role of `MultipartCodec` / `StreamCodec` / `SseCodec`)
 - `mimeType`, `isJsonContentType`, `jsonBodySource`
 - `PROTOCOL_HEADER`, `joinProcedurePath`, `parseProcedurePath`

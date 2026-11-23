@@ -4,7 +4,7 @@ Opt-in Astro endpoint and in-process page caller for ts-pf. A thin shell around 
 
 Agent skill: [`skills/ts-pf-astro/`](skills/ts-pf-astro/). Sync with `npx skills experimental_sync -y`.
 
-The package root (`@ts-pf/astro`) exports the client helpers (`createAstroClient`, `withBase`). Server helpers are `@ts-pf/astro/server`. Requires **astro >= 7.0.0**. The app also imports `@ts-pf/contract`, `@ts-pf/server`, `@ts-pf/server-http`, `@ts-pf/client`, and `@ts-pf/client-http`; declare them on the same version as `@ts-pf/astro` (every `@ts-pf/*` package releases on one version). Pass `import.meta.env.BASE_URL` through `withBase` from app source. This package does not read it.
+The package root (`@ts-pf/astro`) exports the client helpers (`createAstroClient`, `withBase`). Server helpers are `@ts-pf/astro/server`. Requires **astro 7** (`>=7.0.0 <8`). The app also imports `@ts-pf/contract`, `@ts-pf/server`, `@ts-pf/server-http`, `@ts-pf/client`, and `@ts-pf/client-http`; declare them on the same major as `@ts-pf/astro` (every `@ts-pf/*` package releases on one version). Pass `import.meta.env.BASE_URL` through `withBase` from app source. This package does not read it.
 
 ## Endpoint
 

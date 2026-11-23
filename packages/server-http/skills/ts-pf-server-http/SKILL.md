@@ -65,7 +65,7 @@ new FetchHandler(app, {
 
 Errors thrown after a streamed response has started (`StreamCodec` / `SseCodec` output) are written in-band by the codec as `INTERNAL` items; they do not reach `onError` or the default log.
 
-`FetchHandler` checks the method, then the protocol version, then looks the procedure up, all before it reads the body. A non-POST is `405 METHOD_NOT_ALLOWED`. A request whose `x-ts-pf-protocol` header is present and not `1` (surrounding whitespace ignored) is `400 BAD_REQUEST` `Unsupported protocol version`; a missing header is accepted, so curl and non-ts-pf clients work as before. An unknown path under the prefix is `404 NOT_FOUND`. A procedure whose contract input or output is `stream()` on a codec that declares `streams: false` (the default `JSONCodec`, `MultipartCodec`) is `400 BAD_REQUEST` `Stream procedure requires a streaming codec` — use `StreamCodec` / `SseCodec`. In all four cases the body is never buffered or decoded, whatever it holds (invalid JSON, a multipart upload, an oversized stream). `RequestLimitPlugin`'s `Content-Length` check runs earlier, in `onRequest`, so a declared oversize body is still `413 PAYLOAD_TOO_LARGE` on any path and for any method; only its streamed-body cap is skipped on a 404 or a stream-codec 400 because nothing reads the stream.
+`FetchHandler` checks the method, then the protocol version, then looks the procedure up, all before it reads the body. A non-POST is `405 METHOD_NOT_ALLOWED`. A request whose `x-ts-pf-protocol` header is present and not `1` (surrounding whitespace ignored) is `400 BAD_REQUEST` `Unsupported protocol version`; a missing header is accepted, so curl and non-ts-pf clients work as before. An unknown path under the prefix is `404 NOT_FOUND`. A procedure whose contract input or output is `stream()` on a codec that declares `streams: false` (the default `JsonCodec`, `MultipartCodec`) is `400 BAD_REQUEST` `Stream procedure requires a streaming codec` — use `StreamCodec` / `SseCodec`. In all four cases the body is never buffered or decoded, whatever it holds (invalid JSON, a multipart upload, an oversized stream). `RequestLimitPlugin`'s `Content-Length` check runs earlier, in `onRequest`, so a declared oversize body is still `413 PAYLOAD_TOO_LARGE` on any path and for any method; only its streamed-body cap is skipped on a 404 or a stream-codec 400 because nothing reads the stream.
 
 A `HandlerPlugin.onRequest` that throws a `PFError` is answered through the same error path (plugin `onError`, the `onError` option or default log, envelope + `x-ts-pf-protocol` + `httpStatus(error)`, `onResponse`); a non-`PFError` throw is `500 INTERNAL` (logged by default). It runs before the method check, protocol check, and lookup, on every request under the prefix, so the plugin's code wins for every method. There is no `filter` option — to keep a procedure off HTTP, throw `NOT_FOUND` for its path:
 
@@ -105,7 +105,7 @@ new FetchHandler(app, {
 })
 ```
 
-`GetBridgePlugin` (`examples/plugins/src/get-bridge.ts`, smoke-tested): `lookupProcedure(app, path)` → contract meta `http.method === 'GET'` → `new Request(url, { method: 'POST', headers, body: JSON.stringify({ input: JSON.parse(q) }), signal })`; `onResponse` sets the meta `Cache-Control` on success unless the call already set one, and `no-store` on failures and on any response with `Set-Cookie`. A GET to a procedure that did not opt in falls through to `405 METHOD_NOT_ALLOWED`. The client half is a Fetch `Interceptor` on `FetchLink` that resends the JSON POST for listed paths as a GET with sorted keys and keeps POST above ~8 KB of URL (`examples/plugins/src/get-link.ts`). The GET drops `x-ts-pf-protocol` (absent is accepted) so a cross-origin read stays a simple request.
+`GetBridgePlugin` (`examples/plugins/src/get-bridge.ts`, smoke-tested): `lookupProcedure(app, path)` → contract meta `http.method === 'GET'` → `new Request(url, { method: 'POST', headers, body: JSON.stringify({ input: JSON.parse(q) }), signal })`; `onResponse` sets the meta `Cache-Control` on success unless the call already set one, and `no-store` on failures and on any response with `Set-Cookie`. A GET to a procedure that did not opt in falls through to `405 METHOD_NOT_ALLOWED`. The client half is a `FetchInterceptor` on `FetchLink` that resends the JSON POST for listed paths as a GET with sorted keys and keeps POST above ~8 KB of URL (`examples/plugins/src/get-link.ts`). The GET drops `x-ts-pf-protocol` (absent is accepted) so a cross-origin read stays a simple request.
 
 - `public` only for data that is the same for every caller. A shared-cache hit never reaches the server, so auth middleware does not run for later callers. Per-user reads use `private` (browser cache only). A per-call `Cache-Control` / `Vary` from `ResponseHeadersPlugin` (`context.resHeaders`) wins over the meta default.
 - A GET runs from a plain link, cookies included: never opt in a procedure that writes.
@@ -143,7 +143,7 @@ export async function getPlanet(id: string): Promise<Response> {
 
 - App: `ts-pf-server`
 - Client: `ts-pf-client-http`
-- Codecs: `ts-pf-file` / `ts-pf-stream` / `ts-pf-sse` via `{ codec }`
+- Codecs: `ts-pf-file` / `ts-pf-stream` (JSONL and SSE) via `{ codec }`
 
 ## Don't
 
@@ -151,4 +151,4 @@ export async function getPlanet(id: string): Promise<Response> {
 - Bridge GET for a procedure with side effects, or mark per-user data `public`.
 - Port `HandlerPlugin` onto WS / stdio / MessagePort.
 - Put file size caps here — those are `MultipartCodec` options.
-- Serve `stream()` procedures through the default `JSONCodec` — they answer `400 BAD_REQUEST`.
+- Serve `stream()` procedures through the default `JsonCodec` — they answer `400 BAD_REQUEST`.

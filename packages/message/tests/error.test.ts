@@ -1,6 +1,6 @@
 import { isPFError } from '@ts-pf/protocol'
 import { describe, expect, it } from 'vitest'
-import { errorFromEnvelope, localFailure } from '../src/error.js'
+import { errorFromEnvelope } from '../src/error.js'
 
 describe('errorFromEnvelope', () => {
   it('does not reconstruct HTTP status from protocol codes', () => {
@@ -76,42 +76,5 @@ describe('errorFromEnvelope', () => {
     })
     expect(error.status).toBeUndefined()
     expect(error.local).toBeUndefined()
-  })
-})
-
-describe('localFailure', () => {
-  it('maps Request aborted to INTERNAL with local true and status 0', () => {
-    const error = localFailure('Request aborted')
-    expect(isPFError(error)).toBe(true)
-    expect(error.code).toBe('INTERNAL')
-    expect(error.local).toBe(true)
-    expect(error.status).toBe(0)
-    expect(error.message).toBe('Request aborted')
-    expect(error.data).toBeUndefined()
-    expect('data' in error.toJSON()).toBe(false)
-  })
-
-  it('sets Error.cause when provided', () => {
-    const cause = new Error('socket hang up')
-    const error = localFailure('Connection closed', cause)
-    expect(error.cause).toBe(cause)
-    expect(error.status).toBe(0)
-  })
-
-  it('omits cause when not provided', () => {
-    const error = localFailure('Network error')
-    expect(error.cause).toBeUndefined()
-  })
-
-  it('toJSON omits status and cause', () => {
-    const cause = new Error('connect ECONNREFUSED')
-    const json = localFailure('Network error', cause).toJSON()
-    expect(json).toEqual({
-      code: 'INTERNAL',
-      message: 'Network error',
-    })
-    expect('status' in json).toBe(false)
-    expect('cause' in json).toBe(false)
-    expect('data' in json).toBe(false)
   })
 })

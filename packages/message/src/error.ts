@@ -1,10 +1,4 @@
-import { PFError, localFailure as protocolLocalFailure } from '@ts-pf/protocol'
-
-/**
- * @deprecated Import `localFailure` from `@ts-pf/protocol`. This re-export
- * stays for compatibility; it is the same function.
- */
-export const localFailure = protocolLocalFailure
+import { PFError } from '@ts-pf/protocol'
 
 export function errorFromEnvelope(error: {
   code: string

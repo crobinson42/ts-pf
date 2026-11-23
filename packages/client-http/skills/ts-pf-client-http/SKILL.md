@@ -1,11 +1,11 @@
 ---
 name: ts-pf-client-http
-description: "Use when calling ts-pf over Fetch with FetchLink or Fetch Interceptors for headers. Triggers: @ts-pf/client-http, FetchLink, Interceptor."
+description: "Use when calling ts-pf over Fetch with FetchLink or FetchInterceptor for headers. Triggers: @ts-pf/client-http, FetchLink, FetchInterceptor."
 ---
 
 # @ts-pf/client-http
 
-`FetchLink` and Fetch `Interceptor`s. Implements `Link`.
+`FetchLink` and `FetchInterceptor`s. Implements `Link`.
 
 Install: `npm i @ts-pf/client-http`
 
@@ -42,15 +42,15 @@ On a unary failure the rejected `PFError.status` is the HTTP response status (de
 ## API
 
 - `FetchLink`
-- `Interceptor`
+- `FetchInterceptor`
 
 ## Pair with
 
 - Client: `ts-pf-client`
 - Server: `ts-pf-server-http`
-- Codecs: `ts-pf-file` / `ts-pf-stream` / `ts-pf-sse` via `{ codec }`
+- Codecs: `ts-pf-file` / `ts-pf-stream` (JSONL and SSE) via `{ codec }`
 
 ## Don't
 
-- Retry / cache / dedupe here (`RetryPlugin` / `DedupePlugin` / `CachePlugin` on `createClient`). Rewriting the method is fine: the userland GET bridge's client half (`getInterceptor`, `examples/plugins/src/get-link.ts`; see `ts-pf-server-http` "Cacheable reads") is a Fetch `Interceptor`.
+- Retry / cache / dedupe here (`RetryPlugin` / `DedupePlugin` / `CachePlugin` on `createClient`). Rewriting the method is fine: the userland GET bridge's client half (`getInterceptor`, `examples/plugins/src/get-link.ts`; see `ts-pf-server-http` "Cacheable reads") is a `FetchInterceptor`.
 - `isLocalFailure` inside Fetch interceptors.

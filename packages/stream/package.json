@@ -1,7 +1,7 @@
 {
   "name": "@ts-pf/stream",
   "version": "0.7.0",
-  "description": "Opt-in StreamCodec and stream() for root AsyncIterable (JSONL)",
+  "description": "Opt-in StreamCodec (JSONL) and SseCodec (text/event-stream) with stream() for root AsyncIterable",
   "keywords": [
     "ts-pf",
     "typescript",
@@ -12,7 +12,9 @@
     "contract-first",
     "streaming",
     "jsonl",
-    "async-iterable"
+    "async-iterable",
+    "sse",
+    "server-sent-events"
   ],
   "license": "MIT",
   "engines": {
@@ -50,15 +52,15 @@
   },
   "dependencies": {
     "@standard-schema/spec": "^1.0.0",
-    "@ts-pf/contract": "0.7.0",
-    "@ts-pf/http": "0.7.0",
-    "@ts-pf/protocol": "0.7.0"
+    "@ts-pf/contract": "^0.7.0",
+    "@ts-pf/http": "^0.7.0",
+    "@ts-pf/protocol": "^0.7.0"
   },
   "devDependencies": {
-    "@ts-pf/client": "0.7.0",
-    "@ts-pf/client-http": "0.7.0",
-    "@ts-pf/server": "0.7.0",
-    "@ts-pf/server-http": "0.7.0",
+    "@ts-pf/client": "^0.7.0",
+    "@ts-pf/client-http": "^0.7.0",
+    "@ts-pf/server": "^0.7.0",
+    "@ts-pf/server-http": "^0.7.0",
     "zod": "^4.0.0"
   }
 }

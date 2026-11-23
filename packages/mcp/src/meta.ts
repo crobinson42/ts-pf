@@ -1,11 +1,11 @@
 /** How a tool affects the world. Drives annotations, host buckets, and `all({ effect })`. */
-export type Effect = 'read' | 'write' | 'destructive'
+export type McpEffect = 'read' | 'write' | 'destructive'
 
 export const MCP_KEY = 'mcp' as const
 
 export interface McpMeta {
   /** Unclassified procedures count as `write`. */
-  effect?: Effect
+  effect?: McpEffect
   /** Model-facing description; wins over `docs()` description / summary. */
   description?: string
   /** Extra search terms for tool-host discovery. */

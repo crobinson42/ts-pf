@@ -11,12 +11,11 @@ Hub `ts-pf-app` on `@ts-pf/contract` is the capability catalog. `npx skills expe
 | `ts-pf-protocol` | `packages/protocol/skills/ts-pf-protocol/` | `PFError`, envelope, `PROTOCOL.md` |
 | `ts-pf-server` | `packages/server/skills/ts-pf-server/` | `createImplementer`, middleware, `runProcedure` |
 | `ts-pf-client` | `packages/client/skills/ts-pf-client/` | `createClient`, `asResult`, call plugins |
-| `ts-pf-http` | `packages/http/skills/ts-pf-http/` | `JSONCodec`, `RpcCodec`, path helpers |
+| `ts-pf-http` | `packages/http/skills/ts-pf-http/` | `JsonCodec`, `RpcCodec`, path helpers |
 | `ts-pf-server-http` | `packages/server-http/skills/ts-pf-server-http/` | `FetchHandler`, HTTP `HandlerPlugin`s |
 | `ts-pf-client-http` | `packages/client-http/skills/ts-pf-client-http/` | `FetchLink`, Fetch interceptors |
 | `ts-pf-file` | `packages/file/skills/ts-pf-file/` | `MultipartCodec` |
-| `ts-pf-stream` | `packages/stream/skills/ts-pf-stream/` | `StreamCodec` + `stream()` |
-| `ts-pf-sse` | `packages/sse/skills/ts-pf-sse/` | `SseCodec` |
+| `ts-pf-stream` | `packages/stream/skills/ts-pf-stream/` | `StreamCodec` + `SseCodec` + `stream()` |
 | `ts-pf-docs` | `packages/docs/skills/ts-pf-docs/` | `docs()` / `catalog()` |
 | `ts-pf-openapi` | `packages/openapi/skills/ts-pf-openapi/` | `openapi()` OpenAPI 3.1 |
 | `ts-pf-codegen` | `packages/codegen/skills/ts-pf-codegen/` | `emit()` / `emitFiles()` / `catalogHash()` / `diffCatalog()` |

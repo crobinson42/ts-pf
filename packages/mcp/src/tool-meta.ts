@@ -1,5 +1,5 @@
 import { getDocs } from '@ts-pf/docs'
-import { type Effect, MCP_KEY, type McpMeta } from './meta.js'
+import { MCP_KEY, type McpEffect, type McpMeta } from './meta.js'
 import type { ToolSpec } from './tool.js'
 import type { McpToolAnnotations } from './types.js'
 
@@ -16,12 +16,12 @@ function mcpMeta(spec: ToolSpec): McpMeta | undefined {
 }
 
 /** `.effect()` → `mcp({ effect })`; `undefined` when neither classifies the tool. */
-export function declaredEffect(spec: ToolSpec): Effect | undefined {
+export function declaredEffect(spec: ToolSpec): McpEffect | undefined {
   return spec.effect ?? mcpMeta(spec)?.effect
 }
 
 /** Unclassified tools count as `write`: they never claim to be harmless. */
-export function effectOf(spec: ToolSpec): Effect {
+export function effectOf(spec: ToolSpec): McpEffect {
   return declaredEffect(spec) ?? 'write'
 }
 
@@ -49,7 +49,7 @@ export function isHidden(spec: ToolSpec): boolean {
   return getDocs(contractMeta(spec))?.hidden === true
 }
 
-export function annotationsFor(effect: Effect): McpToolAnnotations {
+export function annotationsFor(effect: McpEffect): McpToolAnnotations {
   if (effect === 'read') return { readOnlyHint: true }
   return { readOnlyHint: false, destructiveHint: effect === 'destructive' }
 }

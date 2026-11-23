@@ -1,7 +1,7 @@
 import { asResult, createClient, isLocalFailure } from '@ts-pf/client'
 import { FetchLink } from '@ts-pf/client-http'
 import { procedure, router } from '@ts-pf/contract'
-import { JSONCodec, PROTOCOL_HEADER } from '@ts-pf/http'
+import { JsonCodec, PROTOCOL_HEADER } from '@ts-pf/http'
 import { isPFError, PFError, PROTOCOL_VERSION } from '@ts-pf/protocol'
 import { createImplementer } from '@ts-pf/server'
 import { FetchHandler } from '@ts-pf/server-http'
@@ -95,7 +95,7 @@ describe('createClient', () => {
   })
 
   it('rethrows PFError from decodeResponse', async () => {
-    const inner = new JSONCodec()
+    const inner = new JsonCodec()
     const clientWithCodec = createClient<typeof contract>(
       new FetchLink({
         url: 'http://localhost/rpc',

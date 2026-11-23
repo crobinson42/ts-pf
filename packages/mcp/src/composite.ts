@@ -4,15 +4,20 @@ import type {
   InferSchemaOutput,
 } from '@ts-pf/contract'
 import { defined } from '@ts-pf/protocol'
-import type { Effect } from './meta.js'
+import type { McpEffect } from './meta.js'
 import { checkScopes } from './scopes.js'
-import type { MapperOpts, ToolPhantom, ToolSpec, Visibility } from './tool.js'
+import type {
+  MapperOptions,
+  ToolPhantom,
+  ToolSpec,
+  Visibility,
+} from './tool.js'
 
 export type CompositeToolDef<T, Ctx, Sch extends AnySchema> = {
   description: string
-  effect: Effect
+  effect: McpEffect
   input: Sch
-  run: (o: MapperOpts<T, Ctx> & { input: InferSchemaOutput<Sch> }) => unknown
+  run: (o: MapperOptions<T, Ctx> & { input: InferSchemaOutput<Sch> }) => unknown
   /** Per-caller listing hint, as `.visible()`. */
   visible?: Visibility
   /** OAuth scopes the caller must hold, as `.scopes()`. */

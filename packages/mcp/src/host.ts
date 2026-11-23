@@ -1,7 +1,7 @@
 import { defined } from '@ts-pf/protocol'
 import type { BoundTool } from './bound-tool.js'
 import { type McpOnError, reportError } from './error-text.js'
-import type { Effect } from './meta.js'
+import type { McpEffect } from './meta.js'
 import {
   discoverToolName,
   dispatchToolName,
@@ -44,7 +44,7 @@ type Invoke = (
 
 type Inner = {
   tool: BoundTool
-  effect: Effect
+  effect: McpEffect
   description: string
   category: string | undefined
 }
@@ -96,7 +96,7 @@ function dispatchAnnotations(inner: readonly Inner[]): McpToolAnnotations {
   }
 }
 
-function strongestEffect(inner: readonly Inner[]): Effect {
+function strongestEffect(inner: readonly Inner[]): McpEffect {
   if (inner.some((t) => t.effect === 'destructive')) return 'destructive'
   return inner.some((t) => t.effect === 'write') ? 'write' : 'read'
 }

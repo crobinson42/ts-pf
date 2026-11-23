@@ -38,7 +38,7 @@ describe('createToolkit', () => {
 })
 
 describe('ToolBuilder', () => {
-  it('takes an Effect literal; there is no .kind()', () => {
+  it('takes an McpEffect literal; there is no .kind()', () => {
     tk.user.find.effect('read')
     // @ts-expect-error kind() does not exist
     tk.user.find.kind('read')

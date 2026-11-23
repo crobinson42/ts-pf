@@ -12,7 +12,7 @@ export function mimeType(contentType: string | null | undefined): string {
 
 /**
  * True for `application/json` and for a missing header (a bare JSON body
- * with no `Content-Type` is still treated as JSON, as `JSONCodec` does).
+ * with no `Content-Type` is still treated as JSON, as `JsonCodec` does).
  */
 export function isJsonContentType(
   contentType: string | null | undefined,

@@ -109,7 +109,7 @@ export async function fetchHandler(request: Request): Promise<Response> {
 
 ## API
 
-- `mcp` (`@ts-pf/mcp/meta`)
+- `mcp`, `McpEffect` (`'read' | 'write' | 'destructive'`), `McpMeta` (`@ts-pf/mcp/meta`)
 - `createToolkit` — root members `$context`, `$tool`, `$host`, `$toolset`, `$coverage`
 - `all`
 - `bindTools` — `{ app, context, interceptors?, onError?, maxResultChars?, search? }` or `{ client, context?, onError?, maxResultChars?, search? }` (`context` required when the toolkit's context type has required keys)
@@ -120,6 +120,7 @@ export async function fetchHandler(request: Request): Promise<Response> {
 - `McpCallInfo` — `{ authInfo?, requestInfo?, signal?, inputResponses?, era?, tool? }`; `tool` is `{ name, path }` of the tool being called (the inner tool for a host call)
 - `McpToolDefinition`
 - `McpToolResult`
+- `MapperOptions` — the options argument of a tool `.map()` callback
 
 ## Pair with
 
