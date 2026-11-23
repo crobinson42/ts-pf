@@ -183,7 +183,7 @@ packages/message-client/src/
 packages/swr/src/
   index.ts            createSwr + public types
 packages/mvc-kit/src/
-  index.ts            bindClient, DisposeSignalHost, issuesToFieldErrors
+  index.ts            bindClient, DisposeSignalHost, issuesToFieldErrors (keys by first path segment, `{ at }` for a nested FormModel), IssuesToFieldErrorsOptions
 packages/astro/src/
   server.ts           createAstroHandler, createAstroLocalClient, withBase (./server; context typed from the app's TCtx via NoInfer)
   client.ts           createAstroClient<T = never> (./client; `{ '~error': ... }` result when T is omitted, like createClient)
