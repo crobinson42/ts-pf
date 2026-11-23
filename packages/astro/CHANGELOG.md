@@ -1,5 +1,17 @@
 # @ts-pf/astro
 
+## 0.6.1
+
+### Patch Changes
+
+- Updated dependencies [[`966f952`](https://github.com/crobinson42/ts-pf/commit/966f9520ad3a84e63c075775637eb56c909ad66d)]:
+  - @ts-pf/contract@0.6.1
+  - @ts-pf/client@0.6.1
+  - @ts-pf/client-http@0.6.1
+  - @ts-pf/server@0.6.1
+  - @ts-pf/server-http@0.6.1
+  - @ts-pf/protocol@0.6.1
+
 ## 0.6.0
 
 ### Patch Changes

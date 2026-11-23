@@ -1,5 +1,14 @@
 # @ts-pf/message-server
 
+## 0.6.1
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @ts-pf/server@0.6.1
+  - @ts-pf/message@0.6.1
+  - @ts-pf/protocol@0.6.1
+
 ## 0.6.0
 
 ### Patch Changes
