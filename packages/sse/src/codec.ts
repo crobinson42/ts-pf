@@ -1,6 +1,6 @@
 import {
   type EnvelopeTextCodec,
-  JSONCodec,
+  JsonCodec,
   jsonBodySource,
   mimeType,
   type RpcBodySource,
@@ -57,7 +57,7 @@ export class SseCodec implements RpcCodec {
   private readonly keepAliveMs: number
 
   constructor(options?: { inner?: EnvelopeTextCodec; keepAliveMs?: number }) {
-    this.inner = options?.inner ?? new JSONCodec()
+    this.inner = options?.inner ?? new JsonCodec()
     this.stream = new StreamCodec({ inner: this.inner })
     this.keepAliveMs = options?.keepAliveMs ?? 15_000
   }

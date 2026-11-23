@@ -1,5 +1,5 @@
 import { procedure, router } from '@ts-pf/contract'
-import { JSONCodec, type RpcBodySource } from '@ts-pf/http'
+import { JsonCodec, type RpcBodySource } from '@ts-pf/http'
 import {
   isPFError,
   isUnexpectedError,
@@ -353,11 +353,11 @@ describe('FetchHandler request envelope', () => {
 
 describe('FetchHandler envelope check through a wrapping codec', () => {
   // Mirrors MultipartCodec / StreamCodec: read the envelope text from a
-  // multipart part (or a JSONL line) and delegate to the inner JSONCodec via
+  // multipart part (or a JSONL line) and delegate to the inner JsonCodec via
   // a fresh RpcBodySource, never through request.text(). `@ts-pf/file` and
   // `@ts-pf/stream` cannot be devDependencies here: both already depend on
   // `@ts-pf/server-http` for their own tests.
-  class PartCodec extends JSONCodec {
+  class PartCodec extends JsonCodec {
     override async decodeRequest(source: RpcBodySource): Promise<RpcRequest> {
       const form = await source.formData()
       const part = form.get('rpc')

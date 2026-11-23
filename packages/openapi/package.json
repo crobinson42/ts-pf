@@ -49,11 +49,11 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/docs": "0.6.1"
+    "@ts-pf/docs": "^0.6.1"
   },
   "devDependencies": {
-    "@ts-pf/contract": "0.6.1",
-    "@ts-pf/stream": "0.6.1",
+    "@ts-pf/contract": "^0.6.1",
+    "@ts-pf/stream": "^0.6.1",
     "typebox": "^1.4.6",
     "zod": "^4.0.0"
   }

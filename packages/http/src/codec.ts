@@ -17,7 +17,7 @@ function jsonBody(body: string): RpcEncodedText {
   return { contentType: 'application/json', body }
 }
 
-export class JSONCodec implements EnvelopeTextCodec {
+export class JsonCodec implements EnvelopeTextCodec {
   readonly streams: boolean = false
 
   encodeRequest(req: RpcRequest): RpcEncodedText {

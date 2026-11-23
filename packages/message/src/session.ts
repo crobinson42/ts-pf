@@ -1,6 +1,6 @@
-import { PROTOCOL_MAJOR, toWireError } from '@ts-pf/protocol'
+import { localFailure, PROTOCOL_MAJOR, toWireError } from '@ts-pf/protocol'
 import type { Duplex } from './duplex.js'
-import { errorFromEnvelope, localFailure } from './error.js'
+import { errorFromEnvelope } from './error.js'
 import {
   decodeFrame,
   encodeFrame,
@@ -36,6 +36,7 @@ function isThenable(value: unknown): value is PromiseLike<void> {
 
 function noopHello(): void {}
 
+/** @internal Frame size as counted for backpressure; for the bindings and tests. */
 export function frameByteLength(frameOrText: MessageFrame | string): number {
   const text =
     typeof frameOrText === 'string' ? frameOrText : encodeFrame(frameOrText)

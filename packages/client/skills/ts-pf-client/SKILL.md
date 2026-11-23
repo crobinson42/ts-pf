@@ -70,7 +70,7 @@ if (!result.ok) {
 
 ## Don't
 
-- `FetchLink` or Fetch `Interceptor` from this package.
+- `FetchLink` or `FetchInterceptor` from this package.
 - Import `@ts-pf/server` from client modules.
 - Widen `asResult` to `CallResult<T, E | PFError>`.
 - Retry/cache on `FetchLink` — use `RetryPlugin` / `CachePlugin` here.

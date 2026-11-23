@@ -5,7 +5,7 @@ import type { BoundTool } from './bound-tool.js'
 import { errorText, type McpOnError, reportError } from './error-text.js'
 import type { Executor } from './executor.js'
 import { errorResult, successResult } from './result.js'
-import type { MapperOpts, ToolSpec } from './tool.js'
+import type { MapperOptions, ToolSpec } from './tool.js'
 import type { McpCallInfo, McpToolResult } from './types.js'
 
 export type CallOptions = {
@@ -30,7 +30,7 @@ async function parse(schema: AnySchema, value: unknown): Promise<unknown> {
 async function procedureInput(
   spec: ToolSpec,
   args: unknown,
-  opts: MapperOpts<unknown, unknown>,
+  opts: MapperOptions<unknown, unknown>,
 ): Promise<unknown> {
   if (spec.input?.map) {
     return spec.input.map(await parse(spec.input.schema, args), opts)
@@ -52,7 +52,7 @@ async function procedureInput(
 async function execute(
   tool: BoundTool,
   args: unknown,
-  opts: MapperOpts<unknown, unknown>,
+  opts: MapperOptions<unknown, unknown>,
   executor: Executor,
 ): Promise<unknown> {
   const { spec } = tool

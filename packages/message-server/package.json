@@ -54,12 +54,12 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/message": "0.6.1",
-    "@ts-pf/protocol": "0.6.1",
-    "@ts-pf/server": "0.6.1"
+    "@ts-pf/message": "^0.6.1",
+    "@ts-pf/protocol": "^0.6.1",
+    "@ts-pf/server": "^0.6.1"
   },
   "devDependencies": {
-    "@ts-pf/contract": "0.6.1",
+    "@ts-pf/contract": "^0.6.1",
     "@types/node": "^22.15.0",
     "@types/ws": "^8.18.2",
     "zod": "^4.0.0"

@@ -1,4 +1,4 @@
-import { JSONCodec, type RpcBodySource } from '@ts-pf/http'
+import { JsonCodec, type RpcBodySource } from '@ts-pf/http'
 import { PFError } from '@ts-pf/protocol'
 import { SSE_CONTENT_TYPE, SseCodec } from '@ts-pf/sse'
 import { StreamCodec } from '@ts-pf/stream'
@@ -57,7 +57,7 @@ async function readStream(body: ReadableStream<Uint8Array>): Promise<string> {
 
 describe('SseCodec', () => {
   const codec = new SseCodec({ keepAliveMs: 0 })
-  const json = new JSONCodec()
+  const json = new JsonCodec()
 
   it('declares that it carries streams', () => {
     expect(codec.streams).toBe(true)

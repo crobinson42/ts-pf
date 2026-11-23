@@ -166,6 +166,7 @@ export type RouterImplCheck<T, TCtx, I> = MissingProcedures<T, I> &
   UnexpectedKeys<T, I> &
   PresentProcedures<T, TCtx, I>
 
+/** @internal For `@ts-pf/mcp`; not a consumer API. */
 export function isImplementedProcedure(
   value: unknown,
 ): value is ImplementedProcedure {

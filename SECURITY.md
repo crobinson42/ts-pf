@@ -8,7 +8,7 @@ Include the affected `@ts-pf/*` package and version, a minimal reproduction, and
 
 ## Supported versions
 
-ts-pf is pre-1.0. Only the latest published `0.x` version of each `@ts-pf/*` package (npm dist-tag `latest`) receives security fixes. Earlier `0.x` versions are not patched; upgrade to the latest release.
+Security fixes ship for the latest minor of the current major (npm dist-tag `latest`); every `@ts-pf/*` package shares that version. Older minors and earlier majors are not patched: upgrade to the latest release. Versions before 1.0.0 are not supported.
 
 ## Scope
 

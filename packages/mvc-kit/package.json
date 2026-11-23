@@ -48,15 +48,15 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/contract": "0.6.1"
+    "@ts-pf/contract": "^0.6.1"
   },
   "peerDependencies": {
-    "mvc-kit": ">=4.9.0"
+    "mvc-kit": ">=4.9.0 <5"
   },
   "devDependencies": {
-    "@ts-pf/client": "0.6.1",
-    "@ts-pf/protocol": "0.6.1",
-    "@ts-pf/server": "0.6.1",
+    "@ts-pf/client": "^0.6.1",
+    "@ts-pf/protocol": "^0.6.1",
+    "@ts-pf/server": "^0.6.1",
     "mvc-kit": "^4.9.0",
     "zod": "^4.0.0"
   }

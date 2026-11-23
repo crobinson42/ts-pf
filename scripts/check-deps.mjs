@@ -10,10 +10,10 @@
 // - tests/**/*.ts (and *.test.ts under src) imports are allowed in prod or
 //   dev and declared in dependencies or devDependencies
 // - the declared prod graph has no cycle
-// - published packages pin every internal dep (dependencies, peer, optional,
-//   dev) to the exact current workspace version, never "*" or a range
-//   (rules.md "Code" → Workspace; `changeset version` only keeps exact pins in
-//   step, it never rewrites "*")
+// - published packages declare every internal dep (dependencies, peer,
+//   optional, dev) as "^<current workspace version>", never "*", an exact
+//   pin, or another range (rules.md "Code" → Workspace; `changeset version`
+//   raises caret floors in step, it never rewrites "*")
 // - every published package is in the one .changeset/config.json "fixed"
 //   group, and nothing else is (rules.md "Code" → Releases)
 import { readdir, readFile } from 'node:fs/promises'
@@ -397,20 +397,23 @@ for (const info of packages.values()) {
   }
 }
 
-// Exact internal pins. Mixed versions nest duplicate copies in a consumer's
-// install, so every internal dep names the version released alongside it.
+// Caret internal ranges floored at the version released alongside. A caret
+// lets npm satisfy a consumer's drifted @ts-pf/* set with one copy of each
+// package; the floor is the version this package was tested with.
+// `changeset version` raises the floor on every release.
 for (const info of packages.values()) {
   if (!info.published) continue
   for (const dep of [...info.prod, ...info.dev]) {
     const target = packages.get(dep.short)
-    if (!target || dep.range === target.version) continue
+    const expected = `^${target?.version}`
+    if (!target || dep.range === expected) continue
     violation(
       info.dir,
       dep.kind,
       dep.name,
       info.file,
       dep.line,
-      `must pin the exact workspace version "${target.version}" (found "${dep.range}")`,
+      `must be "${expected}", a caret on the current workspace version (found "${dep.range}")`,
     )
   }
 }

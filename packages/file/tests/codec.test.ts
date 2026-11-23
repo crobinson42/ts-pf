@@ -1,5 +1,5 @@
 import { MultipartCodec } from '@ts-pf/file'
-import { JSONCodec, type RpcBodySource } from '@ts-pf/http'
+import { JsonCodec, type RpcBodySource } from '@ts-pf/http'
 import { describe, expect, it } from 'vitest'
 
 function jsonSource(body: string): RpcBodySource {
@@ -24,7 +24,7 @@ function multipartSource(form: FormData): RpcBodySource {
 
 describe('MultipartCodec', () => {
   const codec = new MultipartCodec()
-  const json = new JSONCodec()
+  const json = new JsonCodec()
 
   it('encodes JSON-only input as application/json', async () => {
     const encoded = await codec.encodeRequest({ input: { id: 1 } })

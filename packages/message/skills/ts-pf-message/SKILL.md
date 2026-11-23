@@ -30,15 +30,13 @@ Backpressure is the pipe's job, not the wire's. A `Duplex.send` may return a pro
 
 `BackpressureOptions` is the shared `{ highWaterMark?, drainTimeout?, onStall? }` that `HandlerOptions.backpressure` / `LinkOptions.backpressure` take (defaults 1 MiB / 30 s / one `console.warn` on `aborted` only; `false` silences; `0` waits forever; `Infinity` unbounds). `onStall` sees `paused` once per call and `aborted` on timeout; a throw from it is swallowed. The bindings validate it (`TypeError` naming the option) and share an `@internal` per-call drain wait — a custom `Duplex` needs neither.
 
-`localFailure` is a deprecated re-export; import it from `@ts-pf/protocol`.
-
 ## API
 
 - `MessageSession`, `Duplex`, `encodeFrame`, `decodeFrame`
 - `createMemoryDuplex`, `createPortDuplex`, `createWsDuplex`, `WebSocketLike`
 - `createPushQueue`, `PushQueue`, `PushQueueOptions`
 - `BackpressureOptions`, `StallInfo`
-- `errorFromEnvelope`; `localFailure` (deprecated — use `@ts-pf/protocol`)
+- `errorFromEnvelope` (`localFailure` is in `@ts-pf/protocol`)
 - `createStdioDuplex` from `./stdio` only
 
 ## Pair with

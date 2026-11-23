@@ -54,7 +54,7 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/protocol": "0.6.1"
+    "@ts-pf/protocol": "^0.6.1"
   },
   "devDependencies": {
     "@types/node": "^22.15.0"

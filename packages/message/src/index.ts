@@ -7,7 +7,7 @@ export type {
 export { DrainWaiter, resolveBackpressure } from './backpressure.js'
 export type { Duplex } from './duplex.js'
 export { createMemoryDuplex } from './duplex.js'
-export { errorFromEnvelope, localFailure } from './error.js'
+export { errorFromEnvelope } from './error.js'
 export type {
   CallFrame,
   CancelFrame,

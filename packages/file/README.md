@@ -63,7 +63,7 @@ const image = new File(['…'], 'me.png', { type: 'image/png' })
 await client.avatar.upload({ userId: 'u1', image }) // sent as multipart/form-data
 ```
 
-`MultipartCodec` wraps `JSONCodec` (override with `{ inner }`). Wire details: [`PROTOCOL.md`](https://github.com/crobinson42/ts-pf/blob/main/packages/protocol/PROTOCOL.md) (Binary attachments). Serving `handler`: [root README](https://github.com/crobinson42/ts-pf#serving-fetchhandler).
+`MultipartCodec` wraps `JsonCodec` (override with `{ inner }`). Wire details: [`PROTOCOL.md`](https://github.com/crobinson42/ts-pf/blob/main/packages/protocol/PROTOCOL.md) (Binary attachments). Serving `handler`: [root README](https://github.com/crobinson42/ts-pf#serving-fetchhandler).
 
 ## Agent skills
 

@@ -1,6 +1,6 @@
 import type { Link } from '@ts-pf/client'
 import {
-  JSONCodec,
+  JsonCodec,
   PROTOCOL_HEADER,
   type RpcBodySource,
   type RpcCodec,
@@ -14,7 +14,7 @@ import {
   PROTOCOL_VERSION,
   type RpcResponse,
 } from '@ts-pf/protocol'
-import { type Interceptor, runInterceptors } from './interceptors.js'
+import { type FetchInterceptor, runInterceptors } from './interceptors.js'
 
 export class FetchLink implements Link {
   private readonly url: string
@@ -23,21 +23,21 @@ export class FetchLink implements Link {
     | (() => HeadersInit | Promise<HeadersInit>)
     | undefined
   private readonly fetchFn: typeof fetch
-  private readonly interceptors: Interceptor[]
+  private readonly interceptors: FetchInterceptor[]
   private readonly codec: RpcCodec
 
   constructor(opts: {
     url: string
     headers?: HeadersInit | (() => HeadersInit | Promise<HeadersInit>)
     fetch?: typeof fetch
-    interceptors?: Interceptor[]
+    interceptors?: FetchInterceptor[]
     codec?: RpcCodec
   }) {
     this.url = opts.url
     this.headers = opts.headers
     this.fetchFn = (opts.fetch ?? globalThis.fetch).bind(globalThis)
     this.interceptors = opts.interceptors ?? []
-    this.codec = opts.codec ?? new JSONCodec()
+    this.codec = opts.codec ?? new JsonCodec()
   }
 
   call(

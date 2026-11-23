@@ -1,6 +1,6 @@
 import {
   httpStatus,
-  JSONCodec,
+  JsonCodec,
   PROTOCOL_HEADER,
   PROTOCOL_HTTP_STATUS,
   parseProcedurePath,
@@ -99,7 +99,7 @@ export class FetchHandler<TCtx = unknown> {
       onError?: FetchHandlerOnError
     },
   ) {
-    this.codec = options?.codec ?? new JSONCodec()
+    this.codec = options?.codec ?? new JsonCodec()
     this.plugins = options?.plugins ?? []
     this.interceptors = options?.interceptors ?? []
     this.validation = options?.validation

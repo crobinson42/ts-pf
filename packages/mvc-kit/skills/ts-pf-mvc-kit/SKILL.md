@@ -5,7 +5,7 @@ description: "Use when binding a ts-pf client to mvc-kit Resources with bindClie
 
 # @ts-pf/mvc-kit
 
-Opt-in mvc-kit helpers for a ts-pf **client**. You still write Resource methods. Requires **mvc-kit >= 4.9.0**.
+Opt-in mvc-kit helpers for a ts-pf **client**. You still write Resource methods. Requires **mvc-kit 4.9+** (`>=4.9.0 <5`).
 
 Install: `npm i @ts-pf/mvc-kit`
 

@@ -1,10 +1,10 @@
-export type Interceptor = (ctx: {
+export type FetchInterceptor = (ctx: {
   request: Request
   next: (request?: Request) => Promise<Response>
 }) => Promise<Response>
 
 export async function runInterceptors(
-  interceptors: Interceptor[],
+  interceptors: FetchInterceptor[],
   request: Request,
   send: (request: Request) => Promise<Response>,
 ): Promise<Response> {

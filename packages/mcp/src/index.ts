@@ -20,7 +20,7 @@ export {
 } from './search.js'
 export type {
   BuilderState,
-  MapperOpts,
+  MapperOptions,
   ToolBuilder,
   ToolPhantom,
 } from './tool.js'

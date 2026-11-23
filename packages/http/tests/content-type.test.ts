@@ -2,7 +2,7 @@ import { describe, expect, expectTypeOf, it } from 'vitest'
 import {
   type EnvelopeTextCodec,
   isJsonContentType,
-  JSONCodec,
+  JsonCodec,
   jsonBodySource,
   mimeType,
   type RpcCodec,
@@ -49,8 +49,8 @@ describe('jsonBodySource', () => {
     expect((await source.formData()).has('rpc')).toBe(false)
   })
 
-  it('round-trips through JSONCodec', async () => {
-    const codec = new JSONCodec()
+  it('round-trips through JsonCodec', async () => {
+    const codec = new JsonCodec()
     const encoded = codec.encodeSuccess({ id: 1 })
     const decoded = await codec.decodeResponse(jsonBodySource(encoded.body))
     expect(decoded).toEqual({ ok: true, output: { id: 1 } })
@@ -58,8 +58,8 @@ describe('jsonBodySource', () => {
 })
 
 describe('EnvelopeTextCodec', () => {
-  it('is implemented by JSONCodec and is still an RpcCodec', () => {
-    const codec = new JSONCodec()
+  it('is implemented by JsonCodec and is still an RpcCodec', () => {
+    const codec = new JsonCodec()
     expectTypeOf(codec).toMatchTypeOf<EnvelopeTextCodec>()
     expectTypeOf(codec).toMatchTypeOf<RpcCodec>()
     expectTypeOf<EnvelopeTextCodec>().toMatchTypeOf<RpcCodec>()

@@ -55,15 +55,15 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/client": "0.6.1",
-    "@ts-pf/client-http": "0.6.1",
-    "@ts-pf/contract": "0.6.1",
-    "@ts-pf/protocol": "0.6.1",
-    "@ts-pf/server": "0.6.1",
-    "@ts-pf/server-http": "0.6.1"
+    "@ts-pf/client": "^0.6.1",
+    "@ts-pf/client-http": "^0.6.1",
+    "@ts-pf/contract": "^0.6.1",
+    "@ts-pf/protocol": "^0.6.1",
+    "@ts-pf/server": "^0.6.1",
+    "@ts-pf/server-http": "^0.6.1"
   },
   "peerDependencies": {
-    "astro": ">=7.0.0"
+    "astro": ">=7.0.0 <8"
   },
   "devDependencies": {
     "astro": "^7.4.10",

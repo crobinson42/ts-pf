@@ -14,7 +14,7 @@ Requires Node.js 22+.
 npm install @ts-pf/contract @ts-pf/server @ts-pf/server-http @ts-pf/client @ts-pf/client-http
 ```
 
-Every `@ts-pf/*` package releases on one version. Keep them all on that version and update them together in one install command; a mixed set installs duplicate copies of shared packages.
+Every `@ts-pf/*` package releases on one version and follows semver from 1.0. Keep them all on the same major; within it, packages depend on each other with `^` ranges, so `npm update` (or grouped or ungrouped Renovate / Dependabot updates) keeps one copy of each. Cross a major in one install command for every `@ts-pf/*` package.
 
 `@ts-pf/protocol` (`PFError`) comes along as a dependency of `server` and `client`; import it directly, and add it to your own `dependencies` if your package manager blocks undeclared transitive imports.
 
@@ -30,7 +30,7 @@ The packages are ESM and ship `exports` only, so `tsconfig.json` needs `"moduleR
 | [`@ts-pf/protocol`](packages/protocol) | Portable JSON envelope, `PFError`, `PROTOCOL_VERSION` |
 | [`@ts-pf/server`](packages/server) | `createImplementer()`, middleware, `runProcedure`, `lookupProcedure`, `createLocalClient()`, call interceptors / `DedupePlugin` |
 | [`@ts-pf/client`](packages/client) | `createClient()`, `Link`, `intercept()` / `CallPlugin`, `RetryPlugin` / `DedupePlugin` / `CachePlugin`, `asResult()`, `isLocalFailure()` |
-| [`@ts-pf/http`](packages/http) | HTTP wire helpers: `JSONCodec`, `RpcCodec`, `PROTOCOL_HEADER`, path helpers, `httpStatus` |
+| [`@ts-pf/http`](packages/http) | HTTP wire helpers: `JsonCodec`, `RpcCodec`, `PROTOCOL_HEADER`, path helpers, `httpStatus` |
 | [`@ts-pf/server-http`](packages/server-http) | `FetchHandler`, `HandlerPlugin` (CORS / limits / headers) |
 | [`@ts-pf/client-http`](packages/client-http) | `FetchLink`, Fetch interceptors |
 | [`@ts-pf/file`](packages/file) | Opt-in `MultipartCodec` for `File`/`Blob` attachments |

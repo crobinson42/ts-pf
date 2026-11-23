@@ -6,7 +6,6 @@ export {
   type JsonSchemaConvertOptions,
   registerJsonSchemaConverter,
   toJsonSchema,
-  tryToJsonSchema,
 } from './json-schema.js'
 export type {
   CatalogError,

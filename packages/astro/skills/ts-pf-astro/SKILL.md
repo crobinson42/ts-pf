@@ -7,7 +7,7 @@ description: "Use when serving a ts-pf API from an Astro endpoint or calling it 
 
 Opt-in Astro endpoint and in-process page caller. Thin shell around `FetchHandler` and `createClient`. Not an integration, middleware mount, or Astro Actions adapter.
 
-Install: `npm i @ts-pf/astro@<version>` (`<version>` = the version of your other `@ts-pf/*` packages; peer **astro >= 7.0.0**). The app also imports `@ts-pf/contract`, `@ts-pf/server`, `@ts-pf/server-http`, `@ts-pf/client`, and `@ts-pf/client-http` directly, so it declares them too, on the same version as `@ts-pf/astro` (every `@ts-pf/*` package releases on one version; update them together).
+Install: `npm i @ts-pf/astro@^<major>` (`<major>` = the major of your other `@ts-pf/*` packages; peer **astro 7** (`>=7.0.0 <8`)). The app also imports `@ts-pf/contract`, `@ts-pf/server`, `@ts-pf/server-http`, `@ts-pf/client`, and `@ts-pf/client-http` directly, so it declares them too, on the same major as `@ts-pf/astro` (every `@ts-pf/*` package releases on one version; `^` ranges keep one copy within a major).
 
 Link for agents: `npx skills experimental_sync -y`
 

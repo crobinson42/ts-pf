@@ -45,7 +45,7 @@ export interface RpcCodec {
  * An `RpcCodec` whose encoded bodies are strings. This is the `inner` role of
  * the wrapping codecs (`MultipartCodec`, `StreamCodec`, `SseCodec`): they
  * embed one envelope per multipart part, JSONL line, or SSE event, so the
- * inner codec must give them text, not a `Blob` or a stream. `JSONCodec`
+ * inner codec must give them text, not a `Blob` or a stream. `JsonCodec`
  * implements it. Handlers and links still take any `RpcCodec`.
  */
 export interface EnvelopeTextCodec extends RpcCodec {

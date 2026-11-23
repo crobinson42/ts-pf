@@ -4,7 +4,7 @@ Opt-in [mvc-kit](https://www.npmjs.com/package/mvc-kit) helpers for a ts-pf **cl
 
 Agent skill: [`skills/ts-pf-mvc-kit/`](skills/ts-pf-mvc-kit/). Sync with `npx skills experimental_sync -y`.
 
-This package does **not** wrap Resource, add React hooks, generate a Service, or fold into `@ts-pf/client`. Pass the client from `createClient<typeof contract>(link)` or `createClient<Contract>(link)` with a generated `Contract` from [`@ts-pf/codegen`](../codegen). Requires **mvc-kit >= 4.9.0**.
+This package does **not** wrap Resource, add React hooks, generate a Service, or fold into `@ts-pf/client`. Pass the client from `createClient<typeof contract>(link)` or `createClient<Contract>(link)` with a generated `Contract` from [`@ts-pf/codegen`](../codegen). Requires **mvc-kit 4.9+** (`>=4.9.0 <5`).
 
 ## Setup
 

@@ -33,7 +33,7 @@ Root only. Same codec on handler and link. A failure line after the stream start
 new FetchHandler(app, { codec, validation: { output: true } })
 ```
 
-A `stream()` procedure on a non-streaming codec (the default `JSONCodec`, `MultipartCodec`) is `400 BAD_REQUEST` `Stream procedure requires a streaming codec` before the handler runs.
+A `stream()` procedure on a non-streaming codec (the default `JsonCodec`, `MultipartCodec`) is `400 BAD_REQUEST` `Stream procedure requires a streaming codec` before the handler runs.
 
 Cleanup hangs off `signal`, not a generator's `finally`. A client cancel (or a message `cancel` before the handler resolved) calls the stream's `return()` once, but an async generator that was never pulled completes on `return()` without running its body, so its `finally` never runs, and a generator waiting on an `await` between yields does not see `return()` until its next `yield`. Over HTTP the handler's `signal` is `request.signal`, which fires on disconnect when your host aborts it:
 

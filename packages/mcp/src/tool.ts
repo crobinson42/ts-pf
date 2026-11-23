@@ -16,7 +16,7 @@ import type {
   MaybePromise,
   Out,
 } from './infer.js'
-import type { Effect } from './meta.js'
+import type { McpEffect } from './meta.js'
 import { checkScopes } from './scopes.js'
 import type { McpCallInfo } from './types.js'
 
@@ -32,7 +32,7 @@ export type AnyTool<Ctx = never> = {
   readonly '~tool': ToolPhantom<string, Ctx, unknown>
 }
 
-export type MapperOpts<T, Ctx> = {
+export type MapperOptions<T, Ctx> = {
   context: Ctx
   info: McpCallInfo
   /** A typed client on the same executor, for joins across procedures. */
@@ -48,7 +48,7 @@ export type Visibility = (info: McpCallInfo) => MaybePromise<boolean>
 
 // Runtime shapes of user callbacks; the typed builder signatures are checked at the call site.
 export type InjectFn = (o: { context: unknown; info: McpCallInfo }) => unknown
-type RuntimeOpts = MapperOpts<unknown, unknown>
+type RuntimeOpts = MapperOptions<unknown, unknown>
 type Mapper = (value: unknown, o: RuntimeOpts) => unknown
 export type ErrorText = (o: {
   data: unknown
@@ -62,7 +62,7 @@ export interface ToolSpec {
   readonly path: string
   readonly procedure?: ContractProcedure
   readonly description?: string
-  readonly effect?: Effect
+  readonly effect?: McpEffect
   readonly inject: Readonly<Record<string, InjectFn>>
   /** `.input(schema, map)`, or a composite's input schema (no `map`). */
   readonly input?: { schema: AnySchema; map?: Mapper }
@@ -101,7 +101,7 @@ export interface ToolBuilder<
   readonly '~tool': ToolPhantom<Path, Ctx, S['model']>
   describe(text: string): ToolBuilder<T, P, Ctx, Path, S>
   /** Overrides `mcp({ effect })`. Unclassified tools are treated as `write`. */
-  effect(effect: Effect): ToolBuilder<T, P, Ctx, Path, S>
+  effect(effect: McpEffect): ToolBuilder<T, P, Ctx, Path, S>
   /** Hide input keys from the model and fill them per call (tenant ids, forced safe defaults). */
   inject: S['mode'] extends 'input'
     ? (
@@ -128,7 +128,7 @@ export interface ToolBuilder<
   input: S['mode'] extends 'none'
     ? <Sch extends AnySchema, A = InferSchemaOutput<Sch>>(
         schema: Sch,
-        map: (args: A, o: MapperOpts<T, Ctx>) => MaybePromise<In<P>>,
+        map: (args: A, o: MapperOptions<T, Ctx>) => MaybePromise<In<P>>,
       ) => ToolBuilder<
         T,
         P,
@@ -142,12 +142,12 @@ export interface ToolBuilder<
       ) => never
   /** Reshape the result. No `outputSchema` is advertised without a schema. */
   output<R>(
-    map: (out: Out<P>, o: MapperOpts<T, Ctx>) => MaybePromise<R>,
+    map: (out: Out<P>, o: MapperOptions<T, Ctx>) => MaybePromise<R>,
   ): ToolBuilder<T, P, Ctx, Path, S>
   /** Reshape the result and advertise `schema` as `outputSchema`; results are checked against it. */
   output<Sch extends AnySchema, R extends InferSchemaInput<Sch>>(
     schema: Sch,
-    map: (out: Out<P>, o: MapperOpts<T, Ctx>) => MaybePromise<R>,
+    map: (out: Out<P>, o: MapperOptions<T, Ctx>) => MaybePromise<R>,
   ): ToolBuilder<T, P, Ctx, Path, S>
   /** Rewrite declared errors into a next step for the model. */
   errors(
@@ -176,7 +176,7 @@ export function createToolBuilder(spec: ToolSpec): unknown {
   return {
     '~tool': spec,
     describe: (description: string) => next({ description }),
-    effect: (effect: Effect) => next({ effect }),
+    effect: (effect: McpEffect) => next({ effect }),
     inject: (map: Record<string, InjectFn>) =>
       next({ inject: { ...spec.inject, ...map } }),
     input: (schema: AnySchema, map: Mapper) => next({ input: { schema, map } }),
