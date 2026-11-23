@@ -152,6 +152,30 @@ describe('expand: builder contract', () => {
   })
 })
 
+const byUnion = procedure
+  .input(
+    z.union([
+      z.object({ id: z.string(), populate: Populate }),
+      z.object({ slug: z.string(), populate: Populate }),
+    ]),
+  )
+  .output(PostWide)
+  .expand({
+    key: 'populate',
+    fields: { authorId: Ref, editorId: Ref, categories: z.array(Link) },
+  })
+declare const unionClient: ContractClient<{ get: typeof byUnion }>
+
+describe('expand: union input', () => {
+  it('accepts either branch, with or without a list', async () => {
+    expectTypeOf(await unionClient.get({ slug: 's' })).toEqualTypeOf<Post>()
+    const post = await unionClient.get({ id: 'p', populate: ['authorId'] })
+    expectTypeOf(post.authorId).toEqualTypeOf<User | Withheld>()
+    // @ts-expect-error input fits neither branch
+    unionClient.get({ populate: ['authorId'] })
+  })
+})
+
 describe('expand: builder checks', () => {
   const input = z.object({ id: z.string(), populate: Populate })
 
@@ -224,6 +248,14 @@ describe('expand: hand-written contract type', () => {
         GetInput,
         Expansion<'populate', ['docs'], Fields>
       >
+      latest: ContractProcedure<
+        GetInput | undefined,
+        Wide,
+        {},
+        {},
+        GetInput | undefined,
+        Expansion<'populate', [], Fields>
+      >
     }
   }
   const hand = {} as ContractClient<Contract>
@@ -241,6 +273,12 @@ describe('expand: hand-written contract type', () => {
     expectTypeOf(page.docs).toEqualTypeOf<
       { id: string; authorId: string; categories: Link[] }[]
     >()
+  })
+
+  it('an input that accepts undefined may be omitted', async () => {
+    expectTypeOf((await hand.posts.latest()).authorId).toEqualTypeOf<string>()
+    const post = await hand.posts.latest({ id: 'p', populate: ['authorId'] })
+    expectTypeOf(post.authorId).toEqualTypeOf<User | Withheld>()
   })
 
   it('InferExpandedOutput reads it', () => {
