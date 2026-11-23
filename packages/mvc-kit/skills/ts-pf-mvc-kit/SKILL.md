@@ -35,10 +35,12 @@ if (!result.ok && result.error.code === 'VALIDATION') {
 
 `bindClient` injects `{ signal: host.disposeSignal }` at call time. A caller-provided `{ signal }` wins. Resource methods **throw** `PFError` (`errorCode === 'NOT_FOUND'`, not `'not_found'`). mvc-kit needs a numeric `status` to classify by `code`; `bindClient` supplies `400` when the transport does not carry one (message links, mid-stream failures, declared errors without `status`), so `errorCode` is the `PFError.code` on every `Link`. `asResult` without rethrow leaves `async.method.error` null.
 
+`issuesToFieldErrors` keys each issue by the first segment of its path, since `FormModel` knows only top-level fields (`['address', 'city']` → `address`; first issue per field wins). For a nested object or array row with its own `FormModel`, pass `{ at: ['address'] }` or `{ at: ['items', i] }` to keep only the issues under that path, keyed relative to it. Give each form only keys it has as fields: an error on a key with no field keeps the form invalid, with nothing shown, until `clearErrors()` / `commit()` / `reset()`. Drop sub-form keys from the parent's errors (`const { address, ...own } = issuesToFieldErrors(issues)`).
+
 ## API
 
 - `bindClient`, `DisposeSignalHost`
-- `issuesToFieldErrors`
+- `issuesToFieldErrors(issues, { at? })`, `IssuesToFieldErrorsOptions`
 
 ## Pair with
 

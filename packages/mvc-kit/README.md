@@ -79,6 +79,20 @@ if (!result.ok && result.error.code === 'VALIDATION') {
 }
 ```
 
+`FormModel` knows only top-level fields, so an issue is keyed by the first segment of its path: `['address', 'city']` lands on `address`, and the first issue per field wins. When a nested object or array row has its own `FormModel`, pass `at` to keep only the issues under that path, keyed relative to it.
+
+Give each form only keys it has as fields. mvc-kit counts an error set with `setErrors` toward `valid`, and clears it only when that field is edited. An error on a key the form has no field for keeps the form invalid, with nothing on screen, until `clearErrors()`, `commit()`, or `reset()`. So drop the sub-forms' keys before the parent's call:
+
+```ts no-check
+const issues = result.error.data.issues
+const { address, items, ...own } = issuesToFieldErrors(issues)
+this.form.setErrors(own)
+this.addressForm.setErrors(issuesToFieldErrors(issues, { at: ['address'] }))
+this.rowForms.forEach((row, i) =>
+  row.setErrors(issuesToFieldErrors(issues, { at: ['items', i] })),
+)
+```
+
 ## Abort
 
 Pass nothing. `bindClient` injects `host.disposeSignal`. Dispose/unmount aborts the in-flight call. FetchLink maps abort to `PFError { code: 'INTERNAL', local: true, status: 0, cause: AbortError }`. mvc-kit walks `cause` one level and **swallows** it — no error flash.
@@ -139,7 +153,7 @@ Entity `id` is `string`. Procedure-shaped non-CRUD writes do not belong there.
 ## API
 
 - `bindClient`, `DisposeSignalHost`
-- `issuesToFieldErrors`
+- `issuesToFieldErrors(issues, { at? })`, `IssuesToFieldErrorsOptions`
 
 ## Not in this package
 
