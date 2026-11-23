@@ -11,7 +11,7 @@ import {
   runCallInterceptors,
 } from './call-interceptor.js'
 import { createErrorFactory, finalizeDeclaredError } from './error-factory.js'
-import type { MiddlewareFn } from './middleware.js'
+import type { MiddlewareFn, NextFn } from './middleware.js'
 import { validationError } from './validation-error.js'
 
 export type HandlerFn = (opts: {
@@ -287,10 +287,11 @@ async function runUse(run: Execution, index: number): Promise<unknown> {
     input: run.input,
     errors: run.errors,
     path: run.def.path,
-    next: async (opts) => {
+    // The added-context type on the result is phantom; the value is the output.
+    next: (async (opts?: NextOptions) => {
       applyNext(run, opts)
       return runUse(run, index + 1)
-    },
+    }) as NextFn<unknown, unknown, unknown>,
   })
 }
 
@@ -304,18 +305,18 @@ async function runUseAfter(run: Execution, index: number): Promise<unknown> {
     input: run.input,
     errors: run.errors,
     path: run.def.path,
-    next: async (opts) => {
+    // The added-context type on the result is phantom; the value is the output.
+    next: (async (opts?: NextOptions) => {
       applyNext(run, opts)
       return runUseAfter(run, index + 1)
-    },
+    }) as NextFn<unknown, unknown, unknown>,
   })
 }
 
+type NextOptions = { context?: unknown; input?: unknown }
+
 /** Middleware `next(opts)`: `context` merges into the current one; `input` replaces it. */
-function applyNext(
-  run: Execution,
-  opts: { context?: unknown; input?: unknown } | undefined,
-): void {
+function applyNext(run: Execution, opts: NextOptions | undefined): void {
   if (opts?.context) {
     run.ctx = { ...run.ctx, ...(opts.context as Record<string, unknown>) }
   }

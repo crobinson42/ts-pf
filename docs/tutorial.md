@@ -54,7 +54,7 @@ export const app = impl.router({
 })
 ```
 
-`$context<C>()` is the only source of context types. Declare optional keys middleware will add up front; `.use()` does not narrow the type.
+`$context<C>()` is the context the adapter supplies. A middleware that calls `next({ context: { user } })` adds a typed `user` for handlers built after it (`impl.use(requireUser).planet.create.handler(...)`).
 
 ## 3. Serve it
 

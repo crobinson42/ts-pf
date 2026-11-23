@@ -143,7 +143,7 @@ export async function getPlanet(id: string): Promise<Response> {
 
 - App: `ts-pf-server`
 - Client: `ts-pf-client-http`
-- Codecs: `ts-pf-file` / `ts-pf-stream` / `ts-pf-sse` via `{ codec }`
+- Codecs: `ts-pf-file` / `ts-pf-stream` (JSONL and SSE) via `{ codec }`
 
 ## Don't
 

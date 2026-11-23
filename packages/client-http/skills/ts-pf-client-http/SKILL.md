@@ -48,7 +48,7 @@ On a unary failure the rejected `PFError.status` is the HTTP response status (de
 
 - Client: `ts-pf-client`
 - Server: `ts-pf-server-http`
-- Codecs: `ts-pf-file` / `ts-pf-stream` / `ts-pf-sse` via `{ codec }`
+- Codecs: `ts-pf-file` / `ts-pf-stream` (JSONL and SSE) via `{ codec }`
 
 ## Don't
 

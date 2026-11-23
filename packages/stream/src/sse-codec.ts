@@ -8,23 +8,15 @@ import {
   type RpcEncodedBody,
 } from '@ts-pf/http'
 import {
-  isAsyncIterable,
   PFError,
   type RpcFailure,
   type RpcRequest,
   type RpcResponse,
   toWireError,
 } from '@ts-pf/protocol'
-import { StreamCodec } from '@ts-pf/stream'
+import { StreamCodec } from './codec.js'
+import { isItemStream } from './item-stream.js'
 import { encodeSse, readSseEvents, SSE_CONTENT_TYPE } from './sse.js'
-
-/** Envelope items only: a `ReadableStream` is bytes, not items (as in `@ts-pf/stream`). */
-function isItemStream(value: unknown): value is AsyncIterable<unknown> {
-  return (
-    isAsyncIterable(value) &&
-    !(typeof ReadableStream !== 'undefined' && value instanceof ReadableStream)
-  )
-}
 
 /** In-band failure after the stream started: an unknown throw is `INTERNAL`. */
 function failureLine(error: unknown): string {

@@ -25,7 +25,6 @@ const PACKAGE_ORDER = [
   'client-http',
   'file',
   'stream',
-  'sse',
   'docs',
   'openapi',
   'codegen',

@@ -18,10 +18,10 @@ Link for agents: `npx skills experimental_sync -y`
 import { createImplementer, DedupePlugin } from '@ts-pf/server'
 import { PFError } from '@ts-pf/protocol'
 
-const impl = createImplementer(contract).$context<{ db: Db; user?: User }>()
+const impl = createImplementer(contract).$context<{ db: Db; req: Request }>()
 
 const requireUser = impl.middleware(async ({ context, next }) => {
-  const user = await auth(context)
+  const user = await auth(context.req)
   if (!user) throw new PFError({ code: 'UNAUTHORIZED', status: 401 })
   return next({ context: { user } })
 })
@@ -41,7 +41,7 @@ export const app = impl.use(requireUser).router({
 })
 ```
 
-`.use()` runs before input validation (`input: unknown`) and takes the same loose `MiddlewareFn` on `impl.use(mw)` and on a per-procedure `impl.planet.find.use(mw)`, so a middleware from `impl.middleware(fn)` fits both. `.useAfter()` runs after and is typed with that procedure's parsed input (the input schema's output type) and output, so it takes an inline function. Input checks default on, so `.useAfter()` then sees the parsed input. `validation: { input: false }` skips the input schema, including stream input items, and `.useAfter()` and the handler see the raw value even though `input` is still typed as parsed (contract-only narrowing — zod `.omit()`, defaults, transforms — is not applied); validate in the handler and `throw validationError(toValidationIssues(result.issues))` (`toValidationIssues` from `@ts-pf/contract`) to answer in the built-in `VALIDATION` shape. Output checks, including stream output items, run only when `validation: { output: true }`. Unary output failure is `INTERNAL` with no issues. A bad stream output item is `VALIDATION` with issues. Parsed output (strip, defaults, transforms) is applied only when output checks run. Declared error `data` is always checked. A hand-built `new PFError({ code })` for a declared code gets the declared `status` when it has none, exactly like `errors.CODE()`, and keeps its `cause` (`message` is not filled). `$context<C>()` is the context type source; middleware runtime-merges and does not infer added keys. Pass HTTP `Request` in `FetchHandler.handle(..., { context })`, not via `$context` alone. Name the implemented router `app`. Default `DedupePlugin` keys every unary call — pass `key` to restrict to reads.
+`.use()` runs before input validation (`input: unknown`) and takes the same `MiddlewareFn` (input `unknown`) on `impl.use(mw)` and on a per-procedure `impl.planet.find.use(mw)`, so a middleware from `impl.middleware(fn)` fits both. `.useAfter()` runs after and is typed with that procedure's parsed input (the input schema's output type) and output, so it takes an inline function. Input checks default on, so `.useAfter()` then sees the parsed input. `validation: { input: false }` skips the input schema, including stream input items, and `.useAfter()` and the handler see the raw value even though `input` is still typed as parsed (contract-only narrowing — zod `.omit()`, defaults, transforms — is not applied); validate in the handler and `throw validationError(toValidationIssues(result.issues))` (`toValidationIssues` from `@ts-pf/contract`) to answer in the built-in `VALIDATION` shape. Output checks, including stream output items, run only when `validation: { output: true }`. Unary output failure is `INTERNAL` with no issues. A bad stream output item is `VALIDATION` with issues. Parsed output (strip, defaults, transforms) is applied only when output checks run. Declared error `data` is always checked. A hand-built `new PFError({ code })` for a declared code gets the declared `status` when it has none, exactly like `errors.CODE()`, and keeps its `cause` (`message` is not filled). `$context<C>()` is the context adapters supply; middleware `next({ context })` adds typed keys for later middleware and the handler (see below). Pass HTTP `Request` in `FetchHandler.handle(..., { context })`, not via `$context` alone. Name the implemented router `app`. Default `DedupePlugin` keys every unary call — pass `key` to restrict to reads.
 
 `impl.router()` returns `ImplementedRouter<T, TCtx>`: `TCtx` is the `$context<C>()` type and each handler is an `ImplementedProcedure<typeof contract.planet.find, TCtx>` (type-only brands; the runtime object is unchanged). A missing key, an extra key, a handler built from another procedure under this key, or a slice built with a different `$context` is a type error that names the key. `FetchHandler`, the message handlers, `createLocalClient`, and `@ts-pf/astro` read `TCtx` from `app`, so `context` is checked against it. A tree not produced by `impl.router()` (a plain object of handlers) infers `unknown`; use `impl.router()`, or pick procedures into a second `impl.router()` call, to keep the check.
 
@@ -54,33 +54,30 @@ Nest finished slice apps: `impl.router({ planet: planetApp, star: starApp })`. E
 
 ### Keys middleware adds
 
-Middleware does not narrow context (yet). Declare added keys optional on `$context`, set them in one `.use()` middleware (or throw), and narrow with a checking helper, never a bare cast at call sites. Context factories omit the optional keys (no placeholders):
+`next({ context: { user } })` adds `user` to the context type of later middleware and the handler. `$context<AppCtx>()` is only what adapters supply (and the router brand); never declare middleware-added keys there as optional placeholders:
 
 ```ts
 import { PFError } from '@ts-pf/protocol'
 import { createImplementer } from '@ts-pf/server'
 
-type AppCtx = { db: Db; req: Request; user?: User }
+type AppCtx = { db: Db; req: Request }
 const impl = createImplementer(contract).$context<AppCtx>()
 
 const requireUser = impl.middleware(async ({ context, next }) => {
   const user = await auth(context.req)
   if (!user) throw new PFError({ code: 'UNAUTHORIZED', status: 401 })
-  return next({ context: { user } }) // merges
+  return next({ context: { user } }) // merges; typed downstream
 })
 
-function signedIn(context: AppCtx): AppCtx & { user: User } {
-  if (!context.user) throw new PFError({ code: 'UNAUTHORIZED', status: 401 })
-  return context as AppCtx & { user: User }
-}
-
-const create = impl.planet.create.use(requireUser).handler(async ({ input, context }) => {
-  const { db, user } = signedIn(context)
-  console.log(user.id)
-  return db.planets.create(input)
+const authed = impl.use(requireUser)
+const create = authed.planet.create.handler(async ({ input, context }) => {
+  console.log(context.user.id) // User
+  return context.db.planets.create(input)
 })
 // context factory: (req) => ({ db, req })
 ```
+
+Build the handler from the level that has the middleware (`authed.planet.create.handler()` or `impl.planet.create.use(requireUser).handler()`); handlers from `impl` and `authed` mix in one `impl.router()` (same `AppCtx` brand), and `authed.router()` works too; the middleware runs once per call either way. Return `next()`'s result: added keys are read from its type (`MiddlewareResult`); to change the value spread it (`{ ...result, extra }`), since a brand-new value drops them. A key added on only some paths stays optional. An added key may narrow an existing key (`user?: User` → `User`), not change its type. A shared middleware outside an implementer: `MiddlewareFn<AppCtx, { user: User }>` (`MiddlewareFn<TCtx, TAdded, TInput, TOutput>`).
 
 ### Mapping domain errors
 
@@ -153,6 +150,7 @@ A code the procedure does not declare is sent without the declared status (HTTP 
 - `createImplementer`, `createLocalClient`, `runProcedure`, `lookupProcedure`, `ProcedureValidation`
 - `validationError(issues)` — the `VALIDATION` `PFError` the input check throws (`Validation failed`, `data: { issues }`), for handlers that validate themselves
 - `ImplementedRouter<T, TCtx>`, `ImplementedProcedure<TContract, TCtx>`, `RouterImpl<T, TCtx>`
+- `MiddlewareFn<TCtx, TAdded, TInput, TOutput>`, `NextFn`, `MiddlewareResult`, `MergeContext`, `ErrorFactory`
 - `applyPlugins`, `CallPlugin`, `CallInterceptor`, `DedupePlugin`
 - `mapStreamErrors`
 - `onStart` / `onSuccess` / `onError` / `onFinish`

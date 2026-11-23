@@ -38,7 +38,6 @@ const PROD = {
   'client-http': ['client', 'http', 'protocol'],
   file: ['http', 'protocol'],
   stream: ['http', 'protocol', 'contract'],
-  sse: ['stream', 'http', 'protocol'],
   docs: ['contract', 'protocol', 'http'],
   openapi: ['docs'],
   codegen: ['docs'],
@@ -62,7 +61,6 @@ const DEV = {
   'message-client': ['message-server', 'server', 'stream'],
   file: ['server', 'server-http', 'client', 'client-http'],
   stream: ['server', 'server-http', 'client', 'client-http'],
-  sse: ['server', 'server-http', 'client', 'client-http'],
   docs: ['stream'],
   openapi: ['stream'],
   codegen: ['client', 'stream'],
@@ -137,7 +135,7 @@ const NEVER = [
     why: 'do not import message-client from client (prod)',
   },
   ...['contract', 'server', 'client'].flatMap((from) =>
-    ['http', 'file', 'stream', 'sse'].map((to) => ({
+    ['http', 'file', 'stream'].map((to) => ({
       from,
       to,
       scope: 'prod',

@@ -167,7 +167,7 @@ Calling the server from another language (Dart, Swift, Kotlin, Python, Go): mode
 | Codec helpers | `@ts-pf/http` | `ts-pf-http` |
 | File / Blob attachments | `@ts-pf/file` | `ts-pf-file` |
 | Root `AsyncIterable` (JSONL) | `@ts-pf/stream` | `ts-pf-stream` |
-| SSE output framing | `@ts-pf/sse` (needs `stream()`) | `ts-pf-sse` |
+| SSE output framing | `@ts-pf/stream` (`SseCodec`) | `ts-pf-stream` |
 | WS / stdio / MessagePort | `@ts-pf/message` + `-server` / `-client` | `ts-pf-message` / `-server` / `-client` |
 | Procedure catalog | `@ts-pf/docs` | `ts-pf-docs` |
 | OpenAPI 3.1 | `@ts-pf/openapi` | `ts-pf-openapi` |
@@ -208,13 +208,12 @@ new FetchLink({ url: '/rpc', codec })
 procedure.output(stream(z.object({ token: z.string() })))
 ```
 
-### SSE — `@ts-pf/sse` → `ts-pf-sse`
+### SSE — `@ts-pf/stream` → `ts-pf-stream`
 
 ```ts
 import { procedure } from '@ts-pf/contract'
 import { z } from 'zod'
-import { stream } from '@ts-pf/stream'
-import { SseCodec } from '@ts-pf/sse'
+import { SseCodec, stream } from '@ts-pf/stream'
 import { FetchHandler } from '@ts-pf/server-http'
 import { FetchLink } from '@ts-pf/client-http'
 
@@ -225,7 +224,7 @@ new FetchLink({ url: '/rpc', codec })
 procedure.output(stream(z.object({ token: z.string() })))
 ```
 
-Contracts still use `stream()` from `@ts-pf/stream`.
+`@ts-pf/sse` was merged into `@ts-pf/stream` at 1.0; do not install it.
 
 ### Message — `@ts-pf/message*` → `ts-pf-message` / `-server` / `-client`
 

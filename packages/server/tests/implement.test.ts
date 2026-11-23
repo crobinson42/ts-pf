@@ -22,6 +22,43 @@ describe('createImplementer', () => {
     expect(await client.echo({ n: 1 })).toEqual({ n: 1 })
   })
 
+  it('a handler from a narrowed level gets the context its middleware added', async () => {
+    const impl = createImplementer(contract).$context<{ token: string }>()
+    const authed = impl.use(async ({ context, next }) =>
+      next({ context: { user: `user-of-${context.token}` } }),
+    )
+    // Mixed: one handler from `authed`, one from `impl`, in one impl.router().
+    const app = impl.router({
+      ping: authed.ping.handler(async ({ context }) => context.user),
+      echo: impl.echo.handler(async ({ input, context }) => {
+        expect('user' in context).toBe(false)
+        return input
+      }),
+    })
+    const client = createLocalClient(app, { context: { token: 't1' } })
+    expect(await client.ping()).toBe('user-of-t1')
+    expect(await client.echo({ n: 1 })).toEqual({ n: 1 })
+  })
+
+  it('a level runs its middleware once for handlers built from it', async () => {
+    const calls: string[] = []
+    const impl = createImplementer(contract)
+    const authed = impl.use(async ({ next }) => {
+      calls.push('auth')
+      return next({ context: { user: 'u1' } })
+    })
+    const app = authed.router({
+      ping: authed.ping.handler(async ({ context }) => context.user),
+      echo: impl.echo.handler(async ({ input }) => input),
+    })
+    const client = createLocalClient(app, { context: {} })
+    expect(await client.ping()).toBe('u1')
+    expect(calls).toEqual(['auth'])
+    // A handler from `impl` gets the level's middleware from router().
+    await client.echo({ n: 1 })
+    expect(calls).toEqual(['auth', 'auth'])
+  })
+
   it('types handler signal as an optional AbortSignal', () => {
     const impl = createImplementer(contract)
     impl.ping.handler(async ({ signal }) => {

@@ -39,7 +39,7 @@ Those wrappers take `inner?: EnvelopeTextCodec` — an `RpcCodec` whose encoded 
 ## Pair with
 
 - Handler/link: `ts-pf-server-http` / `ts-pf-client-http` (they take `{ codec }`)
-- Other bodies: `ts-pf-file` / `ts-pf-stream` / `ts-pf-sse`
+- Other bodies: `ts-pf-file` / `ts-pf-stream` (JSONL and SSE)
 
 ## Don't
 

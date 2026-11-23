@@ -72,12 +72,12 @@ packages/http/src/
   path.ts             join/parse procedure URL path
   http-status.ts      httpStatus / PROTOCOL_HTTP_STATUS (code → status; keys must equal ProtocolErrorCode; else error.status ?? 400 — the only HTTP default)
 packages/server/src/
-  implement.ts        createImplementer: createNode dispatches to createRouterNode (immutable; use()/useAfter()/$context() return a fresh node) + createProcedureNode (short-lived builder; use()/useAfter() mutate its own arrays, handler() seals); Implementer.router is <I>(impl: I & RouterImplCheck<T, TCtx, I>) → ImplementedRouter<T, TCtx>; ProcedureBuilder carries TContract; its use() takes the same MiddlewareFn<TCtx, unknown, unknown> as impl.use() (impl.middleware() fits both), useAfter() is typed per procedure
+  implement.ts        createImplementer: createNode dispatches to createRouterNode (immutable; use()/useAfter()/$context() return a fresh node) + createProcedureNode (short-lived builder; use()/useAfter() mutate its own arrays, handler() seals); Implementer.router is <I>(impl: I & RouterImplCheck<T, TCtx, I>) → ImplementedRouter<T, TCtx>; Implementer<T, TCtx, TCurrent> / ProcedureBuilder<…, TContract, TCurrent>: TCtx brands, TCurrent is what middleware and handlers see; use()/useAfter() infer TAdded from the middleware's return and continue with MergeContext<TCurrent, TAdded> (impl.middleware() fits impl.use() and a procedure use(); useAfter() is typed per procedure); applyInherited's prependChain skips a level chain the procedure already starts with, so authed.router({ x: authed.x.handler() }) runs the middleware once
   error-factory.ts    createErrorFactory (memoized per `ErrorMap` in a WeakMap; the shared factory is `Object.freeze`d; stamps a declared ErrorDef.status only; no 400 default), finalizeDeclaredError (internal; not exported; fills a declared ErrorDef.status on a thrown declared-code PFError whose status is unset — a copy keeping cause (not the stack: reading `.stack` is costly), never message; invalid declared data → INTERNAL with the original error as `cause`)
   validation-error.ts validationError(issues) — the input-check VALIDATION PFError (`Validation failed`, data { issues }, no status); runProcedure and mcp call.ts use it
   runtime.ts          runProcedure (output-schema INTERNAL carries the issues as `cause`), lookupProcedure (Object.hasOwn per segment), HandlerFn.signal (optional on purpose; DECISIONS "Handler `signal` stays optional"), RunProcedureOptions.interceptors, ProcedureValidation; ImplementedProcedure<TContract, TCtx> / ImplementedRouter<T, TCtx> phantom brands (ContractShape = contract InferContractProcedure minus meta, RouterImpl, MissingProcedures / UnexpectedKeys / PresentProcedures → RouterImplCheck; IsContractProcedure is contract's)
   caller.ts           createLocalClient (context typed from the router brand via NoInfer; optional interceptors/plugins/validation; run options built once per client, only `signal` added per call)
-  middleware.ts       MiddlewareFn, ErrorFactory (handler typed; middleware loose)
+  middleware.ts       MiddlewareFn<TCtx, TAdded, TInput, TOutput>, NextFn<TCtx, TInput, TOutput> (generic TAdded; context may narrow, not retype, a TCtx key; NoInfer on the result's TAdded), MiddlewareResult (phantom brand; the output at runtime), MergeContext, ErrorFactory (handler typed; middleware loose)
   map-stream-errors.ts mapStreamErrors(value, fn) — hand-written AsyncIterable wrapper (not an async generator: return() before the first next() must reach the source; forwarded once); a throw from next() becomes fn(error); non-iterables returned as is
   call-interceptor.ts CallInterceptor (`runCallInterceptors` not exported)
   plugin.ts           CallPlugin, applyPlugins
@@ -115,10 +115,8 @@ packages/stream/src/
   codec.ts            JSONL wrap of an EnvelopeTextCodec, default JsonCodec (`streams: true`; in-band failure lines via toWireError → PFError without status; content-type / body-source helpers from http)
   schema.ts           stream() Standard Schema (`'~pfStream'` brand; item checks in a hand-written iterator, not an async generator, so return() before the first next() still reaches the source)
   jsonl.ts            JSONL read/write (internal; the producer's return() runs once on cancel or an unwritable item, rejection dropped)
-  item-stream.ts      isItemStream = protocol isAsyncIterable minus ReadableStream (bytes, not items; internal, not exported — sse, message-server, and message-client inline the same 3 lines)
-packages/sse/src/
-  index.ts            SseCodec + SSE_CONTENT_TYPE
-  codec.ts            SSE output wrap of StreamCodec (`streams: true` — JSONL input through StreamCodec; event: error via toWireError → PFError without status; local isItemStream; inner is an EnvelopeTextCodec; mimeType / jsonBodySource from http)
+  item-stream.ts      isItemStream = protocol isAsyncIterable minus ReadableStream (bytes, not items; internal, not exported — sse-codec imports it; message-server and message-client inline the same 3 lines)
+  sse-codec.ts        SseCodec (merged from @ts-pf/sse at 1.0): SSE output wrap of StreamCodec (`streams: true` — JSONL input through StreamCodec; event: error via toWireError → PFError without status; isItemStream from item-stream.ts; inner is an EnvelopeTextCodec; mimeType / jsonBodySource from http)
 packages/docs/src/
   index.ts            catalog, docs, getDocs, walkContract, toJsonSchema, registerJsonSchemaConverter, canonicalize
   canonicalize.ts     canonicalize — sorted-keys copy (byte-stable JSON); catalogHash in codegen hashes it; no node: imports
@@ -286,8 +284,7 @@ procedure.output(stream(z.object({ token: z.string() })))
 SSE is opt-in output framing of the same contracts:
 
 ```ts
-import { stream } from '@ts-pf/stream'
-import { SseCodec } from '@ts-pf/sse'
+import { SseCodec, stream } from '@ts-pf/stream'
 import { FetchHandler } from '@ts-pf/server-http'
 import { FetchLink } from '@ts-pf/client-http'
 
@@ -310,7 +307,7 @@ const client = createClient<typeof contract>(new PortLink({ port: port2 }))
 
 Any other pipe is a `Duplex` (`send` / `onMessage` / `onClose` / `close`, JSON text) handed to `new DuplexHandler(app).bind(duplex, { context })` / `new DuplexLink({ duplex })`; the port / ws / stdio classes are those two over their adapters.
 
-`$context<C>()` is the source of context types. `impl.router()` brands the tree with it (`ImplementedRouter<T, TCtx>`; leaves `ImplementedProcedure<TContract, TCtx>`), and `FetchHandler`, the message handlers, `createLocalClient`, and Astro infer `TCtx` from that brand and type `context` with it — so `new FetchHandler(app)` needs no generic and `context: (req) => ({ db, req })` types `req`. Only the router-level brand is read: a tree not produced by `impl.router()` infers `unknown` even if its leaves are branded; use `impl.router()`, or pick procedures into a second `impl.router()` call, to keep the check. Middleware runtime-merges; it does not infer added keys.
+`$context<C>()` is the source of context types. `impl.router()` brands the tree with it (`ImplementedRouter<T, TCtx>`; leaves `ImplementedProcedure<TContract, TCtx>`), and `FetchHandler`, the message handlers, `createLocalClient`, and Astro infer `TCtx` from that brand and type `context` with it — so `new FetchHandler(app)` needs no generic and `context: (req) => ({ db, req })` types `req`. Only the router-level brand is read: a tree not produced by `impl.router()` infers `unknown` even if its leaves are branded; use `impl.router()`, or pick procedures into a second `impl.router()` call, to keep the check. Middleware `next({ context })` keys are typed for later middleware and handlers built from that level (`TCurrent`); brands and adapters use `TCtx` only.
 
 Compose is nested objects. `router({ planet: planetContract })` nests slice contracts. `impl.router({ planet: planetApp })` nests finished slice apps (`createImplementer(sliceContract).$context<AppCtx>().router({ ... })`). Root `.use(mw)` prepends; nested procedure `path` is the composed tree. Pick procedures for a second server (`{ list: usersApp.list }`). A slice built with a different `$context`, a handler under another procedure's key, a superset slice, or a missing / extra key is a type error naming the key (`MissingProcedures` / `UnexpectedKeys`); a slice that needs less context than the root provides nests (contravariant brand). No `mergeRouters` / `compose()` / lazy routers.
 
@@ -358,7 +355,7 @@ Runtime `validateSchema`: user `registerSchemaAdapter` (first `accept` match) �
 | Extra HTTP body encodings | new `RpcCodec` (or wrap `JsonCodec`) in/near `@ts-pf/http`. Encode is `{ contentType, body }`, not a raw string. Set `streams` (`true` / `false`). |
 | File/Blob | `@ts-pf/file` `MultipartCodec` on `FetchHandler` / `FetchLink` `{ codec }`. |
 | AsyncIterable streams | `@ts-pf/stream` `StreamCodec` + `stream()` on `.input()` / `.output()`. Root only. JSONL envelopes. Nested streams and File/Blob in items are `BAD_REQUEST`. |
-| SSE output | `@ts-pf/sse` `SseCodec` on `FetchHandler` / `FetchLink`. Same `stream()` contracts. |
+| SSE output | `@ts-pf/stream` `SseCodec` on `FetchHandler` / `FetchLink`. Same `stream()` contracts. |
 | API docs / procedure catalog | `@ts-pf/docs` `docs()` + `catalog()`. |
 | A human guide (concepts, errors, a walkthrough) | `docs/<name>.md` (index it in `docs/README.md` and the root README "Guides" list, and add it to `GUIDE_ORDER` in `site/scripts/sync-docs.mjs` or the site sorts it last). `check:snippets` type-checks fenced `ts`. The Starlight site copies it; do not add a second page under `site/src/content/docs/`. |
 | A package page on the docs site | that package's `README.md`. `site/` generates the Starlight page. Do not hand-write `site/src/content/docs/packages/<pkg>.md`. |
@@ -386,7 +383,7 @@ New **published** packages: `version` `0.0.0`, `license: "MIT"`, a `LICENSE` cop
 
 - Client importing `@ts-pf/server` (tests may, as a **devDependency**)
 - `@ts-pf/http` imported by contract/server/client (prod)
-- `@ts-pf/file`, `@ts-pf/stream`, or `@ts-pf/sse` imported by contract/server/client (prod)
+- `@ts-pf/file` or `@ts-pf/stream` imported by contract/server/client (prod)
 - Inventing `TransportHandler`; porting `HandlerPlugin` onto WS / stdio / MessagePort (`DuplexHandler` / `DuplexLink` are duplex-generic *inside* the message family, not a cross-wire handler)
 - Reusing `RpcCodec` as a message framer; putting `.ws()` / `.stdio()` / `.port()` on procedures
 - Folding SSE or WebSocket into `@ts-pf/server-http`

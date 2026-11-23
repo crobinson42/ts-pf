@@ -16,9 +16,8 @@ import { createImplementer, createLocalClient } from '@ts-pf/server'
 import { PFError } from '@ts-pf/protocol'
 import { contract } from './contract.js'
 
-// Declare every key middleware adds (`user`) here; `next({ context })` takes a
-// Partial of this type and does not infer new keys.
-export type AppCtx = { db: Db; req: Request; user?: User }
+// What the adapter supplies; middleware adds `user` (see "Keys middleware adds").
+export type AppCtx = { db: Db; req: Request }
 
 const impl = createImplementer(contract).$context<AppCtx>()
 
@@ -74,7 +73,7 @@ Server `DedupePlugin` keys every unary call by default, writes included; pass `k
 
 ## Keys middleware adds
 
-Middleware does not narrow the context type yet: `next({ context: { user } })` merges at runtime, but handlers still see `$context<AppCtx>()`, where `user` is optional. Declare those keys optional, let one `.use()` middleware set them or throw, and narrow in the handler with a helper that checks the key (not with a cast at each call site). The context factory then never needs placeholder keys:
+A middleware that passes keys to `next({ context })` adds them to the context type of every middleware and handler after it. `$context<AppCtx>()` stays what the adapter supplies; the middleware supplies the rest:
 
 ```ts
 import { PFError } from '@ts-pf/protocol'
@@ -82,7 +81,7 @@ import { createImplementer } from '@ts-pf/server'
 import { FetchHandler } from '@ts-pf/server-http'
 import { contract } from './contract.js'
 
-type AppCtx = { db: Db; req: Request; user?: User }
+type AppCtx = { db: Db; req: Request }
 
 const impl = createImplementer(contract).$context<AppCtx>()
 
@@ -92,11 +91,7 @@ const requireUser = impl.middleware(async ({ context, next }) => {
   return next({ context: { user } })
 })
 
-/** `context` with `user` set by `requireUser`; throws if it is missing. */
-function signedIn(context: AppCtx): AppCtx & { user: User } {
-  if (!context.user) throw new PFError({ code: 'UNAUTHORIZED', status: 401 })
-  return context as AppCtx & { user: User }
-}
+const authed = impl.use(requireUser)
 
 export const app = impl.router({
   planet: {
@@ -106,18 +101,23 @@ export const app = impl.router({
       if (!row) throw errors.NOT_FOUND({ id: input.id })
       return row
     }),
-    create: impl.planet.create.use(requireUser).handler(async ({ input, context }) => {
-      const { db, user } = signedIn(context)
-      console.log(`${user.id} creates ${input.name}`)
-      return db.planets.create(input)
+    create: authed.planet.create.handler(async ({ input, context }) => {
+      console.log(`${context.user.id} creates ${input.name}`) // user: User
+      return context.db.planets.create(input)
     }),
   },
 })
 
-// No `user: undefined` placeholder: the key is optional.
+// The context factory supplies AppCtx only; requireUser adds `user`.
 const handler = new FetchHandler(app)
 await handler.handle(request, { prefix: '/rpc', context: (req) => ({ db, req }) })
 ```
+
+- The type follows the builder. Build a handler from the level that has the middleware: `authed.planet.create.handler()`, or `impl.planet.create.use(requireUser).handler()`. Handlers from `impl` and from `authed` mix in one `impl.router()` (both are branded with `AppCtx`), and `authed.router({ ... })` works too: either way the middleware runs once per call.
+- Return what `next()` returns: the added keys are read from the middleware's return type (`MiddlewareResult`). To change the value, spread the result (`{ ...result, extra }`); a brand-new value drops the added keys. A key added on only some paths stays optional.
+- An added key may narrow a key `AppCtx` already has (`user?: User` → `user: User`), not change its type.
+- Adapters and `createLocalClient` still take `AppCtx`: narrowing never changes what callers supply.
+- A shared middleware written outside an implementer declares what it adds: `MiddlewareFn<AppCtx, { user: User }>`.
 
 ## Mapping domain errors
 
@@ -276,6 +276,7 @@ export const app = impl.use(mapDomainErrors).router({
 
 - `createImplementer`, `createLocalClient`, `runProcedure`, `lookupProcedure`, `ProcedureValidation`
 - `validationError(issues)` — the `VALIDATION` `PFError` the input check throws, for handlers that validate themselves
+- `MiddlewareFn<TCtx, TAdded, TInput, TOutput>`, `NextFn`, `MiddlewareResult`, `MergeContext`, `ErrorFactory`
 - `applyPlugins`, `CallPlugin`, `CallInterceptor`, `DedupePlugin`
 - `mapStreamErrors`
 - `onStart` / `onSuccess` / `onError` / `onFinish`

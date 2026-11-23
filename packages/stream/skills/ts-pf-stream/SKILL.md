@@ -1,11 +1,11 @@
 ---
 name: ts-pf-stream
-description: "Use when streaming root AsyncIterable over ts-pf with stream() and StreamCodec (JSONL). Triggers: @ts-pf/stream, StreamCodec, stream(), application/jsonl."
+description: "Use when streaming root AsyncIterable over ts-pf with stream(), StreamCodec (JSONL), or SseCodec (text/event-stream output). Triggers: @ts-pf/stream, StreamCodec, SseCodec, SSE_CONTENT_TYPE, stream(), application/jsonl, server-sent events, @ts-pf/sse."
 ---
 
 # @ts-pf/stream
 
-Opt-in `StreamCodec` for root `AsyncIterable` input and output. JSON calls stay JSON. Streams are `application/jsonl`.
+Opt-in codecs for root `AsyncIterable` input and output. JSON calls stay JSON. `StreamCodec` frames streams as `application/jsonl`; `SseCodec` frames stream output as `text/event-stream`.
 
 Install: `npm i @ts-pf/stream`
 
@@ -45,18 +45,35 @@ chat: impl.chat.handler(async function* ({ signal }) {
 })
 ```
 
+### Server-sent events
+
+`SseCodec` frames stream **output** as `text/event-stream`; input streams stay JSONL. Same `stream()` contracts, same rule: the same codec on handler and link.
+
+```ts
+import { SseCodec } from '@ts-pf/stream'
+import { FetchHandler } from '@ts-pf/server-http'
+import { FetchLink } from '@ts-pf/client-http'
+
+const codec = new SseCodec() // optional { inner, keepAliveMs } — default 15_000; 0 disables pings
+new FetchHandler(app, { codec })
+new FetchLink({ url: '/rpc', codec })
+```
+
+An `event: error` after the stream started rejects the iterator with a `PFError` whose `status` is `undefined`; switch on `code`. `@ts-pf/sse` was merged into this package at 1.0: import `SseCodec` / `SSE_CONTENT_TYPE` from `@ts-pf/stream`.
+
 ## API
 
-- `StreamCodec`
-- `stream()`
+- `StreamCodec`, `stream()`
+- `SseCodec`, `SSE_CONTENT_TYPE`
 
 ## Pair with
 
 - `ts-pf-server-http` / `ts-pf-client-http`
-- SSE output framing: `ts-pf-sse` (`SseCodec`; this package still owns `stream()`)
 
 ## Don't
 
 - Nested streams or File/Blob in items (`BAD_REQUEST`).
 - Rely on a generator's `finally` for cleanup (skipped if the stream is cancelled before the first pull, delayed while the generator waits on an `await`); close resources from `signal`.
-- Import `stream()` from `@ts-pf/sse` — it is not re-exported there.
+- Install `@ts-pf/sse` (merged here at 1.0; the old package is not updated).
+- EventSource clients, Last-Event-ID, EventPublisher.
+- Fold SSE into `@ts-pf/server-http`.

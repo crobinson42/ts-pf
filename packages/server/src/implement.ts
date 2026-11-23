@@ -3,7 +3,7 @@ import {
   type IsContractProcedure,
   isContractProcedure,
 } from '@ts-pf/contract'
-import type { MiddlewareFn } from './middleware.js'
+import type { ErrorFactory, MergeContext, MiddlewareFn } from './middleware.js'
 import {
   type ContractKeys,
   type ContractShape,
@@ -47,8 +47,8 @@ function applyInherited(
     return {
       '~pf': {
         ...node['~pf'],
-        use: [...inherited.use, ...node['~pf'].use],
-        useAfter: [...inherited.useAfter, ...node['~pf'].useAfter],
+        use: prependChain(inherited.use, node['~pf'].use),
+        useAfter: prependChain(inherited.useAfter, node['~pf'].useAfter),
         path: inherited.path,
       },
     }
@@ -66,6 +66,19 @@ function applyInherited(
     }
   }
   return result
+}
+
+/**
+ * `inherited` in front of `own`, unless `own` already starts with it: a
+ * handler built from a level (`authed.planet.find.handler()`) carries that
+ * level's middleware, so `authed.router()` must not add it a second time.
+ */
+function prependChain(
+  inherited: MiddlewareFn[],
+  own: MiddlewareFn[],
+): MiddlewareFn[] {
+  const carried = inherited.every((mw, i) => own[i] === mw)
+  return carried ? own : [...inherited, ...own]
 }
 
 function assertComplete(
@@ -206,12 +219,14 @@ export function createImplementer<T>(contract: T) {
 /**
  * Builder for one contract procedure. `TContract` is the contract procedure
  * type (`typeof contract.planet.find`); `handler()` returns an
- * `ImplementedProcedure` branded with it and with `TCtx`.
+ * `ImplementedProcedure` branded with it and with `TCtx`, the `$context`
+ * type adapters supply. `TCurrent` is the context middleware and the handler
+ * see: `TCtx` plus every key earlier middleware passed to `next({ context })`.
  *
  * `use()` runs before input validation and takes the same loose
- * `MiddlewareFn<TCtx, unknown, unknown>` as `impl.use()`, so a middleware
- * from `impl.middleware()` fits both. `useAfter()` is typed with this
- * procedure's input and output, so it takes an inline function.
+ * `MiddlewareFn<TCurrent>` as `impl.use()`, so a middleware from
+ * `impl.middleware()` fits both. `useAfter()` is typed with this procedure's
+ * input and output, so it takes an inline function.
  */
 export type ProcedureBuilder<
   TInput,
@@ -219,31 +234,57 @@ export type ProcedureBuilder<
   TCtx,
   TErrors extends Record<string, unknown> = Record<string, unknown>,
   TContract = unknown,
+  TCurrent = TCtx,
 > = {
-  use: (
-    mw: MiddlewareFn<TCtx, unknown, unknown>,
-  ) => ProcedureBuilder<TInput, TOutput, TCtx, TErrors, TContract>
-  useAfter: (
-    mw: MiddlewareFn<TCtx, TInput, TOutput>,
-  ) => ProcedureBuilder<TInput, TOutput, TCtx, TErrors, TContract>
+  use: <TAdded extends object = {}>(
+    mw: MiddlewareFn<TCurrent, TAdded>,
+  ) => ProcedureBuilder<
+    TInput,
+    TOutput,
+    TCtx,
+    TErrors,
+    TContract,
+    MergeContext<TCurrent, TAdded>
+  >
+  useAfter: <TAdded extends object = {}>(
+    mw: MiddlewareFn<TCurrent, TAdded, TInput, TOutput>,
+  ) => ProcedureBuilder<
+    TInput,
+    TOutput,
+    TCtx,
+    TErrors,
+    TContract,
+    MergeContext<TCurrent, TAdded>
+  >
   handler: (
     fn: (opts: {
       input: TInput
-      context: TCtx
-      errors: import('./middleware.js').ErrorFactory<TErrors>
+      context: TCurrent
+      errors: ErrorFactory<TErrors>
       path: string[]
       signal?: AbortSignal
     }) => TOutput | Promise<TOutput>,
   ) => ImplementedProcedure<TContract, TCtx>
 }
 
-export type Implementer<T, TCtx> = {
+/**
+ * The implementer at a router level. `TCtx` is the `$context<C>()` type: what
+ * adapters supply and what the finished router is branded with. `TCurrent` is
+ * what middleware and handlers below this level see: `TCtx` plus the keys
+ * each `use()` middleware adds with `next({ context })`.
+ */
+export type Implementer<T, TCtx, TCurrent = TCtx> = {
   $context: <C>() => Implementer<T, C>
-  use: (mw: MiddlewareFn<TCtx, unknown, unknown>) => Implementer<T, TCtx>
-  useAfter: (mw: MiddlewareFn<TCtx, unknown, unknown>) => Implementer<T, TCtx>
-  middleware: (
-    fn: MiddlewareFn<TCtx, unknown, unknown>,
-  ) => MiddlewareFn<TCtx, unknown, unknown>
+  use: <TAdded extends object = {}>(
+    mw: MiddlewareFn<TCurrent, TAdded>,
+  ) => Implementer<T, TCtx, MergeContext<TCurrent, TAdded>>
+  useAfter: <TAdded extends object = {}>(
+    mw: MiddlewareFn<TCurrent, TAdded>,
+  ) => Implementer<T, TCtx, MergeContext<TCurrent, TAdded>>
+  /** Types a middleware against this level's context; returns it unchanged. */
+  middleware: <TAdded extends object = {}>(
+    fn: MiddlewareFn<TCurrent, TAdded>,
+  ) => MiddlewareFn<TCurrent, TAdded>
   /**
    * Builds the finished tree. The argument must implement exactly the
    * contract: a missing key, an extra key, a handler built from another
@@ -256,15 +297,15 @@ export type Implementer<T, TCtx> = {
   ) => ImplementedRouter<T, TCtx>
 } & {
   [K in ContractKeys<T>]: IsContractProcedure<T[K]> extends true
-    ? ProcedureBuilderFor<T[K], TCtx>
-    : Implementer<T[K], TCtx>
+    ? ProcedureBuilderFor<T[K], TCtx, TCurrent>
+    : Implementer<T[K], TCtx, TCurrent>
 }
 
-type ProcedureBuilderFor<TContract, TCtx> =
+type ProcedureBuilderFor<TContract, TCtx, TCurrent> =
   ContractShape<TContract> extends {
     parsedInput: infer I
     output: infer O
     errors: infer E extends Record<string, unknown>
   }
-    ? ProcedureBuilder<I, O, TCtx, E, TContract>
+    ? ProcedureBuilder<I, O, TCtx, E, TContract, TCurrent>
     : never
