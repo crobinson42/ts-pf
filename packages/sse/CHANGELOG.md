@@ -1,5 +1,14 @@
 # @ts-pf/sse
 
+## 0.7.0
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @ts-pf/http@0.7.0
+  - @ts-pf/protocol@0.7.0
+  - @ts-pf/stream@0.7.0
+
 ## 0.6.1
 
 ### Patch Changes
