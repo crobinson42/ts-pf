@@ -94,6 +94,69 @@ describe('ContractClient inference', () => {
   })
 })
 
+const shapes = router({
+  union: procedure.input(
+    z.union([
+      z.object({ contractId: z.string(), customerId: z.string() }),
+      z.object({
+        contractId: z.undefined().optional(),
+        customerId: z.string(),
+        siteId: z.string().optional(),
+      }),
+    ]),
+  ),
+  tagged: procedure.input(
+    z.discriminatedUnion('kind', [
+      z.object({ kind: z.literal('a'), a: z.string() }),
+      z.object({ kind: z.literal('b'), b: z.number() }),
+    ]),
+  ),
+  optional: procedure.input(z.object({ id: z.number() }).optional()),
+  unknown: procedure.input(z.unknown()),
+  any: procedure.input(z.any()),
+})
+type Shapes = ContractClient<typeof shapes>
+type UnionInput = InferContractInputs<typeof shapes>['union']
+declare const api: Shapes
+
+describe('ContractClient input shapes', () => {
+  it('keeps a union input as one parameter type', () => {
+    expectTypeOf<Shapes['union']>().parameters.toEqualTypeOf<
+      [UnionInput, (CallOptions | undefined)?]
+    >()
+    api.union({ contractId: 'k', customerId: 'c' })
+    api.union({ customerId: 'c', siteId: 's' })
+    api.tagged({ kind: 'a', a: 'x' })
+    api.tagged({ kind: 'b', b: 1 })
+  })
+
+  it('rejects input that fits no union branch', () => {
+    // @ts-expect-error siteId is only in the branch without contractId
+    api.union({ contractId: 'k', customerId: 'c', siteId: 's' })
+    // @ts-expect-error customerId is required in every branch
+    api.union({ contractId: 'k' })
+    // @ts-expect-error kind 'a' carries a string `a`
+    api.tagged({ kind: 'a', b: 1 })
+    // @ts-expect-error input is required
+    api.union()
+  })
+
+  it('lets an input that accepts undefined be omitted', () => {
+    expectTypeOf<Shapes['optional']>().parameters.toEqualTypeOf<
+      [({ id: number } | undefined)?, (CallOptions | undefined)?]
+    >()
+    api.optional({ id: 1 })
+    api.optional(undefined)
+    api.optional()
+    api.unknown()
+    api.unknown(1)
+    api.any()
+    api.any(1)
+    // @ts-expect-error id must be a number
+    api.optional({ id: 'x' })
+  })
+})
+
 describe('InferContractProcedure', () => {
   it('reads a builder and a hand-written ContractProcedure the same way', () => {
     type Find = typeof contract.planet.find

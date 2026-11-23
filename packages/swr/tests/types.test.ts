@@ -34,6 +34,24 @@ describe('SwrClient types', () => {
     >()
   })
 
+  it('types key() for a union input and an optional input', () => {
+    const shapes = router({
+      byRef: procedure.input(
+        z.union([z.object({ id: z.number() }), z.object({ slug: z.string() })]),
+      ),
+      maybe: procedure.input(z.object({ id: z.number() }).optional()),
+    })
+    // Type-checked only; never called.
+    const _calls = (utils: SwrClient<typeof shapes>) => {
+      utils.byRef.key({ input: { id: 1 } })
+      utils.byRef.key({ input: { slug: 'earth' } })
+      // @ts-expect-error input fits neither branch
+      utils.byRef.key({ input: { id: 'earth' } })
+      utils.maybe.key()
+      utils.maybe.key({ input: { id: 1 } })
+    }
+  })
+
   it('types key() input with the schema input (defaults optional)', () => {
     expectTypeOf<Client['planet']['search']['key']>().parameters.toEqualTypeOf<
       [{ input: { q: string; limit?: number | undefined } }]

@@ -118,16 +118,33 @@ export type ProcedureClient<I, O, E extends ErrorMap, X = never> = [X] extends [
     ? ExpandingProcedureClient<I, O, E, X>
     : PlainProcedureClient<I, O, E>
 
-type PlainProcedureClient<I, O, E extends ErrorMap> = I extends void
-  ? (opts?: CallOptions) => ContractResultPromise<O, ClientError<E>>
-  : (input: I, opts?: CallOptions) => ContractResultPromise<O, ClientError<E>>
+/**
+ * Checks on `I` wrap it in a tuple so a union input (`A | B`) stays one
+ * parameter type. A bare `I extends …` would distribute into a union of
+ * functions, whose call needs `A & B`.
+ */
+type PlainProcedureClient<I, O, E extends ErrorMap> =
+  IsNoInput<I> extends true
+    ? (opts?: CallOptions) => ContractResultPromise<O, ClientError<E>>
+    : (...args: InputArgs<I>) => ContractResultPromise<O, ClientError<E>>
 
 type ExpandingProcedureClient<I, O, E extends ErrorMap, X extends Expansion> = <
   const P extends readonly (keyof X['fields'] & string)[] = readonly [],
 >(
-  input: I & { readonly [K in X['key']]?: P | undefined },
-  opts?: CallOptions,
+  ...args: InputArgs<I, I & { readonly [K in X['key']]?: P | undefined }>
 ) => ContractResultPromise<ExpandResult<O, X, P>, ClientError<E>>
+
+/** `void` (no `.input()`) or `never`, but not `any`. */
+// biome-ignore lint/suspicious/noConfusingVoidType: void is the no-input marker
+type IsNoInput<I> = 0 extends 1 & I ? false : [I] extends [void] ? true : false
+
+/**
+ * `(input: T, opts?)`. When input `I` accepts `undefined` (`.optional()`,
+ * `unknown`, `any`), the input may be omitted.
+ */
+type InputArgs<I, T = I> = [undefined] extends [I]
+  ? [input?: T | undefined, opts?: CallOptions | undefined]
+  : [input: T, opts?: CallOptions | undefined]
 
 /** The expandable field names of procedure `T`, or `never`. */
 export type InferExpansionKeys<T> =

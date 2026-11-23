@@ -88,7 +88,8 @@ export type SwrProcedureUtils<
 > = ProcedureClient<I, O, E, X> &
   SwrRouterUtils<I> &
   SwrStreamHelpers<I, O, E> & {
-    key: I extends void
+    // Tuple-wrapped so a union input stays one parameter type.
+    key: [undefined] extends [I]
       ? (options?: SwrKeyOptions<I>) => SwrKey<I>
       : (options: SwrKeyOptions<I>) => SwrKey<I>
     fetcher: () => SwrFetcher<I, O>
