@@ -1,5 +1,14 @@
 # @ts-pf/server-http
 
+## 1.0.1
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @ts-pf/http@1.0.1
+  - @ts-pf/protocol@1.0.1
+  - @ts-pf/server@1.0.1
+
 ## 1.0.0
 
 ### Major Changes

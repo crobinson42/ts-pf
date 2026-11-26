@@ -1,5 +1,13 @@
 # @ts-pf/server
 
+## 1.0.1
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @ts-pf/contract@1.0.1
+  - @ts-pf/protocol@1.0.1
+
 ## 1.0.0
 
 ### Major Changes

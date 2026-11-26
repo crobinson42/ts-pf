@@ -1,5 +1,12 @@
 # @ts-pf/message
 
+## 1.0.1
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @ts-pf/protocol@1.0.1
+
 ## 1.0.0
 
 ### Major Changes
