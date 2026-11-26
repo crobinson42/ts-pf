@@ -1,5 +1,16 @@
 # @ts-pf/mcp
 
+## 1.0.1
+
+### Patch Changes
+
+- [#74](https://github.com/crobinson42/ts-pf/pull/74) [`1d76952`](https://github.com/crobinson42/ts-pf/commit/1d769520e2aa4d1dc730bc83959b4d2570800463) Thanks [@crobinson42](https://github.com/crobinson42)! - Faster type checking: `all()` reads each tool's procedure meta once for its effect and docs filters. On large procedure types this cuts the instantiations `all(tk)` itself adds by half or more, and by about a fifth on plain contracts. No API change.
+- Updated dependencies []:
+  - @ts-pf/contract@1.0.1
+  - @ts-pf/docs@1.0.1
+  - @ts-pf/protocol@1.0.1
+  - @ts-pf/server@1.0.1
+
 ## 1.0.0
 
 ### Major Changes
