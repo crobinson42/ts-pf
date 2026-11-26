@@ -39,23 +39,29 @@ export type ExcludedPath<X> = X extends AnyTool
     ? `${P}${string}`
     : never
 
+/**
+ * The tool's procedure meta. `ToolEffect` and `DocsOf` both read it, so the
+ * `ToolBuilder` match runs once per tool: separate matches made the filters
+ * cost several times more on large procedure types.
+ */
+type ProcMeta<Tl> =
+  Tl extends ToolBuilder<infer _T, infer P, infer _C, infer _Path, infer _S>
+    ? Meta<P>
+    : {}
+
 /** Effect from typed meta `{ mcp: { effect } }`; unclassified counts as `write`. */
 type ToolEffect<Tl> =
-  Tl extends ToolBuilder<infer _T, infer P, infer _C, infer _Path, infer _S>
-    ? Meta<P> extends { mcp: { effect: infer E extends McpEffect } }
-      ? E
-      : 'write'
+  ProcMeta<Tl> extends { mcp: { effect: infer E extends McpEffect } }
+    ? E
     : 'write'
 
 /** Typed `docs()` meta; `{}` when the procedure has none. */
 type DocsOf<Tl> =
-  Tl extends ToolBuilder<infer _T, infer P, infer _C, infer _Path, infer _S>
-    ? Meta<P> extends { docs: infer D }
-      ? D
-      : string extends keyof Meta<P>
-        ? { tags?: string[] } // index-signature meta: unknown, keep
-        : {}
-    : {}
+  ProcMeta<Tl> extends { docs: infer D }
+    ? D
+    : string extends keyof ProcMeta<Tl>
+      ? { tags?: string[] } // index-signature meta: unknown, keep
+      : {}
 
 /**
  * Mirrors the runtime filter where the types know: a literal `hidden: true` is
