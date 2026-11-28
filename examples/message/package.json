@@ -11,11 +11,11 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/client": "1.0.1",
-    "@ts-pf/contract": "1.0.1",
-    "@ts-pf/message-client": "1.0.1",
-    "@ts-pf/message-server": "1.0.1",
-    "@ts-pf/server": "1.0.1",
+    "@ts-pf/client": "1.0.2",
+    "@ts-pf/contract": "1.0.2",
+    "@ts-pf/message-client": "1.0.2",
+    "@ts-pf/message-server": "1.0.2",
+    "@ts-pf/server": "1.0.2",
     "typebox": "^1.4.6",
     "zod": "^4.0.0"
   }

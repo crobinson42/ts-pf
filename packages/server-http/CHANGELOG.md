@@ -1,5 +1,15 @@
 # @ts-pf/server-http
 
+## 1.0.2
+
+### Patch Changes
+
+- [#76](https://github.com/crobinson42/ts-pf/pull/76) [`65f27c2`](https://github.com/crobinson42/ts-pf/commit/65f27c2b09b76635e672a985595d789198fd5748) Thanks [@crobinson42](https://github.com/crobinson42)! - Document `HandleResult`: `matched: false` means only that the path is outside `prefix` (no plugin or context factory ran, body unread), so a request can fall through to another handler. The README also notes that a context factory runs after the body decode and that a `PFError` it throws is encoded like a handler error.
+- Updated dependencies []:
+  - @ts-pf/http@1.0.2
+  - @ts-pf/protocol@1.0.2
+  - @ts-pf/server@1.0.2
+
 ## 1.0.1
 
 ### Patch Changes
