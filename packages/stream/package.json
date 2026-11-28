@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/stream",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "Opt-in StreamCodec (JSONL) and SseCodec (text/event-stream) with stream() for root AsyncIterable",
   "keywords": [
     "ts-pf",
@@ -52,15 +52,15 @@
   },
   "dependencies": {
     "@standard-schema/spec": "^1.0.0",
-    "@ts-pf/contract": "^1.0.2",
-    "@ts-pf/http": "^1.0.2",
-    "@ts-pf/protocol": "^1.0.2"
+    "@ts-pf/contract": "^1.1.0",
+    "@ts-pf/http": "^1.1.0",
+    "@ts-pf/protocol": "^1.1.0"
   },
   "devDependencies": {
-    "@ts-pf/client": "^1.0.2",
-    "@ts-pf/client-http": "^1.0.2",
-    "@ts-pf/server": "^1.0.2",
-    "@ts-pf/server-http": "^1.0.2",
+    "@ts-pf/client": "^1.1.0",
+    "@ts-pf/client-http": "^1.1.0",
+    "@ts-pf/server": "^1.1.0",
+    "@ts-pf/server-http": "^1.1.0",
     "zod": "^4.0.0"
   }
 }
