@@ -1,6 +1,6 @@
 {
   "name": "@ts-pf/client-http",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "FetchLink and Fetch interceptors",
   "keywords": [
     "ts-pf",
@@ -50,14 +50,14 @@
     "lint": "biome check src tests"
   },
   "dependencies": {
-    "@ts-pf/client": "^1.0.1",
-    "@ts-pf/http": "^1.0.1",
-    "@ts-pf/protocol": "^1.0.1"
+    "@ts-pf/client": "^1.0.2",
+    "@ts-pf/http": "^1.0.2",
+    "@ts-pf/protocol": "^1.0.2"
   },
   "devDependencies": {
-    "@ts-pf/contract": "^1.0.1",
-    "@ts-pf/server": "^1.0.1",
-    "@ts-pf/server-http": "^1.0.1",
+    "@ts-pf/contract": "^1.0.2",
+    "@ts-pf/server": "^1.0.2",
+    "@ts-pf/server-http": "^1.0.2",
     "typebox": "^1.4.6",
     "zod": "^4.0.0"
   }
