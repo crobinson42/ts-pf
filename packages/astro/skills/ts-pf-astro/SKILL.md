@@ -26,6 +26,8 @@ export const ALL = createAstroHandler(handler, {
 })
 ```
 
+`FetchHandler` runs the context function inside its pipeline, so it runs only for a POST to a known procedure whose body decoded: prefix misses, plugin short-circuits (CORS preflight), 405s, the version / stream-codec / body 400s, and unknown procedures answer without it. A `PFError` it throws (`UNAUTHORIZED` / 401 for a bad token, `FORBIDDEN` / 403 for a non-member) is the response, encoded like a handler error; any other throw is `INTERNAL` and reaches `HandlerPlugin.onError` and the `onError` option (or the default `console.error`). `FetchHandler` owns the request body; inspect raw bytes (a signature check) in a `HandlerPlugin.onRequest`, not in the context function.
+
 Page frontmatter. Same context function as the endpoint when the `Astro` global and `APIContext` are structurally compatible. Pass `{ signal: Astro.request.signal }` on a call when the page should cancel with the request. Set cookies on the `AstroCookies` object the context function put on procedure context (`context.cookies.set`). This package does not copy `Set-Cookie`. Astro writes those cookies onto the response for the route that is rendering: the endpoint `Response` from `createAstroHandler`, and the page response from `createAstroLocalClient`.
 
 ```ts
@@ -34,6 +36,8 @@ import { createAstroLocalClient } from '@ts-pf/astro/server'
 const caller = await createAstroLocalClient(app, Astro, contextFromAstro)
 const planet = await caller.planet.find({ id: 1 })
 ```
+
+In a page the context function has no wire: its throw rejects `createAstroLocalClient` with the thrown value. Catch it in frontmatter (redirect to sign-in, render an error).
 
 Browser or island module. Import the contract with `import type`. Do not import the implementer.
 
@@ -114,5 +118,5 @@ ESLint: `no-restricted-imports` with the same names under `paths` (exact names; 
 - Add an Astro integration that injects the route.
 - Serve OpenAPI or `catalog.json` from the RPC route.
 - Use `trailingSlash: 'always'` or `'never'` when request bodies are streams (`StreamCodec` input). Default `'ignore'` is the match. JSON POST under always/never is a 308 that fetch can follow; a `ReadableStream` body cannot be replayed.
-- Consume `request.body` in the context factory before the handler runs.
+- Read `request.body` (or `request.clone()`) in the context function. `FetchHandler` owns the body: JSON and multipart bodies are already consumed, and a JSONL stream body is read later by the handler.
 - Turn off `security.checkOrigin`. It stays on. It covers `multipart/form-data` (file uploads via `MultipartCodec`), not `application/json` or `application/jsonl`.

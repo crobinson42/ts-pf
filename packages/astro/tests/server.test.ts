@@ -1,4 +1,5 @@
 import { procedure, router } from '@ts-pf/contract'
+import { PFError } from '@ts-pf/protocol'
 import { createImplementer } from '@ts-pf/server'
 import { FetchHandler, type HandleResult } from '@ts-pf/server-http'
 import type { APIContext, AstroGlobal } from 'astro'
@@ -157,6 +158,91 @@ describe('createAstroHandler', () => {
     })
   })
 
+  it('encodes a PFError thrown by the context factory', async () => {
+    const route = createAstroHandler(new FetchHandler(app, { onError() {} }), {
+      prefix: '/rpc',
+      context: () => {
+        throw new PFError({
+          code: 'UNAUTHORIZED',
+          message: 'Sign in',
+          status: 401,
+        })
+      },
+    })
+    const response = await route({
+      request: findRequest('http://localhost/rpc/planet/find'),
+    } as APIContext)
+    expect(response.status).toBe(401)
+    expect(await response.json()).toEqual({
+      ok: false,
+      error: { code: 'UNAUTHORIZED', message: 'Sign in' },
+    })
+  })
+
+  it('encodes an unknown context factory throw as INTERNAL', async () => {
+    const seen: unknown[] = []
+    const route = createAstroHandler(
+      new FetchHandler(app, {
+        onError: (error) => {
+          seen.push(error)
+        },
+      }),
+      {
+        prefix: '/rpc',
+        context: async () => {
+          throw new Error('session store down')
+        },
+      },
+    )
+    const response = await route({
+      request: findRequest('http://localhost/rpc/planet/find'),
+    } as APIContext)
+    expect(response.status).toBe(500)
+    expect(await response.json()).toEqual({
+      ok: false,
+      error: { code: 'INTERNAL', message: 'Internal server error' },
+    })
+    expect(seen).toHaveLength(1)
+  })
+
+  it('does not run the context factory for unmatched, 405, or 404 requests', async () => {
+    let calls = 0
+    const route = createAstroHandler(new FetchHandler(app, { onError() {} }), {
+      prefix: '/rpc',
+      context: () => {
+        calls++
+        return { user: 'ada' }
+      },
+    })
+    const outside = await route({
+      request: new Request('http://localhost/health'),
+    } as APIContext)
+    const wrongMethod = await route({
+      request: new Request('http://localhost/rpc/planet/find'),
+    } as APIContext)
+    const unknown = await route({
+      request: findRequest('http://localhost/rpc/planet/missing'),
+    } as APIContext)
+    const badBody = await route({
+      request: new Request('http://localhost/rpc/planet/find', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{not json',
+      }),
+    } as APIContext)
+    expect([
+      outside.status,
+      wrongMethod.status,
+      unknown.status,
+      badBody.status,
+    ]).toEqual([404, 405, 404, 400])
+    expect(calls).toBe(0)
+    await route({
+      request: findRequest('http://localhost/rpc/planet/find'),
+    } as APIContext)
+    expect(calls).toBe(1)
+  })
+
   it('returns the same Response object FetchHandler produced', async () => {
     const recording = new RecordingHandler(app)
     const request = findRequest('http://localhost/rpc/planet/find')
@@ -205,6 +291,19 @@ describe('createAstroLocalClient', () => {
       name: 'Earth',
       user: 'ada',
     })
+  })
+
+  it('rejects with the context factory throw', async () => {
+    const refusal = new PFError({ code: 'FORBIDDEN', status: 403 })
+    await expect(
+      createAstroLocalClient(
+        app,
+        { request: new Request('http://localhost/') },
+        () => {
+          throw refusal
+        },
+      ),
+    ).rejects.toBe(refusal)
   })
 
   it('forwards validation.output', async () => {

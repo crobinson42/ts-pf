@@ -183,7 +183,7 @@ packages/swr/src/
 packages/mvc-kit/src/
   index.ts            bindClient, DisposeSignalHost, issuesToFieldErrors (keys by first path segment, `{ at }` for a nested FormModel), IssuesToFieldErrorsOptions
 packages/astro/src/
-  server.ts           createAstroHandler, createAstroLocalClient, withBase (./server; context typed from the app's TCtx via NoInfer)
+  server.ts           createAstroHandler, createAstroLocalClient, withBase (./server; context typed from the app's TCtx via NoInfer; createAstroHandler hands the context function to FetchHandler.handle, resolved at its step 3 inside the error path — never awaited before handle)
   client.ts           createAstroClient<T = never> (./client; `{ '~error': ... }` result when T is omitted, like createClient)
   with-base.ts        withBase
   index.ts            re-exports client only

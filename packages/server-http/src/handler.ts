@@ -31,6 +31,12 @@ import {
   streamCodecError,
 } from './streams.js'
 
+/**
+ * `matched: false` only when the URL path is outside `prefix`: nothing ran (no
+ * plugin, no context factory) and the body is unread, so the caller can hand
+ * the same request to another handler. Every request inside the prefix is
+ * `matched: true`, including 404 / 405 / error responses.
+ */
 export type HandleResult =
   | { matched: false; response?: undefined }
   | { matched: true; response: Response }
