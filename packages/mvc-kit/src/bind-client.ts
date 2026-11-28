@@ -1,4 +1,5 @@
 import type { CallOptions, ContractClient } from '@ts-pf/contract'
+import { isAsyncIterable, isPFError } from '@ts-pf/protocol'
 
 /** Minimal host. Resource, ViewModel, Collection, Trackable, and Service all match. */
 export type DisposeSignalHost = {
@@ -91,7 +92,7 @@ async function* wrapIterable(
 const MVC_KIT_DEFAULT_STATUS = 400
 
 function withStatus(error: unknown): unknown {
-  if (!isPFErrorLike(error) || Number.isFinite(error.status)) {
+  if (!isPFError(error) || Number.isFinite(error.status)) {
     return error
   }
   const copy: unknown = Object.create(
@@ -107,38 +108,11 @@ function withStatus(error: unknown): unknown {
   return copy
 }
 
-// The cross-copy brand `@ts-pf/protocol` puts on `PFError.prototype`. This
-// package does not depend on protocol, and `Symbol.for` returns the same
-// symbol for the same key in every copy, so the key is repeated here.
-const PF_ERROR_BRAND = Symbol.for('ts-pf.PFError')
-
-function isPFErrorLike(
-  value: unknown,
-): value is Error & { code: string; status?: unknown } {
-  if (typeof value !== 'object' || value === null) {
-    return false
-  }
-  const branded =
-    (value instanceof Error && value.name === 'PFError') ||
-    (value as { [PF_ERROR_BRAND]?: unknown })[PF_ERROR_BRAND] === true
-  return branded && typeof (value as { code?: unknown }).code === 'string'
-}
-
 function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
   return (
     typeof value === 'object' &&
     value !== null &&
     typeof (value as { then?: unknown }).then === 'function'
-  )
-}
-
-function isAsyncIterable(value: unknown): value is AsyncIterable<unknown> {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    typeof (value as { [Symbol.asyncIterator]?: unknown })[
-      Symbol.asyncIterator
-    ] === 'function'
   )
 }
 

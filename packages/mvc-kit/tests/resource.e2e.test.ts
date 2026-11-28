@@ -6,6 +6,8 @@ import { Resource } from 'mvc-kit'
 import { describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import { bindClient } from '../src/bind-client.js'
+import { issuesToFieldErrors } from '../src/issues-to-field-errors.js'
+import { taskIssues } from '../src/task-issues.js'
 
 const planet = z.object({ id: z.number(), name: z.string() })
 
@@ -19,6 +21,9 @@ const contract = router({
         NOT_FOUND: { status: 404, data: z.object({ id: z.number() }) },
       }),
     brew: procedure.errors({ TEAPOT: { message: 'short and stout' } }),
+    create: procedure
+      .input(z.object({ name: z.string().min(1, 'Required') }))
+      .output(planet),
   },
 })
 
@@ -38,6 +43,10 @@ const app = impl.router({
     brew: impl.planet.brew.handler(async ({ errors }) => {
       throw errors.TEAPOT()
     }),
+    create: impl.planet.create.handler(async ({ input }) => ({
+      id: 3,
+      name: input.name,
+    })),
   },
 })
 
@@ -61,6 +70,10 @@ class PlanetsResource extends Resource<Planet> {
 
   async brew() {
     await this.rpc.planet.brew()
+  }
+
+  async create(name: string) {
+    this.add(await this.rpc.planet.create({ name }))
   }
 }
 
@@ -98,6 +111,18 @@ describe('bindClient + Resource', () => {
     expect(cause).toBeInstanceOf(PFError)
     expect(cause.code).toBe('TEAPOT')
     expect(cause.status).toBe(400)
+  })
+
+  it('reads VALIDATION issues from the failed task with taskIssues', async () => {
+    const client = createLocalClient(app, { context: {} })
+    const resource = new PlanetsResource(client)
+    resource.init()
+    await expect(resource.create('')).rejects.toBeInstanceOf(PFError)
+    expect(resource.async.create.errorCode).toBe('VALIDATION')
+    expect(issuesToFieldErrors(taskIssues(resource.async.create))).toEqual({
+      name: 'Required',
+    })
+    expect(taskIssues(resource.async.brew)).toEqual([])
   })
 
   it('swallows FetchLink-shaped abort and does not set async.error', async () => {
