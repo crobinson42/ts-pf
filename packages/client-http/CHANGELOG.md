@@ -1,5 +1,14 @@
 # @ts-pf/client-http
 
+## 1.1.0
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @ts-pf/client@1.1.0
+  - @ts-pf/http@1.1.0
+  - @ts-pf/protocol@1.1.0
+
 ## 1.0.2
 
 ### Patch Changes
