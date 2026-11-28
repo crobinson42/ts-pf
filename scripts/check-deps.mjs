@@ -42,7 +42,7 @@ const PROD = {
   openapi: ['docs'],
   codegen: ['docs'],
   swr: ['contract'],
-  'mvc-kit': ['contract'],
+  'mvc-kit': ['contract', 'protocol'],
   astro: ['server-http', 'server', 'client-http', 'client'],
   message: ['protocol'],
   'message-server': ['message', 'server', 'protocol'],
@@ -65,7 +65,7 @@ const DEV = {
   openapi: ['stream'],
   codegen: ['client', 'stream'],
   swr: ['client', 'server', 'stream'],
-  'mvc-kit': ['client', 'server', 'protocol'],
+  'mvc-kit': ['client', 'server'],
   mcp: ['client', 'client-http', 'server-http'],
 }
 

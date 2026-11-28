@@ -1,6 +1,6 @@
 # @ts-pf/mvc-kit
 
-Opt-in [mvc-kit](https://www.npmjs.com/package/mvc-kit) helpers for a ts-pf **client**. Inject `disposeSignal` on every call and map `VALIDATION` issues onto `FormModel.setErrors` — you still write Resource methods and still call `useLocal` / `useSingleton` yourself.
+Opt-in [mvc-kit](https://www.npmjs.com/package/mvc-kit) helpers for a ts-pf **client**. Inject `disposeSignal` on every call and map `VALIDATION` issues (from an `asResult` error or a failed task) onto `FormModel.setErrors` — you still write Resource methods and still call `useLocal` / `useSingleton` yourself.
 
 Agent skill: [`skills/ts-pf-mvc-kit/`](skills/ts-pf-mvc-kit/). Sync with `npx skills experimental_sync -y`.
 
@@ -58,6 +58,20 @@ Resource methods **throw**. mvc-kit classifies the thrown `PFError` as-is:
 ```ts no-check
 resource.async.loadById.errorCode === 'NOT_FOUND' // not 'not_found'
 resource.async.loadById.cause // the PFError; .data is on the instance
+```
+
+`taskIssues(task)` reads the `VALIDATION` issues off a failed task. It returns `[]` unless `task.cause` is a `PFError` with code `VALIDATION`. mvc-kit updates the task after the method's promise settles, so read it from the caller (a View, or a method that awaited the tracked one), not inside the method that threw:
+
+```ts no-check
+import { issuesToFieldErrors, taskIssues } from '@ts-pf/mvc-kit'
+
+// View: derive field messages while rendering
+const fieldErrors = issuesToFieldErrors(taskIssues(vm.async.submit))
+
+// ViewModel: after the tracked call rejects
+await this.submit().catch(() => {
+  this.form.setErrors(issuesToFieldErrors(taskIssues(this.async.submit)))
+})
 ```
 
 Do not wrap `PFError` in `CodedError` or `HttpError`. mvc-kit classifies by `code` only when `status` is a finite number, and `PFError.status` is transport metadata (the HTTP response status over `FetchLink`; `undefined` on message links, after a stream has started, and for declared errors without a `status`), so `bindClient` hands mvc-kit a copy with `status: 400` whenever the transport did not carry one. HTTP failures and `localFailure` (`status: 0`) pass through as-is. `CodedError` is mvc-kit’s class if **you** throw by hand without that envelope.
@@ -154,6 +168,7 @@ Entity `id` is `string`. Procedure-shaped non-CRUD writes do not belong there.
 
 - `bindClient`, `DisposeSignalHost`
 - `issuesToFieldErrors(issues, { at? })`, `IssuesToFieldErrorsOptions`
+- `taskIssues(task)`: the `VALIDATION` issues on an mvc-kit `TaskState`'s `cause`, else `[]`
 
 ## Not in this package
 

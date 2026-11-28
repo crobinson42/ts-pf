@@ -42,7 +42,7 @@ The packages are ESM and ship `exports` only, so `tsconfig.json` needs `"moduleR
 | [`@ts-pf/message-server`](packages/message-server) | Opt-in `PortHandler` / `WsHandler` / `StdioHandler` |
 | [`@ts-pf/message-client`](packages/message-client) | Opt-in `PortLink` / `WsLink` / `StdioLink` |
 | [`@ts-pf/swr`](packages/swr) | Opt-in SWR keys, fetchers, mutators, and matchers |
-| [`@ts-pf/mvc-kit`](packages/mvc-kit) | Opt-in `bindClient` + `issuesToFieldErrors` for mvc-kit Resources |
+| [`@ts-pf/mvc-kit`](packages/mvc-kit) | Opt-in `bindClient` + `issuesToFieldErrors` + `taskIssues` for mvc-kit Resources |
 | [`@ts-pf/astro`](packages/astro) | Opt-in Astro endpoint (`createAstroHandler`) and page caller (`createAstroLocalClient` / `createAstroClient`) |
 | [`@ts-pf/mcp`](packages/mcp) | Opt-in MCP tools from a contract: toolkit, toolsets, tool hosts, `$coverage`, and an MCP SDK v2 server factory |
 
