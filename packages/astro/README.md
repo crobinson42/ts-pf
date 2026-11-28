@@ -21,6 +21,8 @@ export const ALL = createAstroHandler(handler, {
 })
 ```
 
+`FetchHandler` runs the context function inside its pipeline, so it runs only for a POST to a known procedure whose body decoded: prefix misses, plugin short-circuits (CORS preflight), 405s, the version / stream-codec / body 400s, and unknown procedures answer without it. A `PFError` it throws (`UNAUTHORIZED` / 401 for a bad token, `FORBIDDEN` / 403 for a non-member) is the response, encoded like a handler error; any other throw is `INTERNAL` and reaches `HandlerPlugin.onError` and the `onError` option (or the default `console.error`). `FetchHandler` owns the request body; inspect raw bytes (a signature check) in a `HandlerPlugin.onRequest`, not in the context function.
+
 ## Page
 
 Same context function as the endpoint. Pass `{ signal: Astro.request.signal }` on a call when the page should cancel with the request. Set cookies on the `AstroCookies` object that function put on procedure context (`context.cookies.set`). This package does not copy `Set-Cookie`. Astro writes those cookies onto the response for the route that is rendering: the endpoint `Response` from `createAstroHandler`, and the page response from `createAstroLocalClient`.
@@ -31,6 +33,8 @@ import { createAstroLocalClient } from '@ts-pf/astro/server'
 const caller = await createAstroLocalClient(app, Astro, contextFromAstro)
 const planet = await caller.planet.find({ id: 1 })
 ```
+
+In a page the context function has no wire: its throw rejects `createAstroLocalClient` with the thrown value. Catch it in frontmatter (redirect to sign-in, render an error).
 
 ## Browser
 

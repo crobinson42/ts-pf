@@ -29,7 +29,7 @@ const handler = new FetchHandler(app, {
 const result = await handler.handle(request, { prefix: '/rpc', context: { db } })
 ```
 
-Inside your request handler, fall through on a prefix miss:
+Inside your request handler, fall through on a prefix miss. `matched: false` means only that the path is outside `prefix`: no plugin or context factory ran and the body is unread, so the same request can go to another handler (several handlers on different prefixes). Inside the prefix every request is `matched: true`, 404 / 405 / errors included.
 
 ```ts no-check
 if (!result.matched) return new Response('Not Found', { status: 404 })

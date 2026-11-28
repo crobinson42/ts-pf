@@ -23,16 +23,21 @@ export type AstroLocalClientOptions = {
 /**
  * `TCtx` comes from the `FetchHandler` (which inferred it from the router), so
  * `options.context` is checked against the app's `$context<C>()` type.
+ *
+ * The context is resolved by `FetchHandler` (its step 3), not here: a throw
+ * from the factory is encoded like a handler error (a `PFError` keeps its code
+ * and status), and the factory runs only for a POST to a known procedure whose
+ * body decoded (not for a prefix miss, a plugin short-circuit, a 405, a 400,
+ * or an unknown procedure).
  */
 export function createAstroHandler<TCtx>(
   handler: FetchHandler<TCtx>,
   options: AstroHandlerOptions<NoInfer<TCtx>>,
 ): (context: APIContext) => Promise<Response> {
   return async (astro) => {
-    const context = await resolveContext(options.context, astro)
     const result = await handler.handle(astro.request, {
       prefix: options.prefix,
-      context,
+      context: () => resolveContext(options.context, astro),
     })
     if (!result.matched) {
       return new Response('Not Found', { status: 404 })
@@ -44,6 +49,9 @@ export function createAstroHandler<TCtx>(
 /**
  * `TCtx` is inferred from the router's context brand, so `context` is checked
  * against the app's `$context<C>()` type.
+ *
+ * There is no wire here: a throw from the context factory rejects this call
+ * with the thrown value, for the page to handle (redirect, error page).
  */
 export async function createAstroLocalClient<
   TApp,
